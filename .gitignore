@@ -1,0 +1,9 @@
+# build artifacts
+**/build_out/
+**/build/
+build/
+dist/
+*.egg-info/
+**/__pycache__/
+PROF_*/
+*.pyc
