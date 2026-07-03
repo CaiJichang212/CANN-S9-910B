@@ -43,7 +43,11 @@ using ComputeT = typename std::conditional<
     typename std::conditional<(kIsFloat || kIsBf16), float, half>::type>::type;
 
 // Tile length (elements). Multiple of 256 so every op's 256B alignment holds.
-constexpr uint32_t TILE = (kIsFloat || kIsBf16 || kIsInt32) ? 4096 : 8192;
+// Sized to use most of the 910B 192KB UB per dtype.
+constexpr uint32_t TILE = kIsInt32 ? 4096 :
+                          (kIsBf16 ? 6144 :
+                           (kIsFloat ? 5120 :
+            (kIsInt8 ? 10240 : 9216)));  // fp16 -> 9216
 constexpr uint32_t COMP_ALIGN = 256;   // elems; 256B for every dtype involved
 constexpr uint32_t Z_BLKELEMS = 256;   // bool 256B in elements
 constexpr int32_t BUFFER_NUM = 2;
@@ -228,13 +232,17 @@ private:
         inQueueY.FreeTensor(yIn);
 
         LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
-        DataCopyExtParams outParams;
-        outParams.blockCount = 1;
-        outParams.blockLen = n;
-        outParams.srcStride = 0;
-        outParams.dstStride = 0;
-        outParams.rsv = 0;
-        DataCopyPad(zGm[zBase], zLocal, outParams);
+        if ((zBase % 256 == 0) && (n % 256 == 0)) {
+            DataCopy(zGm[zBase], zLocal, n);
+        } else {
+            DataCopyExtParams outParams;
+            outParams.blockCount = 1;
+            outParams.blockLen = n;
+            outParams.srcStride = 0;
+            outParams.dstStride = 0;
+            outParams.rsv = 0;
+            DataCopyPad(zGm[zBase], zLocal, outParams);
+        }
         outQueueZ.FreeTensor(zLocal);
     }
 
