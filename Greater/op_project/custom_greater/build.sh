@@ -14,6 +14,8 @@ else
   export ASCEND_HOME_PATH=$BASE_LIBS_PATH
 fi
 echo "using ASCEND_HOME_PATH: $ASCEND_HOME_PATH"
+export ASCEND_CANN_PACKAGE_PATH="$ASCEND_HOME_PATH"
+echo "using ASCEND_CANN_PACKAGE_PATH: $ASCEND_CANN_PACKAGE_PATH"
 script_path=$(realpath $(dirname $0))
 
 BUILD_DIR="build_out"
@@ -31,12 +33,14 @@ target=package
 if [ "$1"x != ""x ]; then target=$1; fi
 if [[ $opts =~ $ENABLE_LIBRARY ]]; then target=install; fi
 
+CANN_PATH_OVERRIDE="-DASCEND_CANN_PACKAGE_PATH=$ASCEND_CANN_PACKAGE_PATH"
+
 if [[ $opts =~ $ENABLE_CROSS ]] && [[ $opts =~ $ENABLE_BINARY ]]
 then
   if [ "$cmake_version" \< "3.19.0" ] ; then
-    cmake -S . -B "$BUILD_DIR" $opts -DENABLE_CROSS_COMPILE=0
+    cmake -S . -B "$BUILD_DIR" $opts $CANN_PATH_OVERRIDE -DENABLE_CROSS_COMPILE=0
   else
-    cmake -S . -B "$BUILD_DIR" --preset=default -DENABLE_CROSS_COMPILE=0
+    cmake -S . -B "$BUILD_DIR" --preset=default $CANN_PATH_OVERRIDE -DENABLE_CROSS_COMPILE=0
   fi
   cmake --build "$BUILD_DIR" --target cust_optiling
   mkdir $BUILD_DIR/$HOST_NATIVE_DIR
@@ -46,17 +50,17 @@ then
   mv $HOST_NATIVE_DIR $BUILD_DIR
   host_native_tiling_lib=$(realpath $(find $BUILD_DIR -type f -name "libcust_opmaster_rt2.0.so"))
   if [ "$cmake_version" \< "3.19.0" ] ; then
-    cmake -S . -B "$BUILD_DIR" $opts -DHOST_NATIVE_TILING_LIB=$host_native_tiling_lib
+    cmake -S . -B "$BUILD_DIR" $opts $CANN_PATH_OVERRIDE -DHOST_NATIVE_TILING_LIB=$host_native_tiling_lib
   else
-    cmake -S . -B "$BUILD_DIR" --preset=default -DHOST_NATIVE_TILING_LIB=$host_native_tiling_lib
+    cmake -S . -B "$BUILD_DIR" --preset=default $CANN_PATH_OVERRIDE -DHOST_NATIVE_TILING_LIB=$host_native_tiling_lib
   fi
   cmake --build "$BUILD_DIR" --target binary -j$(nproc)
   cmake --build "$BUILD_DIR" --target $target -j$(nproc)
 else
   if [ "$cmake_version" \< "3.19.0" ] ; then
-    cmake -S . -B "$BUILD_DIR" $opts
+    cmake -S . -B "$BUILD_DIR" $opts $CANN_PATH_OVERRIDE
   else
-      cmake -S . -B "$BUILD_DIR" --preset=default
+      cmake -S . -B "$BUILD_DIR" --preset=default $CANN_PATH_OVERRIDE
   fi
   cmake --build "$BUILD_DIR" --target binary -j$(nproc)
   cmake --build "$BUILD_DIR" --target $target -j$(nproc)
