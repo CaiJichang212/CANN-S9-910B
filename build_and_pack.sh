@@ -30,7 +30,7 @@ echo ""
 echo "===== [3/3] Creating zip ====="
 rm -f "$ZIP_FILE"
 cd "$SCRIPT_DIR"
-zip -r "${OP_NAME}.zip" "${OP_NAME}_zip"
+zip -r "${OP_NAME}_0630.zip" "${OP_NAME}_0630_zip"
 
 echo ""
 echo "===== Done ====="
