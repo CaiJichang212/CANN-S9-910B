@@ -5,8 +5,8 @@
 
 namespace optiling {
 
-// 最多支持 64 路输入拼接
-constexpr uint32_t MAX_CONCAT_INPUT_NUM = 64;
+// 最多支持 256 路输入拼接（ACLNN 框架 dynamic tensorList 硬上限为 256）
+constexpr uint32_t MAX_CONCAT_INPUT_NUM = 256;
 
 BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   // 基础信息
@@ -23,7 +23,7 @@ BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   TILING_DATA_FIELD_DEF_ARR(uint32_t, MAX_CONCAT_INPUT_NUM, inputCatOffset);
   // 输出沿 dim 维的总长度
   TILING_DATA_FIELD_DEF(uint32_t, totalCatLen);
-  // 多核切分：以 (row, input) 对为最小 work item，共 beforeDimSize*inputNum 个
+  // 多核切分核数（按输出扁平字节区间切分，与 dim 取值无关地满核）
   TILING_DATA_FIELD_DEF(uint32_t, usedCoreNum);
 END_TILING_DATA_DEF;
 

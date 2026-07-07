@@ -2,6 +2,14 @@
  * Copyright (C) 2024. Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Concat 算子 host 侧实现：支持任意维度拼接，多输入（tensor_list）。
+ *
+ * 数据视图：
+ *   每个输入 i 的内存可视为 [beforeDimSize, inputCatLen[i], afterDimSize]
+ *   输出为                   [beforeDimSize, totalCatLen,     afterDimSize]
+ *   afterDimSize 维在内存上连续。
+ *
+ * 核切分：kernel 按输出扁平字节区间 [myStart,myEnd) 切分给各核，
+ *   与 beforeDim/dim 取值无关地满核（解决 dim=0/beforeDim=1 时单核欠载问题）。
  */
 #include "concat_tiling.h"
 #include "register/op_def_registry.h"
@@ -11,8 +19,8 @@
 
 namespace optiling {
 
-// 910B 单卡可用 AIV 数量上限，作为多核切分的最大核数
-constexpr uint32_t MAX_AIV_NUM = 48;
+// 910B4-1 单卡 AICore 数量
+constexpr uint32_t AICORE_NUM = 20;
 
 static ge::graphStatus TilingFunc(gert::TilingContext *context)
 {
@@ -103,9 +111,9 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         default:             dtypeSize = 2; break;
     }
 
-    // 6. 多核切分：按 beforeDim 行切分给各核（避免跨核写同一 32B block）
-    //    - 当 beforeDim < MAX_AIV_NUM 时使用较少核；beforeDim=1 时退化到单核
-    uint32_t usedCoreNum = MAX_AIV_NUM;
+    // 6. 多核切分：按 beforeDim 行切分给各核（每行内是连续输出段，避免跨核写同一 32B block）
+    //    - 数据量足够大时用满 20 核；beforeDim 小时按行数自适应
+    uint32_t usedCoreNum = AICORE_NUM;
     if (beforeDimSize == 0) {
         usedCoreNum = 1;
     } else if (usedCoreNum > beforeDimSize) {

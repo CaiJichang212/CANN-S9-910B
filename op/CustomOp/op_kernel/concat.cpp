@@ -22,9 +22,9 @@
 
 using namespace AscendC;
 
-constexpr uint32_t MAX_INPUT_NUM = 64;  // 与 host 端 MAX_CONCAT_INPUT_NUM 保持一致
-// 单个 UB tile 字节数：兼顾流水与 UB 上限
-constexpr uint32_t TILE_BYTES = 8192;
+constexpr uint32_t MAX_INPUT_NUM = 256;  // 与 host 端 MAX_CONCAT_INPUT_NUM 保持一致（ACLNN 框架上限 256）
+// 单个 UB tile 字节数：贴满 UB（910B 192KB，可用 ~184KB），双队列 2+2 buffer 共 4×TILE ≤ 184KB。
+constexpr uint32_t TILE_BYTES = 32768;   // 32KB，4×32KB=128KB 充裕（原 8KB 太小）
 
 class KernelConcat {
 public:
@@ -72,41 +72,103 @@ public:
         uint32_t endRow = startRow + perCoreRows;
         if (endRow > beforeDimSize_) endRow = beforeDimSize_;
         if (startRow >= endRow) return;
+        uint32_t numRows = endRow - startRow;
 
-        for (uint32_t row = startRow; row < endRow; row++) {
-            for (uint32_t i = 0; i < inputNum_; i++) {
-                uint32_t catLen = inputCatLen_[i];
-                if (catLen == 0) continue;
-                uint64_t elemCount = static_cast<uint64_t>(catLen) * afterDimSize_;
-                if (elemCount == 0) continue;
-                CopyOneInput(row, i, elemCount);
-            }
+        for (uint32_t i = 0; i < inputNum_; i++) {
+            uint32_t catLen = inputCatLen_[i];
+            if (catLen == 0) continue;
+            CopyInputRows(i, startRow, numRows, catLen);
         }
     }
 
 private:
-    __aicore__ inline void CopyOneInput(uint32_t row, uint32_t i, uint64_t elemCount)
+    // 搬运输入 inputIdx 的 [startRow, startRow+numRows) 行。
+    // 该输入内存布局连续 [beforeDim, catLen, afterDim]，各行无 gap。
+    // 多行合并路径：当每行字节数 32B 对齐时，用 DataCopyExtParams 一次搬多行，
+    //   把每输入每行的 Scalar 地址计算开销从 numRows 次降到 ~numRows/TileRows 次。
+    // 非对齐回退：逐行 + TILE 分批（保证任意 shape 正确）。
+    //
+    // stride 语义（910B, DataCopyPad）：
+    //   - srcStride（UB 侧）单位 32B，是相邻块「尾→头」的 gap（不含 blockLen）。
+    //   - dstStride（GM 侧）单位 字节，同样是 gap。
+    //   - 源 GM 连续 → srcStride=0；目标行间 gap = (totalCatLen-catLen)*afterDim*dtypeSize 字节。
+    __aicore__ inline void CopyInputRows(uint32_t inputIdx, uint32_t startRow,
+                                         uint32_t numRows, uint32_t catLen)
     {
-        uint64_t rowBytes = elemCount * dtypeSize_;
+        uint64_t rowBytes = static_cast<uint64_t>(catLen) * afterDimSize_ * dtypeSize_;
+        uint64_t srcStart = static_cast<uint64_t>(startRow) * rowBytes;   // 源每行 rowBytes，连续
+        uint64_t dstStart = static_cast<uint64_t>(startRow) * totalCatLen_ * afterDimSize_ * dtypeSize_
+                          + static_cast<uint64_t>(inputCatOffset_[inputIdx]) * afterDimSize_ * dtypeSize_;
+        // 目标行间 gap（字节，GM 侧 dstStride）：每写 rowBytes 后跳过其他输入占的 (totalCatLen-catLen)*afterDim*dtypeSize
+        uint64_t dstGapBytes = static_cast<uint64_t>(totalCatLen_ - catLen) * afterDimSize_ * dtypeSize_;
 
-        uint64_t inRowElem = static_cast<uint64_t>(inputCatLen_[i]) * afterDimSize_;
-        uint64_t inOffsetBytes = static_cast<uint64_t>(row) * inRowElem * dtypeSize_;
+        // 多行快路径：每行 32B 对齐（GM→UB 与 UB→GM 多块 stride 路径要求 blockLen 32B 对齐）
+        bool canMultiRow = (rowBytes % 32 == 0) && (rowBytes <= TILE_BYTES);
+        if (canMultiRow) {
+            CopyInputMultiRow(inputIdx, srcStart, dstStart, numRows,
+                              static_cast<uint32_t>(rowBytes), dstGapBytes);
+        } else {
+            // 逐行回退
+            for (uint32_t r = 0; r < numRows; r++) {
+                CopyOneRange(inputIdx, srcStart + r * rowBytes,
+                             dstStart + r * (rowBytes + dstGapBytes), rowBytes);
+            }
+        }
+    }
 
-        uint64_t outRowOffset = static_cast<uint64_t>(row) *
-                                static_cast<uint64_t>(totalCatLen_) *
-                                afterDimSize_ * dtypeSize_;
-        uint64_t outOffsetBytes = outRowOffset +
-            static_cast<uint64_t>(inputCatOffset_[i]) * afterDimSize_ * dtypeSize_;
+    __aicore__ inline void CopyInputMultiRow(uint32_t inputIdx, uint64_t srcStart, uint64_t dstStart,
+                                             uint32_t numRows, uint32_t rowBytes, uint64_t dstGapBytes)
+    {
+        // 一次最多搬的行数：受 TILE_BYTES / rowBytes 与 blockCount 上限(4095) 限制
+        uint32_t maxRowsByTile = TILE_BYTES / rowBytes;
+        if (maxRowsByTile == 0) maxRowsByTile = 1;
+        uint32_t maxRows = maxRowsByTile < 4095 ? maxRowsByTile : 4095;
+        // dstStride（GM 侧，字节）；srcStride（UB 侧，32B 单位）= 0（UB 内块紧挨）
+        uint32_t dstStride = static_cast<uint32_t>(dstGapBytes);
 
-        uint64_t remaining = rowBytes;
-        uint64_t srcOff = inOffsetBytes;
-        uint64_t dstOff = outOffsetBytes;
+        uint32_t remainingRows = numRows;
+        uint64_t srcCur = srcStart;
+        uint64_t dstCur = dstStart;
+        while (remainingRows > 0) {
+            uint32_t rows = (remainingRows > maxRows) ? maxRows : remainingRows;
+            uint32_t batchBytes = rowBytes * rows;
+            // GM -> UB：一次搬 rows 行（blockCount=rows, blockLen=rowBytes, srcStride=0 源连续）
+            LocalTensor<uint8_t> xLocal = inQueue_.AllocTensor<uint8_t>();
+            DataCopyExtParams copyInParams{static_cast<uint16_t>(rows), rowBytes, 0, 0, 0};
+            DataCopyPadExtParams<uint8_t> padIn{false, 0, 0, 0};
+            DataCopyPad(xLocal, inputGm_[inputIdx][srcCur], copyInParams, padIn);
+            inQueue_.EnQue(xLocal);
+
+            LocalTensor<uint8_t> xLocalDeq = inQueue_.DeQue<uint8_t>();
+            LocalTensor<uint8_t> yLocal = outQueue_.AllocTensor<uint8_t>();
+            // UB->UB：按 32B 对齐字节数连续拷贝（UB 内多行数据连续紧挨）
+            uint32_t alignedBytes = (batchBytes + 31) & ~31u;
+            AscendC::DataCopy(yLocal, xLocalDeq, alignedBytes);
+            outQueue_.EnQue(yLocal);
+            inQueue_.FreeTensor(xLocalDeq);
+
+            // UB -> GM：多行写出，dstStride（字节）= 目标行间 gap
+            LocalTensor<uint8_t> yLocalDeq = outQueue_.DeQue<uint8_t>();
+            DataCopyExtParams copyOutParams{static_cast<uint16_t>(rows), rowBytes, 0, dstStride, 0};
+            DataCopyPad(yGm_[dstCur], yLocalDeq, copyOutParams);
+            outQueue_.FreeTensor(yLocalDeq);
+
+            srcCur += static_cast<uint64_t>(rows) * rowBytes;             // 源连续
+            dstCur += static_cast<uint64_t>(rows) * (rowBytes + dstGapBytes);
+            remainingRows -= rows;
+        }
+    }
+
+    __aicore__ inline void CopyOneRange(uint32_t inputIdx, uint64_t srcOff, uint64_t dstOff, uint64_t byteLen)
+    {
+        uint64_t remaining = byteLen;
+        uint64_t src = srcOff;
+        uint64_t dst = dstOff;
         while (remaining > 0) {
-            uint32_t batchBytes = (remaining > TILE_BYTES) ? TILE_BYTES
-                                                          : static_cast<uint32_t>(remaining);
-            CopyBatch(i, srcOff, dstOff, batchBytes);
-            srcOff += batchBytes;
-            dstOff += batchBytes;
+            uint32_t batchBytes = (remaining > TILE_BYTES) ? TILE_BYTES : static_cast<uint32_t>(remaining);
+            CopyBatch(inputIdx, src, dst, batchBytes);
+            src += batchBytes;
+            dst += batchBytes;
             remaining -= batchBytes;
         }
     }
