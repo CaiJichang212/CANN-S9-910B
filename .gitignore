@@ -114,3 +114,5 @@ Concat/stress_test.py
 Concat/.env_libs
 Concat_0630.zip
 Concat_0630_zip/
+Concat/extra-info/
+**/extra-info/

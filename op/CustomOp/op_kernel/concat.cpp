@@ -141,7 +141,7 @@ private:
 
             LocalTensor<uint8_t> xLocalDeq = inQueue_.DeQue<uint8_t>();
             LocalTensor<uint8_t> yLocal = outQueue_.AllocTensor<uint8_t>();
-            // UB->UB：按 32B 对齐字节数连续拷贝（UB 内多行数据连续紧挨）
+            // UB->UB：按 32B 对齐字节数连续拷贝（rowBytes 32B 对齐，故 UB 内多行数据连续紧挨）
             uint32_t alignedBytes = (batchBytes + 31) & ~31u;
             AscendC::DataCopy(yLocal, xLocalDeq, alignedBytes);
             outQueue_.EnQue(yLocal);

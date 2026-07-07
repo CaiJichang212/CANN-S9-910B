@@ -91,26 +91,38 @@ bash build_and_pack.sh              # → Concat_0630.zip（内含 Concat_0630_z
 - `beforeDimSize` = dim 之前各维乘积；`afterDimSize` = dim 之后各维乘积；`totalCatLen` = 各输入 `catLen` 之和；`inputCatOffset[i]` = 前缀和。
 - 支持任意 dim、任意维数、4 dtype（fp32/fp16/int32/int8）、最多 64 路输入。
 
-### 6.2 当前实现的问题（待优化）
+### 6.2 已修复的问题（v6，2026-07-07）
 
-1. **多余的 UB→UB 拷贝（性能杀手）**：`CopyBatch` 里 GM→UB（`inQueue`）后，又用 `DataCopy(yLocal, xLocalDeq, alignedBytes)` 把数据从 inQueue 搬到 outQueue，再 UB→GM。纯访存算子不需要 Vector 单元参与，这一步是纯开销，且把流水串成 MTE2→V→MTE3。
-2. **TILE 过小**：`TILE_BYTES=8192`（8KB），910B UB 192KB（可用 ~184KB）。小 tile → DMA 建链开销大、带宽利用率低。
-3. **核切分按 `beforeDimSize` 行**：当 `dim=0`（`beforeDimSize=1`）或 beforeDim 很小时退化为单核/少核，严重欠载。应按**扁平输出字节区间**在 32B 对齐边界切分，与 beforeDim 解耦。
-4. **`MAX_AIV_NUM=48` 与 20 核不符**：见第 2 节，应改 20。
-5. **无对齐快路径**：全程 `DataCopyPad`（慢），即便完全对齐。应对齐走 `DataCopy`、仅尾部非对齐走 `DataCopyPad`。
-6. **Case5 运行失败**：评测报 `Run failed!`（case1-4 通过，case5 未出耗时）。需本地构造覆盖大 shape / dim=0 / 中间 dim / 各 dtype / 非对齐 / 多输入的压力用例复现并定位（见第 8 节排查清单）。
+1. **★ case5 失败根因**：`MAX_CONCAT_INPUT_NUM=64`，但评测 case5 用 `torch.split` 生成的输入路数可达 65–256，host tiling 直接 `return GRAPH_FAILED` → `Run failed!`。**已改为 256**（ACLNN 框架 dynamic tensorList 硬上限）。>256 路是框架限制，评测不可达。
+2. **`MAX_AIV_NUM=48` 与 20 核不符**：910B4-1 单卡 AICore=20，已改为 `AICORE_NUM=20`，`SetBlockDim` 不再超核数分波。
+3. **TILE 过小**：`TILE_BYTES` 8192→32768（贴满 UB，双队列 4×32K=128K ≤ 184K）。
 
-### 6.3 当前评测得分
+### 6.3 已实施的性能优化（v6）
 
-| Case | 结果 | 耗时(µs) |
-|------|------|---------|
-| 1 | Pass | 30.032 |
-| 2 | Pass | 41.94 |
-| 3 | Pass | 116.08 |
-| 4 | Pass | 130.832 |
-| 5 | **Run failed** | — |
+- **多行合并搬运**：每输入用 `DataCopyExtParams{blockCount=rows, blockLen=rowBytes, srcStride=0, dstStride}` 一次搬多行。当 `rowBytes % 32 == 0` 走多行快路径，Scalar 地址计算从 `beforeDim×inputNum` 次降到 `inputNum×(行/TileRows)` 次。
+- **stride 语义**（910B DataCopyPad，关键易错点）：
+  - `srcStride`（UB 侧）单位 **32B**，是相邻块「尾→头」gap（**不含** blockLen）。
+  - `dstStride`（GM 侧）单位 **字节**，同样是 gap。← 注意是字节，不是 32B！
+  - 源 GM 连续 → `srcStride=0`；目标行间 gap = `(totalCatLen-catLen)×afterDim×dtypeSize` 字节。
+  - 约束：`blockCount≤4095`，`blockLen∈[1,2MB]` 且 GM→UB 时须整除 `sizeof(T)`，UB 起始 32B 对齐，GM 起始无对齐要求。
+- 效果：fp32/int32 dim=-1 大 shape 923→696µs；dim=0 大 shape 311→141µs。
 
-case1-4 合计 ~319 µs（已 < 500），但 case5 失败导致整题无效。修复 case5 并控制其耗时即可达成目标。
+### 6.4 已知性能短板（待后续优化）
+
+- **fp16/int8 dim=-1 大 shape 慢**（如 [2024,3000] fp16 dim=-1 ~745µs）：`rowBytes=catLen×2/×1` 难 32B 对齐，多走逐行回退；且 afterDim=1 时段数 = `inputNum×beforeDim`（可达 8.5 万），Scalar 占 ~99%。多行快路径不覆盖此场景。
+- **行 gather 方案尝试失败**：逐行把各输入段 gather 到 UB 行 buffer 整行写出，但 UB→UB `DataCopy` 需 32B 对齐字节数，末段 padding 会 UB 越界写（vector core 异常）。需用精确字节的 UB→UB 拷贝（待查 DataCopyPad UB→UB 支持）才能实施。
+
+### 6.5 当前评测得分
+
+| Case | 原结果 | 耗时(µs) | v6 预期 |
+|------|------|---------|---------|
+| 1 | Pass | 30.032 | ~29（小 shape dim=-1） |
+| 2 | Pass | 41.94 | 类似量级 |
+| 3 | Pass | 116.08 | 类似量级 |
+| 4 | Pass | 130.832 | 类似量级 |
+| 5 | **Run failed** | — | **已修复**（输入路数 64→256） |
+
+原 case1-4 合计 ~319µs（< 500），case5 失败致整题无效。v6 修复 case5 后，待评测确认 5 case 总耗时。本地压力测试 19/20 通过（唯一失败 >256 路框架限制）。
 
 ## 7. 910B / CANN 8.5 关键约束（写 kernel 前过一遍）
 
