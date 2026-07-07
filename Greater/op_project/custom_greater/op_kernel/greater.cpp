@@ -80,12 +80,73 @@ public:
             yStride_[d] = yStride[d];
         }
 
+        // ---- P1: detect outer-broadcast resident operand ----
+        // bcastMode==0 (innermost non-broadcast), outerDim>0, all outer strides
+        // of one operand are 0 => that operand's data is a single innerSize-elem
+        // block reused across every segment. innerSize must be 256-aligned so
+        // per-tile UB slice reads stay 256-aligned, and fit in UB.
+        constexpr uint32_t RES_UB_LIMIT = 96 * 1024;  // bytes; leave room for other bufs
+        xResident_ = false;
+        yResident_ = false;
+        if (bcastMode_ == 0 && outerDim_ > 0 && (innerSize_ % COMP_ALIGN) == 0
+            && innerSize_ <= TILE) {
+            bool xAllZero = true, yAllZero = true;
+            for (int d = 0; d < static_cast<int>(outerDim_); ++d) {
+                if (xStride_[d] != 0) { xAllZero = false; }
+                if (yStride_[d] != 0) { yAllZero = false; }
+            }
+            uint32_t resBytes = (innerSize_ + COMP_ALIGN) * sizeof(InputT);
+            if (xAllZero && resBytes <= RES_UB_LIMIT) {
+                xResident_ = true;
+                residentElemsX_ = innerSize_ + COMP_ALIGN;
+            }
+            if (yAllZero && resBytes <= RES_UB_LIMIT) {
+                yResident_ = true;
+                residentElemsY_ = innerSize_ + COMP_ALIGN;
+            }
+            // Both resident (both inputs constant) is degenerate; stream x.
+            if (xResident_ && yResident_) {
+                xResident_ = false;
+                residentElemsX_ = 0;
+            }
+        }
+        // An operand uses its input queue iff it is neither resident nor scalar.
+        xQueued_ = !xResident_ && (bcastMode_ != 1);
+        yQueued_ = !yResident_ && (bcastMode_ != 2);
+
+        // ---- P2: detect innermost-broadcast (scalar per segment) ----
+        // The scalar operand's outerSize values are contiguous in GM. Batch-load
+        // them once; process big tiles with per-sub-segment materialization.
+        // Only enable when the scalar operand is contiguous (stride 1) or a
+        // single constant (stride 0); other strides fall back to segment walk.
+        innerBcast_ = false;
+        if ((bcastMode_ == 1 || bcastMode_ == 2) && outerDim_ > 0
+            && (innerSize_ % COMP_ALIGN) == 0 && innerSize_ <= TILE) {
+            uint32_t sStr = (bcastMode_ == 1) ? xStride_[0] : yStride_[0];
+            if (sStr == 0 || sStr == 1) {
+                uint32_t batchCount = (sStr == 0) ? 1u : outerSize_;
+                uint32_t batchBytes = (batchCount + COMP_ALIGN) * sizeof(InputT);
+                if (batchBytes <= 64 * 1024) {
+                    innerBcast_ = true;
+                    scalarStride_ = sStr;
+                    scalarBatchCount_ = batchCount;
+                    scalarBatchElems_ = batchCount + COMP_ALIGN;
+                }
+            }
+        }
+
         xGm.SetGlobalBuffer((__gm__ InputT*)x);
         yGm.SetGlobalBuffer((__gm__ InputT*)y);
         zGm.SetGlobalBuffer((__gm__ uint8_t*)z);
 
-        pipe.InitBuffer(inQueueX, BUFFER_NUM, TILE * sizeof(InputT));
-        pipe.InitBuffer(inQueueY, BUFFER_NUM, TILE * sizeof(InputT));
+        // Only allocate the input queue an operand actually uses; the freed UB
+        // is used for the resident buffer when applicable.
+        if (xQueued_) {
+            pipe.InitBuffer(inQueueX, BUFFER_NUM, TILE * sizeof(InputT));
+        }
+        if (yQueued_) {
+            pipe.InitBuffer(inQueueY, BUFFER_NUM, TILE * sizeof(InputT));
+        }
         pipe.InitBuffer(outQueueZ, BUFFER_NUM, TILE * sizeof(uint8_t));
 
         pipe.InitBuffer(maskBuf, TILE / 8 * sizeof(uint8_t));
@@ -105,6 +166,15 @@ public:
         }
         pipe.InitBuffer(scalarBuf, 256);
         pipe.InitBuffer(scalarCTBuf, 512);
+        if (xResident_) {
+            pipe.InitBuffer(residentXBuf, residentElemsX_ * sizeof(InputT));
+        }
+        if (yResident_) {
+            pipe.InitBuffer(residentYBuf, residentElemsY_ * sizeof(InputT));
+        }
+        if (innerBcast_) {
+            pipe.InitBuffer(scalarBatchBuf, scalarBatchElems_ * sizeof(InputT));
+        }
 
         LocalTensor<half> zeroLocal = halfZeroBuf.Get<half>();
         LocalTensor<half> oneLocal = halfOneBuf.Get<half>();
@@ -115,6 +185,20 @@ public:
     __aicore__ inline void Process()
     {
         if (totalSize_ == 0 || blockDim_ == 0) {
+            return;
+        }
+        // P1+: when an operand is outer-broadcast resident, the other operand
+        // and the output are fully contiguous. Flatten to big TILE tiles and
+        // reuse the resident operand across innerSize sub-tiles (no per-segment
+        // HBM read, no small-tile scalar overhead).
+        if (xResident_ || yResident_) {
+            ProcessResident();
+            return;
+        }
+        // P2: innermost-broadcast (scalar per segment). Batch-load scalars and
+        // process big tiles with per-sub-segment materialization.
+        if (innerBcast_) {
+            ProcessInnerBcast();
             return;
         }
         uint32_t coreId = GetBlockIdx();
@@ -158,7 +242,312 @@ public:
         }
     }
 
+    // P1+: flattened resident path. The streamed operand (the one NOT resident)
+    // and the output are contiguous in GM; the resident operand is innerSize-
+    // periodic. Split work by segments (innerSize-aligned) so each big tile
+    // starts on a period boundary, then process big TILE tiles where each tile
+    // is a sequence of full innerSize sub-tiles all compared against the same
+    // resident slice. This removes both the redundant HBM reads (P1) and the
+    // small-tile scalar overhead (P1+).
+    __aicore__ inline void ProcessResident()
+    {
+        LoadResidents();
+        uint32_t coreId = GetBlockIdx();
+        uint64_t totalSegs = static_cast<uint64_t>(outerSize_);
+        uint64_t segStart = totalSegs * coreId / blockDim_;
+        uint64_t segEnd = totalSegs * (coreId + 1) / blockDim_;
+        uint64_t pos = segStart * innerSize_;
+        uint64_t coreEnd = segEnd * innerSize_;
+        if (coreEnd > totalSize_) {
+            coreEnd = totalSize_;
+        }
+        if (pos >= coreEnd) {
+            return;
+        }
+        while (pos < coreEnd) {
+            // Big tile = largest multiple of innerSize that fits in TILE, so
+            // every tile starts on a y-period boundary (pos stays innerSize-aligned).
+            uint64_t tileN64 = (static_cast<uint64_t>(TILE) / innerSize_) * innerSize_;
+            if (tileN64 == 0) {
+                tileN64 = innerSize_;
+            }
+            if (coreEnd - pos < tileN64) {
+                tileN64 = coreEnd - pos;
+            }
+            uint32_t tileN = static_cast<uint32_t>(tileN64);
+            ProcessResidentTile(pos, tileN);
+            pos += tileN;
+        }
+    }
+
+    // Process one big TILE tile at output offset `pos` (innerSize-aligned).
+    // The streamed operand is loaded once via its queue; the resident operand
+    // is reused from UB for every innerSize sub-tile.
+    __aicore__ inline void ProcessResidentTile(uint64_t zBase, uint32_t n)
+    {
+        uint32_t compCount = RoundUpTo(n, COMP_ALIGN);
+
+        // Stream the non-resident operand. (For broadcast, exactly one operand
+        // is resident; the other is streamed. If both were resident the output
+        // is constant -- still correct, x is treated as the streamed one.)
+        bool streamX = !xResident_;
+        LocalTensor<InputT> sIn;
+        if (streamX) {
+            LocalTensor<InputT> sLocal = inQueueX.AllocTensor<InputT>();
+            CopyInTensor(sLocal, xGm, zBase, n);
+            inQueueX.EnQue(sLocal);
+            sIn = inQueueX.DeQue<InputT>();
+        } else {
+            LocalTensor<InputT> sLocal = inQueueY.AllocTensor<InputT>();
+            CopyInTensor(sLocal, yGm, zBase, n);
+            inQueueY.EnQue(sLocal);
+            sIn = inQueueY.DeQue<InputT>();
+        }
+
+        LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
+
+        // ComputeT view of the streamed tile (cast if dtype requires it).
+        LocalTensor<ComputeT> sc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            sc = sIn.ReinterpretCast<ComputeT>();
+        } else {
+            sc = xCompBuf.Get<ComputeT>();
+            Cast(sc, sIn, RoundMode::CAST_NONE, compCount);
+        }
+        // ComputeT view of the resident operand (the full innerSize block).
+        LocalTensor<InputT> resRaw = (xResident_ ? residentXBuf : residentYBuf)
+            .Get<InputT>();
+        LocalTensor<ComputeT> rc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            rc = resRaw.ReinterpretCast<ComputeT>();
+        } else {
+            rc = yCompBuf.Get<ComputeT>();
+            Cast(rc, resRaw, RoundMode::CAST_NONE, RoundUpTo(innerSize_, COMP_ALIGN));
+        }
+
+        // Sub-tile loop: each sub-tile is one full innerSize period, compared
+        // against the resident slice. pos is innerSize-aligned (segment start)
+        // and n is a multiple of innerSize, so every sub-tile uses resRaw[0:innerSize].
+        // sc = streamed operand's ComputeT, rc = resident operand's ComputeT;
+        // map them to x/y correctly (Greater is x > y, order matters).
+        uint32_t off = 0;
+        while (off < n) {
+            uint32_t subN = innerSize_;
+            if (n - off < subN) {
+                subN = n - off;
+            }
+            uint32_t subComp = RoundUpTo(subN, COMP_ALIGN);
+            LocalTensor<uint8_t> zSub = zOut[off];
+            LocalTensor<ComputeT> xSub = streamX ? sc[off] : rc;
+            LocalTensor<ComputeT> ySub = streamX ? rc : sc[off];
+            ComputeGtT<ComputeT>(zSub, xSub, ySub, subComp);
+            off += subN;
+        }
+
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
+
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        if ((zBase % 256 == 0) && (n % 256 == 0)) {
+            DataCopy(zGm[zBase], zLocal, n);
+        } else {
+            DataCopyExtParams outParams;
+            outParams.blockCount = 1;
+            outParams.blockLen = n;
+            outParams.srcStride = 0;
+            outParams.dstStride = 0;
+            outParams.rsv = 0;
+            DataCopyPad(zGm[zBase], zLocal, outParams);
+        }
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+    // P2: innermost-broadcast flatten. The scalar operand (x for bcastMode==1,
+    // y for bcastMode==2) has outerSize contiguous values; the streamed operand
+    // and output are contiguous. Batch-load the scalars once, then process big
+    // TILE tiles where each innerSize sub-tile materializes its segment's scalar
+    // from the UB batch (no per-segment LoadScalar MTE2, ~TILE/innerSize fewer
+    // streamed-operand queue ops).
+    __aicore__ inline void ProcessInnerBcast()
+    {
+        LoadScalarBatch();
+        uint32_t coreId = GetBlockIdx();
+        uint64_t totalSegs = static_cast<uint64_t>(outerSize_);
+        uint64_t segStart = totalSegs * coreId / blockDim_;
+        uint64_t segEnd = totalSegs * (coreId + 1) / blockDim_;
+        uint64_t pos = segStart * innerSize_;
+        uint64_t coreEnd = segEnd * innerSize_;
+        if (coreEnd > totalSize_) {
+            coreEnd = totalSize_;
+        }
+        if (pos >= coreEnd) {
+            return;
+        }
+        while (pos < coreEnd) {
+            uint64_t tileN64 = (static_cast<uint64_t>(TILE) / innerSize_) * innerSize_;
+            if (tileN64 == 0) {
+                tileN64 = innerSize_;
+            }
+            if (coreEnd - pos < tileN64) {
+                tileN64 = coreEnd - pos;
+            }
+            uint32_t tileN = static_cast<uint32_t>(tileN64);
+            ProcessInnerBcastTile(pos, tileN);
+            pos += tileN;
+        }
+    }
+
+    __aicore__ inline void ProcessInnerBcastTile(uint64_t zBase, uint32_t n)
+    {
+        ProcessInnerBcastTileT<ComputeT>(zBase, n);
+    }
+
+    template <typename CT>
+    __aicore__ inline void ProcessInnerBcastTileT(uint64_t zBase, uint32_t n)
+    {
+        uint32_t compCount = RoundUpTo(n, COMP_ALIGN);
+        // Streamed operand = the non-scalar one (x for bcastMode==2, y for ==1).
+        bool streamX = (bcastMode_ != 1);
+        LocalTensor<InputT> sIn;
+        if (streamX) {
+            LocalTensor<InputT> sLocal = inQueueX.AllocTensor<InputT>();
+            CopyInTensor(sLocal, xGm, zBase, n);
+            inQueueX.EnQue(sLocal);
+            sIn = inQueueX.DeQue<InputT>();
+        } else {
+            LocalTensor<InputT> sLocal = inQueueY.AllocTensor<InputT>();
+            CopyInTensor(sLocal, yGm, zBase, n);
+            inQueueY.EnQue(sLocal);
+            sIn = inQueueY.DeQue<InputT>();
+        }
+
+        LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
+
+        // ComputeT view of the streamed tile.
+        LocalTensor<CT> sc;
+        if constexpr (IsSameType<InputT, CT>::value) {
+            sc = sIn.ReinterpretCast<CT>();
+        } else {
+            sc = (streamX ? xCompBuf : yCompBuf).Get<CT>();
+            Cast(sc, sIn, RoundMode::CAST_NONE, compCount);
+        }
+        // Buffer for the scalar operand's materialized ComputeT sub-tile.
+        LocalTensor<CT> scSubBuf = (streamX ? yCompBuf : xCompBuf).Get<CT>();
+        LocalTensor<InputT> batch = scalarBatchBuf.Get<InputT>();
+
+        // Sub-tile loop: each sub-tile = one segment (innerSize elems). The
+        // scalar for segment `seg` is batch[seg] (stride 1) or batch[0] (const).
+        uint64_t seg = zBase / innerSize_;
+        uint32_t off = 0;
+        while (off < n) {
+            uint32_t subN = innerSize_;
+            if (n - off < subN) {
+                subN = n - off;
+            }
+            uint32_t subComp = RoundUpTo(subN, COMP_ALIGN);
+            uint32_t scalarIdx = (scalarStride_ == 0) ? 0u : static_cast<uint32_t>(seg);
+
+            // Materialize the segment's scalar into a ComputeT sub-tile.
+            if constexpr (IsSameType<InputT, CT>::value) {
+                CT sv = (CT)batch.GetValue(scalarIdx);
+                Duplicate(scSubBuf, sv, static_cast<int32_t>(subComp));
+            } else if constexpr (IsSameType<CT, half>::value) {
+                // int8 -> half
+                int8_t v = batch.GetValue(scalarIdx);
+                half sv = (half)(float)v;
+                Duplicate(scSubBuf, sv, static_cast<int32_t>(subComp));
+            } else {
+                // bf16 -> float
+                InputT v = batch.GetValue(scalarIdx);
+                LocalTensor<InputT> bfTile = bf16TileBuf.Get<InputT>();
+                Duplicate(bfTile, v, static_cast<int32_t>(subComp));
+                Cast(scSubBuf, bfTile, RoundMode::CAST_NONE, subComp);
+            }
+
+            LocalTensor<uint8_t> zSub = zOut[off];
+            LocalTensor<CT> sSub = sc[off];
+            LocalTensor<CT> xc = streamX ? sSub : scSubBuf;   // x = streamed
+            LocalTensor<CT> yc = streamX ? scSubBuf : sSub;  // y = scalar
+            ComputeGtT<CT>(zSub, xc, yc, subComp);
+            off += subN;
+            seg++;
+        }
+
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
+
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        if ((zBase % 256 == 0) && (n % 256 == 0)) {
+            DataCopy(zGm[zBase], zLocal, n);
+        } else {
+            DataCopyExtParams outParams;
+            outParams.blockCount = 1;
+            outParams.blockLen = n;
+            outParams.srcStride = 0;
+            outParams.dstStride = 0;
+            outParams.rsv = 0;
+            DataCopyPad(zGm[zBase], zLocal, outParams);
+        }
+        outQueueZ.FreeTensor(zLocal);
+    }
+
 private:
+    // P1: load each resident operand's innerSize elements from GM into its UB
+    // buffer once, then sync MTE2->V so all later tiles may read it directly.
+    __aicore__ inline void LoadResidents()
+    {
+        if (!xResident_ && !yResident_) {
+            return;
+        }
+        DataCopyExtParams params;
+        params.blockCount = 1;
+        params.blockLen = static_cast<uint32_t>(innerSize_ * sizeof(InputT));
+        params.srcStride = 0;
+        params.dstStride = 0;
+        params.rsv = 0;
+        DataCopyPadExtParams<InputT> pad;
+        pad.isPad = true;
+        pad.leftPadding = 0;
+        pad.rightPadding = 0;
+        pad.paddingValue = (InputT)0;
+        if (xResident_) {
+            LocalTensor<InputT> rx = residentXBuf.Get<InputT>();
+            DataCopyPad(rx, xGm[0], params, pad);
+        }
+        if (yResident_) {
+            LocalTensor<InputT> ry = residentYBuf.Get<InputT>();
+            DataCopyPad(ry, yGm[0], params, pad);
+        }
+        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
+        SetFlag<HardEvent::MTE2_V>(eid);
+        WaitFlag<HardEvent::MTE2_V>(eid);
+        pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
+    }
+
+    // P2: load all distinct scalars of the innermost-broadcast operand once.
+    // scalarStride_==0 -> a single constant (1 elem); ==1 -> outerSize contig.
+    __aicore__ inline void LoadScalarBatch()
+    {
+        DataCopyExtParams params;
+        params.blockCount = 1;
+        params.blockLen = static_cast<uint32_t>(scalarBatchCount_ * sizeof(InputT));
+        params.srcStride = 0;
+        params.dstStride = 0;
+        params.rsv = 0;
+        DataCopyPadExtParams<InputT> pad;
+        pad.isPad = true;
+        pad.leftPadding = 0;
+        pad.rightPadding = 0;
+        pad.paddingValue = (InputT)0;
+        LocalTensor<InputT> batch = scalarBatchBuf.Get<InputT>();
+        GlobalTensor<InputT>& gm = (bcastMode_ == 1) ? xGm : yGm;  // scalar operand
+        DataCopyPad(batch, gm[0], params, pad);
+        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
+        SetFlag<HardEvent::MTE2_V>(eid);
+        WaitFlag<HardEvent::MTE2_V>(eid);
+        pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
+    }
+
     __aicore__ inline void ComputeBases(uint64_t seg, uint64_t& xBase, uint64_t& yBase)
     {
         xBase = 0;
@@ -208,28 +597,33 @@ private:
     {
         uint32_t compCount = RoundUpTo(n, COMP_ALIGN);
 
-        LocalTensor<InputT> xLocal = inQueueX.AllocTensor<InputT>();
-        LocalTensor<InputT> yLocal = inQueueY.AllocTensor<InputT>();
-        if (bcastMode_ != 1) {
+        // Stream the operands that use a queue (MTE2). Resident operands are
+        // already in UB (loaded once in LoadResidents); scalar operands are
+        // materialized per-tile inside GetComputeSrcT. Both skip the queue.
+        LocalTensor<InputT> xIn;   // valid only when xQueued_
+        LocalTensor<InputT> yIn;   // valid only when yQueued_
+        if (xQueued_) {
+            LocalTensor<InputT> xLocal = inQueueX.AllocTensor<InputT>();
             CopyInTensor(xLocal, xGm, xBase + offInSeg, n);
+            inQueueX.EnQue(xLocal);
+            xIn = inQueueX.DeQue<InputT>();
         }
-        if (bcastMode_ != 2) {
+        if (yQueued_) {
+            LocalTensor<InputT> yLocal = inQueueY.AllocTensor<InputT>();
             CopyInTensor(yLocal, yGm, yBase + offInSeg, n);
+            inQueueY.EnQue(yLocal);
+            yIn = inQueueY.DeQue<InputT>();
         }
-        inQueueX.EnQue(xLocal);
-        inQueueY.EnQue(yLocal);
 
-        LocalTensor<InputT> xIn = inQueueX.DeQue<InputT>();
-        LocalTensor<InputT> yIn = inQueueY.DeQue<InputT>();
         LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
 
-        LocalTensor<ComputeT> xc = GetComputeSrcT<ComputeT>(xIn, true, xBase, compCount);
-        LocalTensor<ComputeT> yc = GetComputeSrcT<ComputeT>(yIn, false, yBase, compCount);
+        LocalTensor<ComputeT> xc = GetComputeSrcT<ComputeT>(true, xIn, offInSeg, xBase, compCount);
+        LocalTensor<ComputeT> yc = GetComputeSrcT<ComputeT>(false, yIn, offInSeg, yBase, compCount);
         ComputeGtT<ComputeT>(zOut, xc, yc, compCount);
 
         outQueueZ.EnQue<uint8_t>(zOut);
-        inQueueX.FreeTensor(xIn);
-        inQueueY.FreeTensor(yIn);
+        if (xQueued_) { inQueueX.FreeTensor(xIn); }
+        if (yQueued_) { inQueueY.FreeTensor(yIn); }
 
         LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
         if ((zBase % 256 == 0) && (n % 256 == 0)) {
@@ -297,47 +691,66 @@ private:
         DataCopyPad(sc, gm[base], p, pad);
     }
 
-    // Return a ComputeT view of an operand: reinterpret (same type), cast
-    // (bf16/int8), or Duplicate-fill (innermost-scalar broadcast).
+    // Return a ComputeT view of an operand. Source is one of:
+    //  - resident UB slice (outer-broadcast operand loaded once): read directly
+    //  - streamed queue tile (the common path)
+    //  - scalar (innermost-broadcast): LoadScalar + Duplicate per tile
     template <typename CT>
-    __aicore__ inline LocalTensor<CT> GetComputeSrcT(LocalTensor<InputT>& in,
-                                                     bool isX, uint64_t base,
+    __aicore__ inline LocalTensor<CT> GetComputeSrcT(bool isX,
+                                                     LocalTensor<InputT>& queued,
+                                                     uint64_t offInSeg,
+                                                     uint64_t base,
                                                      uint32_t compCount)
     {
         bool isScalar = (isX && bcastMode_ == 1) || (!isX && bcastMode_ == 2);
+        bool isResident = isX ? xResident_ : yResident_;
         GlobalTensor<InputT>& gm = isX ? xGm : yGm;
         LocalTensor<CT> comp = (isX ? xCompBuf : yCompBuf).Get<CT>();
 
-        if (!isScalar) {
+        if (isScalar) {
+            // Scalar broadcast: load 1 element, materialize a CT tile, Duplicate.
+            LoadScalar(gm, base);
+            LocalTensor<InputT> sc = scalarBuf.Get<InputT>();
             if constexpr (IsSameType<InputT, CT>::value) {
-                return in.ReinterpretCast<CT>();
+                // half / float / int32 : InputT == CT, no conversion.
+                CT s = (CT)sc.GetValue(0);
+                Duplicate(comp, s, static_cast<int32_t>(compCount));
+            } else if constexpr (IsSameType<CT, half>::value) {
+                // int8 -> half : GetValue (syncs MTE2) then convert.
+                int8_t v = sc.GetValue(0);
+                half s = (half)(float)v;
+                Duplicate(comp, s, static_cast<int32_t>(compCount));
             } else {
-                Cast(comp, in, RoundMode::CAST_NONE, compCount);
+                // bf16 -> float : backend has no scalar bf16->float, so GetValue
+                // (syncs MTE2) the bf16 element, Duplicate a bf16 tile, then Cast.
+                InputT v = sc.GetValue(0);
+                LocalTensor<InputT> bfTile = bf16TileBuf.Get<InputT>();
+                Duplicate(bfTile, v, static_cast<int32_t>(compCount));
+                Cast(comp, bfTile, RoundMode::CAST_NONE, compCount);
+            }
+            return comp;
+        }
+
+        // Resident: read the UB slice directly (V-side, no MTE2). offInSeg is
+        // 256-aligned (resident requires innerSize % 256 == 0). Streamed: use
+        // the queued tile (data at offset 0).
+        if (isResident) {
+            LocalTensor<InputT> src = (isX ? residentXBuf : residentYBuf)
+                .Get<InputT>()[static_cast<uint32_t>(offInSeg)];
+            if constexpr (IsSameType<InputT, CT>::value) {
+                return src.ReinterpretCast<CT>();
+            } else {
+                Cast(comp, src, RoundMode::CAST_NONE, compCount);
                 return comp;
             }
         }
 
-        // Scalar broadcast: load 1 element, materialize a CT tile, Duplicate.
-        LoadScalar(gm, base);
-        LocalTensor<InputT> sc = scalarBuf.Get<InputT>();
         if constexpr (IsSameType<InputT, CT>::value) {
-            // half / float / int32 : InputT == CT, no conversion.
-            CT s = (CT)sc.GetValue(0);
-            Duplicate(comp, s, static_cast<int32_t>(compCount));
-        } else if constexpr (IsSameType<CT, half>::value) {
-            // int8 -> half : GetValue (syncs MTE2) then convert.
-            int8_t v = sc.GetValue(0);
-            half s = (half)(float)v;
-            Duplicate(comp, s, static_cast<int32_t>(compCount));
+            return queued.ReinterpretCast<CT>();
         } else {
-            // bf16 -> float : backend has no scalar bf16->float, so GetValue
-            // (syncs MTE2) the bf16 element, Duplicate a bf16 tile, then Cast.
-            InputT v = sc.GetValue(0);
-            LocalTensor<InputT> bfTile = bf16TileBuf.Get<InputT>();
-            Duplicate(bfTile, v, static_cast<int32_t>(compCount));
-            Cast(comp, bfTile, RoundMode::CAST_NONE, compCount);
+            Cast(comp, queued, RoundMode::CAST_NONE, compCount);
+            return comp;
         }
-        return comp;
     }
 
 private:
@@ -352,6 +765,8 @@ private:
     TBuf<TPosition::VECCALC> mxBuf, neBuf, maskMxBuf, maskEqBuf;
     TBuf<TPosition::VECCALC> bf16TileBuf;
     TBuf<TPosition::VECCALC> scalarBuf, scalarCTBuf;
+    TBuf<TPosition::VECCALC> residentXBuf, residentYBuf;  // P1 broadcast-resident
+    TBuf<TPosition::VECCALC> scalarBatchBuf;             // P2 innermost-bcast scalars
 
     uint32_t totalSize_ = 0;
     uint32_t blockDim_ = 1;
@@ -362,6 +777,25 @@ private:
     uint32_t outerShape_[8] = {0};
     uint32_t xStride_[8] = {0};
     uint32_t yStride_[8] = {0};
+    // ---- P1: outer-broadcast operand resident in UB ----
+    // An operand whose outer-dim strides are ALL 0 is constant across segments
+    // (its unique data is just innerSize contiguous elements). Load it ONCE into
+    // UB and let every tile read it directly (V-side), eliminating the per-tile
+    // redundant HBM reads that make broadcast cases ~12x slower than same-shape.
+    bool xResident_ = false;          // x loaded once into residentXBuf
+    bool yResident_ = false;          // y loaded once into residentYBuf
+    bool xQueued_ = true;            // x uses inQueueX (false if resident or scalar)
+    bool yQueued_ = true;            // y uses inQueueY
+    uint32_t residentElemsX_ = 0;     // capacity of residentXBuf (elems, 256-aligned)
+    uint32_t residentElemsY_ = 0;
+    // ---- P2: innermost-broadcast scalar batch ----
+    // bcastMode 1/2: one operand is a per-segment scalar (outerSize values).
+    // Load all scalars once, process big TILE tiles with per-sub-segment scalar
+    // materialization (no per-segment LoadScalar MTE2, far fewer queue ops).
+    bool innerBcast_ = false;
+    uint32_t scalarBatchElems_ = 0;
+    uint32_t scalarStride_ = 0;       // P2: scalar operand's outer stride (0=const,1=contig)
+    uint32_t scalarBatchCount_ = 0;    // P2: distinct scalars to load
 };
 
 extern "C" __global__ __aicore__ void greater(GM_ADDR x, GM_ADDR y, GM_ADDR z,

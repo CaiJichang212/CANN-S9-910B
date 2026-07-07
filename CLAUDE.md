@@ -9,6 +9,15 @@ S9 Ascend C 算子挑战赛 (910B)。共五个算子，各位于独立的顶层�
 
 评分要求 Euler 2.10 / openEuler + CANN 8.5.0。性能 = 由 `msprof` 测量的 AICore 执行时间，按隐藏用例总时间排名。算子必须**泛化**——针对已知测试用例调优的 tiling 得分为 0。精度阈值：fp16 1/1000，fp32 1/10000，int8/int32 精确匹配。
 
+## 当前进度（2026-07-06）
+
+- **Greater** — 已完成并性能优化（`dev-greater-0703` 分支，commit `b88e3a0`、`e2ddcfa` + 性能优化未提交）。5 dtype 全通过精度（55/55 随机组合：5 dtype × 11 广播模式含 3D/5D/全标量/非对齐；官方 case1 PASS）。已打包 `Greater.zip`。
+- **性能优化（profiling 驱动）**：评测 prof_sum=1093µs（Case2=754 占 69%），排行榜最佳 700+。msprof 诊断：同形已 ~1TB/s 逼近天花板（MTE2 94~99%），**广播 case 有效带宽仅 80~120 GB/s**（外维广播操作数每 segment 重读、内维广播每段 LoadScalar+GetValue 同步）。实施：
+  - **P1+ 外维广播驻留+扁平化**：广播操作数 innerSize 元素载入 UB 驻留一次（`SetFlag/WaitFlag MTE2_V`），segment 对齐切核，大 TILE tile 按 innerSize 子 tile 循环比较（无每段 HBM 读，队列操作降 ~TILE/innerSize×）。**外维广播 6-9×**（s2 628→76µs，s8 1385→217µs）。
+  - **P2 内维广播标量批量化+扁平化**：标量操作数批量载入 UB（stride 0→1 常量，stride 1→outerSize 个），大 tile 按 segment 子 tile `GetValue(Ub)+Duplicate`（无每段 LoadScalar MTE2）。**内维广播 4.4×**（s3 422→95µs）。
+  - 同形/尾/int32/bf16 **零回退**（±2%）。3-op 计算路径在 910B 不可再减（Select dst/src 仅 half/float，Cast 不可省）。详细：`/home/liyc/hw-S9/Greater性能优化方案.md`。
+- 其余四个算子（`Concat`/`IndexAdd`/`SquareSumV1`/`Transpose`）尚未开始。
+- 文档产出：`/home/liyc/hw-S9/AscendC算子开发经验教训.md`、`/home/liyc/hw-S9/AscendC算子开发教程-Greater.md`（1172 行）、`/home/liyc/hw-S9/Greater性能优化方案.md`。
 
 ## 强制工作流
 
@@ -18,7 +27,8 @@ S9 Ascend C 算子挑战赛 (910B)。共五个算子，各位于独立的顶层�
 
 每个 `<Op>/` 目录包含两层：
 
-- **测试框架**（位于 `master` / `dev-greater`）：`run.sh`、`setup.py`、`test_op.py`、`get_time.py`、`common/pytorch_npu_helper.hpp`、`extension/custom_op.cpp`。这是基于 pybind11 + torch_npu 的调用示例，用于对算子进行性能采集。它**不**包含 kernel。
+- **测试框架**（顶层目录，各分支均存在）：`run.sh`、`setup.py`、`test_op.py`、`get_time.py`、`common/pytorch_npu_helper.hpp`、`extension/custom_op.cpp`。基于 pybind11 + torch_npu 的调用示例，用于性能采集，**不**包含 kernel。
+- **算子工程** `op_project/custom_<op>/`（开发分支）：`op_host/`（`REG_OP`/`InferShape`/`TilingFunc`）、`op_kernel/`（Kernel 类与 Compute）、`build.sh`、`CMakePresets.json`。这是实际开发与提交的源码。
 
 ## 各组件如何协同工作
 
@@ -60,7 +70,9 @@ bash /home/liyc/hw-S9/zip_op.sh Greater_zip
 - **输出**：`bool`，广播后的 shape，每元素 1 字节。
 - **特殊值**：`inf`、`-inf`、`NaN` 遵循 IEEE 754（NaN > x 为 false；±inf 比较正确）。测试会随机向浮点输入中注入这些特殊值。
 - **硬件映射**：Vector 单元，逐元素比较。参见 `/home/liyc/hw-S9/S9挑战赛910B软硬件深度协同优化建议.md`：在 UB 中重用广播操作数；使用 Ascend C `Compare` API（`CMPMODE::GT`）进行向量化比较，而非标量 `GetValue/SetValue` 循环；沿最内层 `N` 维分 tile，32B 对齐 + tail 路径；每 tile 一次 CopyIn → 比较 → 一次 CopyOut，最小化 HBM 流量。注意 `half`/`bfloat16_t` 不能直接用于标量 aicore 算术——需先转换为 `float`（使用 `CAST_NONE` 可保持 IEEE 754 语义）。
-- **环境说明**
+- **实际实现**（`op_kernel/greater.cpp`，`template<typename CT>` 分派）：fp16/fp32 走 `Compare(GT)` 出 bitmask → `Select`(bit?src0:src1，语义与文档相反，已交换 src0/src1) + `Cast(half→uint8)` 展开为 bool；int32 因 910B 不支持 GT，走 `Max`+`EQ`+`Select` 精确恒等式；bf16 经 `Cast→float` 比较；int8 经 `Cast→half` 比较。bf16 标量广播需 `GetValue`(同步 MTE2，修 seg1 错误)+`Duplicate`(bf16 tile)+`Cast(float)`。每 dtype TILE：int32 4096 / bf16 6144 / fp32 5120 / int8 10240 / fp16 9216，已填满 UB。详情见 op_kernel 与 `/home/liyc/hw-S9/AscendC算子开发经验教训.md`。
+
+## 环境说明
 
 - 宿主机已是 aarch64——不要交叉编译（`ENABLE_CROSS_COMPILE=False`）。`$ASCEND_TOOLKIT_HOME/bin` 及 `.../tools` 下的工具：`ccec`（Ascend C 编译器，clang 15）、`msopgen`（项目脚手架）、`msprof`（性能采集）、`simulator`、`profiler`、`operator_cmp`、`msobjdump`。
 - `case_910b` 是 git 仓库；`master` 仅包含五个测试框架，算子开发位于各 `dev-<op>` 分支上。
