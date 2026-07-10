@@ -45,7 +45,7 @@
 | 阶段 | 任务 | 状态 | 完成时间 |
 |------|------|------|----------|
 | 1.1 | 开发准备 | ✅ | 2026-07-10 |
-| 1.2 | 需求分析 | ⬜ | |
+| 1.2 | 需求分析 | ✅ | 2026-07-10 |
 | 1.2.5 | spec 生成（9-stage） | ⬜ | |
 | 1.2.5R | spec 自审 | ⬜ | |
 | 1.3 | 方案设计 | ⬜ | |
@@ -70,8 +70,8 @@
 |------|------|------|
 | 开发日志 | `SquareSumV1/docs/LOG.md` | ✅ |
 | 问题目录 | `SquareSumV1/issues/` | ✅ |
-| 需求分析 | `SquareSumV1/docs/REQUIREMENTS.md` | ⬜ |
-| aclnnAPI 接口 | `SquareSumV1/docs/aclnnSquareSumV1.md` | ⬜ |
+| 需求分析 | `SquareSumV1/docs/REQUIREMENTS.md` | ✅ |
+| aclnnAPI 接口 | `SquareSumV1/docs/aclnnSquareSumV1.md` | ✅ |
 | L0 数学契约 | `SquareSumV1/docs/spec.yaml` | ⬜ |
 | 详细设计 | `SquareSumV1/docs/DESIGN.md` | ⬜ |
 | 迭代计划 | `SquareSumV1/docs/PLAN.md` | ⬜ |
@@ -81,3 +81,4 @@
 ## 开发记录
 
 - **2026-07-10 1.1**：完成开发准备。环境采集确认 CANN 8.5.0、msopgen、spec 校验器、workflow validator、registry 模板均齐备；创建 `docs/`、`issues/` 目录。当前 worktree（`dev-square-sum-v1-0710`）即交付分支，直接在此工作。**风险**：NPU npu-smi 报 device is used，待 msprof 实跑确认。
+- **2026-07-10 1.2**：需求分析完成（architect 子代理）。生成 REQUIREMENTS.md（覆盖 10 项规约 + 910B 可行性评估 + 风险表）与 aclnnSquareSumV1.md（两段式接口）。核心结论：UB 内 square→reduce 融合 + fp32 中间累加保证精度；分 axis 策略差异（最内层/中间层/多值）。CP1 假设批准（规约已锁定），tag `requirements-approved`。
