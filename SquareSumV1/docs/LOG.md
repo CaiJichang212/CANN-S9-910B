@@ -47,7 +47,7 @@
 | 1.1 | 开发准备 | ✅ | 2026-07-10 |
 | 1.2 | 需求分析 | ✅ | 2026-07-10 |
 | 1.2.5 | spec 生成（9-stage） | ✅ | 2026-07-10 |
-| 1.2.5R | spec 自审 | ⬜ | |
+| 1.2.5R | spec 自审 | ✅ | 2026-07-10 |
 | 1.3 | 方案设计 | ⬜ | |
 | 1.3R | 方案评审 | ⬜ | |
 | 1.4 | 测试设计 | ⬜ | |
@@ -73,6 +73,7 @@
 | 需求分析 | `SquareSumV1/docs/REQUIREMENTS.md` | ✅ |
 | aclnnAPI 接口 | `SquareSumV1/docs/aclnnSquareSumV1.md` | ✅ |
 | L0 数学契约 | `SquareSumV1/docs/spec.yaml` | ✅ |
+| spec 自审报告 | `SquareSumV1/docs/SPEC_REVIEW.md` | ✅ |
 | 详细设计 | `SquareSumV1/docs/DESIGN.md` | ⬜ |
 | 迭代计划 | `SquareSumV1/docs/PLAN.md` | ⬜ |
 | 测试设计 | `SquareSumV1/docs/TEST.md` | ⬜ |
@@ -83,3 +84,4 @@
 - **2026-07-10 1.1**：完成开发准备。环境采集确认 CANN 8.5.0、msopgen、spec 校验器、workflow validator、registry 模板均齐备；创建 `docs/`、`issues/` 目录。当前 worktree（`dev-square-sum-v1-0710`）即交付分支，直接在此工作。**风险**：NPU npu-smi 报 device is used，待 msprof 实跑确认。
 - **2026-07-10 1.2**：需求分析完成（architect 子代理）。生成 REQUIREMENTS.md（覆盖 10 项规约 + 910B 可行性评估 + 风险表）与 aclnnSquareSumV1.md（两段式接口）。核心结论：UB 内 square→reduce 融合 + fp32 中间累加保证精度；分 axis 策略差异（最内层/中间层/多值）。CP1 假设批准（规约已锁定），tag `requirements-approved`。
 - **2026-07-10 1.2.5**：spec.yaml 生成（architect, spec-generation）。9-stage 全 PASS（stage 9 oracle absent=true 正常 SKIP）。输入名用 `x`（沙箱禁 `input`），shape_rule 以默认 axis=[-1] 求解（多 axis 规则入 notes），accumulator_dtype=float32，determinism=required。
+- **2026-07-10 1.2.5R**：spec 自审通过（architect, spec-review）。13 条 SPEC-* 全通过（8 OK + 5 v1 暂缓 WARN，schema 未定义字段由 REQUIREMENTS/DESIGN 承载，不阻塞）。tag `spec-approved`。
