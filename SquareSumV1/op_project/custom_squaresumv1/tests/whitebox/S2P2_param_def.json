@@ -1,0 +1,75 @@
+{
+  "platform": "ASCEND910B",
+  "platform_cores": 24,
+  "tiling_keys": [0, 1, 2],
+  "groups": [
+    {
+      "id": "G0",
+      "mode": "EMPTY — 输入张量至少一维大小为0，tilingMode=0 且 SetBlockDim(1) 直接返回",
+      "totalRows": [0],
+      "per_dtype": {
+        "float16": {"path": "P1", "key": 0, "rLength": [0]},
+        "float": {"path": "P1", "key": 1, "rLength": [0]},
+        "bfloat16": {"path": "P1", "key": 2, "rLength": [0]}
+      },
+      "constraint_note": "输入张量至少一维大小为0，触发空张量提前返回路径。totalRows 和 rLength 均为0。此 group 为退化维度，仅含单一取值0。"
+    },
+    {
+      "id": "G1",
+      "mode": "AR_FULLLOAD — 尾部连续规约（axis 为最后若干维的连续块），整行规约数据可一次装入 UB，tilingMode=0",
+      "totalRows": [1, 6, 7, 97, 100, 512, 997, 1000, 10000, 65536],
+      "per_dtype": {
+        "float16": {"path": "P2", "key": 0, "rLength": [1, 256, 4096, 8192, 24368]},
+        "float": {"path": "P3", "key": 1, "rLength": [1, 256, 4096, 8192, 24376]},
+        "bfloat16": {"path": "P2", "key": 2, "rLength": [1, 256, 4096, 8192, 24368]}
+      },
+      "constraint_note": "尾部连续规约（isTailReduce=true），totalRows>0。rLength 在 float16/bfloat16 下不超过24368，在 float 下不超过24376。这些上界由 UB 容量192KB（196608字节）和全量加载 UB 需求公式决定：整行规约数据（含对齐填充）连同计算中间缓冲可一次装入 UB。超过此阈值则进入 G2（AR_COLSPLIT）。totalRows 取值范围为1至65536，不影响模式选择，仅影响多核切分。"
+    },
+    {
+      "id": "G2",
+      "mode": "AR_COLSPLIT — 尾部连续规约但整行无法一次装入 UB，按列分块逐块规约并标量累加，tilingMode=1",
+      "totalRows": [1, 11, 100, 101, 503, 777, 1024, 5000, 30000, 65536],
+      "per_dtype": {
+        "float16": {"path": "P4", "key": 0, "rLength": [24576, 65536, 1000000, 10000000, 100000000]},
+        "float": {"path": "P5", "key": 1, "rLength": [24576, 65536, 1000000, 10000000, 100000000]},
+        "bfloat16": {"path": "P4", "key": 2, "rLength": [24576, 65536, 1000000, 10000000, 100000000]}
+      },
+      "constraint_note": "尾部连续规约（isTailReduce=true），totalRows>0。rLength 在 float16/bfloat16 下大于24368，在 float 下大于24376。这些下界由全量加载 UB 需求超过192KB 决定。rLength 上界可达源码约束的维度乘积极大值（最多200乘1000乘10000乘10000），实际取值覆盖2万至1亿范围。totalRows 取值范围为1至65536，不影响模式选择。"
+    },
+    {
+      "id": "G3",
+      "mode": "ARA_FULLLOAD — 非尾部规约（reduce axis 后存在非规约维度），Pattern::Reduce::RA 全量加载（单tile或多tile），tilingMode=2",
+      "totalRows": [1, 7, 100, 127, 256, 991, 1000, 5000, 10000, 65536],
+      "a0Length": [1, 7, 8, 97, 100, 128, 997, 1000, 5000, 10000],
+      "per_dtype": {
+        "float16": {"path": "P6", "key": 0, "rLength": [1, 128, 512, 1024, 2047]},
+        "float": {"path": "P7", "key": 1, "rLength": [1, 128, 1024, 2048, 3070]},
+        "bfloat16": {"path": "P6", "key": 2, "rLength": [1, 128, 512, 1024, 2047]}
+      },
+      "constraint_note": "非尾部规约（isTailReduce=false），reduce axis 后存在 a0Length 个非规约元素（a0Length>0）。rLength 在 float16/bfloat16 下不超过4094，在 float 下不超过6141（当 a0Length 对齐至8个 fp32 元素时）。这些上界由 ARA UB 需求公式（输入缓冲加计算缓冲加累加器加输出加临时缓冲）在 a0Length 取8时不超过192KB 决定。当 a0Length 较大时，rLength 上界更低。a0Length 取值范围为1至10000，totalRows 取值范围为1至65536，两者均不影响模式选择但影响 tensor shape。"
+    },
+    {
+      "id": "G4",
+      "mode": "ARA_ROWSPLIT — 非尾部规约，UB 不足以容纳单 tile（bestTileA0 小于8），改用行分块逐块规约并累加，tilingMode=3",
+      "totalRows": [1, 11, 64, 109, 500, 823, 2000, 8000, 30000, 65536],
+      "a0Length": [1, 13, 16, 100, 211, 256, 997, 1000, 3000, 10000],
+      "per_dtype": {
+        "float16": {"path": "P10", "key": 0, "rLength": [4095, 5120, 6144, 8192, 10000]},
+        "float": {"path": "P11", "key": 1, "rLength": [6142, 7168, 8192, 9216, 10000]},
+        "bfloat16": {"path": "P10", "key": 2, "rLength": [4095, 5120, 6144, 8192, 10000]}
+      },
+      "constraint_note": "非尾部规约（isTailReduce=false），reduce axis 后存在 a0Length 个非规约元素。rLength 在 float16/bfloat16 下大于4094，在 float 下大于6141。这些下界由：即使 a0Length 取最小对齐值8（fp32ElementsPerBlock），ARA UB 需求仍超过192KB 决定。此时二分搜索找不到不小于8的可行 tileA0，进入行分块路径。a0Length 取值范围为1至10000，totalRows 取值范围为1至65536。"
+    },
+    {
+      "id": "G5",
+      "mode": "MULTI_AXIS — 非连续多轴规约（reduce axes 被非 reduce 维度隔开），逐层规约（先内后外），tilingMode=4",
+      "totalRows": [1, 7, 89, 100, 128, 600, 911, 5000, 20000, 65536],
+      "per_dtype": {
+        "float16": {"path": "P12", "key": 0, "rLength": [1, 8, 128, 1024, 10000]},
+        "float": {"path": "P13", "key": 1, "rLength": [1, 8, 128, 1024, 10000]},
+        "bfloat16": {"path": "P12", "key": 2, "rLength": [1, 8, 128, 1024, 10000]}
+      },
+      "constraint_note": "非连续多轴规约：归一化排序后的 axis 列表中存在非规约维度将规约维度隔开，导致 CoalesceAxis 返回 totalRows=-1，触发 tilingMode=4。例如5维输入 shape=[d0,d1,d2,d3,d4]，axis=[0,2] 或 axis=[1,3]。rLength 为第一层（最内层）规约轴长度，取值范围1至10000。每层内部的子模式（AR_FULLLOAD/AR_COLSPLIT/ARA_FULLLOAD/ARA_ROWSPLIT）由该层的 UB 需求独立决定。totalRows 为首层之前的维度乘积。"
+    }
+  ]
+}

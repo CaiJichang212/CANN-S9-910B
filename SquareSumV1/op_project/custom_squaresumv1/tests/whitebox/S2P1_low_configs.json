@@ -1,0 +1,162 @@
+[
+  {
+    "config": {"shape": [4096], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size for LLaMA-2-7B/13B & LLaMA-3-8B (hidden_size=4096). RMSNorm computes mean square = sum(x^2)/hidden_size, which is a squared-sum reduction on the last dim. fp16 is the typical inference dtype."
+  },
+  {
+    "config": {"shape": [4096], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=4096 (LLaMA-2-7B, LLaMA-3-8B). fp32 used in training or high-precision inference."
+  },
+  {
+    "config": {"shape": [8192], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-70B-fp16/blob/main/config.json",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size for LLaMA-2-70B & LLaMA-3-70B (hidden_size=8192). fp16 inference dtype."
+  },
+  {
+    "config": {"shape": [8192], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-70B-fp16/blob/main/config.json",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=8192 (LLaMA-2-70B, LLaMA-3-70B). fp32 for training precision."
+  },
+  {
+    "config": {"shape": [5120], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://github.com/replicate/cog-llama/blob/main/llama_weights/llama-13b/config.json",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=5120 for LLaMA-2-13B. fp16 inference."
+  },
+  {
+    "config": {"shape": [2048], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/docs/transformers/en/model_doc/llama",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=2048 for LLaMA-3.2-1B. fp16 inference dtype."
+  },
+  {
+    "config": {"shape": [3072], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/docs/transformers/en/model_doc/llama",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=3072 for LLaMA-3.2-3B. fp16 inference dtype."
+  },
+  {
+    "config": {"shape": [16384], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/docs/transformers/en/model_doc/llama",
+    "reason": "RMSNorm variance computation: sum(x^2) along hidden_size=16384 for LLaMA-3.1-405B. fp16 inference dtype."
+  },
+  {
+    "config": {"shape": [128, 4096], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm batched: multiple tokens (seq_len/batch collapsed=128) each computing sum(x^2) over hidden_size=4096. Typical during LLaMA-2-7B inference with batch*seq=128 tokens."
+  },
+  {
+    "config": {"shape": [2048, 4096], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm batched: seq_len=2048 tokens each computing sum(x^2) over hidden_size=4096 for LLaMA-2-7B. Common training sequence length."
+  },
+  {
+    "config": {"shape": [1024, 4096], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm batched: seq_len=1024 tokens each computing sum(x^2) over hidden_size=4096 for LLaMA-2-7B. Common inference sequence length."
+  },
+  {
+    "config": {"shape": [128], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "Attention score scaling: sum of squares along head_dim=128 for Q/K dot product variance normalization (scaled dot-product attention divides by sqrt(head_dim)). head_dim=128 is universal across all LLaMA models except 3.2-1B."
+  },
+  {
+    "config": {"shape": [128], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "Attention score scaling: sum(x^2) along head_dim=128 in fp32 for higher precision Q/K scaling."
+  },
+  {
+    "config": {"shape": [4096, 4096], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://discuss.pytorch.org/t/torch-norm-3-6x-slower-than-manually-calculating-sum-of-squares/14684",
+    "reason": "L2 weight decay / weight norm: sum(w^2) along a row of a weight matrix [4096, 4096] (LLaMA-2-7B attention weight). Used to compute per-row L2 norms for gradient clipping or weight decay monitoring."
+  },
+  {
+    "config": {"shape": [4096, 4096], "dim": [0, 1], "dtype": "float16", "keepdim": false},
+    "source": "https://discuss.pytorch.org/t/torch-norm-3-6x-slower-than-manually-calculating-sum-of-squares/14684",
+    "reason": "L2 weight decay: sum(w^2) over entire 4096x4096 weight matrix (LLaMA-2-7B/3-8B attention). Computes total squared L2 norm for regularization penalty."
+  },
+  {
+    "config": {"shape": [4096, 11008], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "L2 norm per row of MLP up-projection weight [hidden_size=4096, intermediate_size=11008] in LLaMA-2-7B. sum(w^2) along intermediate dim for gradient clipping."
+  },
+  {
+    "config": {"shape": [8192, 8192], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-70B-fp16/blob/main/config.json",
+    "reason": "L2 weight norm: sum(w^2) along a row of 8192x8192 weight matrix for LLaMA-2-70B/3-70B attention weights."
+  },
+  {
+    "config": {"shape": [8192, 28672], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-70B-fp16/blob/main/config.json",
+    "reason": "L2 norm per row of MLP up-projection weight [hidden_size=8192, intermediate_size=28672] in LLaMA-2-70B/3-70B."
+  },
+  {
+    "config": {"shape": [4096], "dim": [0], "dtype": "float16", "keepdim": false},
+    "source": "https://discuss.pytorch.org/t/torch-norm-3-6x-slower-than-manually-calculating-sum-of-squares/14684",
+    "reason": "L2 weight decay: sum(w^2) over a 1D weight vector of 4096 elements (e.g., a bias or layernorm scale parameter). Full reduction to scalar."
+  },
+  {
+    "config": {"shape": [3, 224, 224], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8010506/",
+    "reason": "CNN feature norm: sum(x^2) along spatial dimension (width=224) of a standard ImageNet input [C=3, H=224, W=224]. Used in feature norm computation for CV models."
+  },
+  {
+    "config": {"shape": [512, 7, 7], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8010506/",
+    "reason": "CNN feature norm: sum(x^2) along spatial width=7 for ResNet-18/34 stage-4 feature map [C=512, H=7, W=7]. Feature normalization in detection/segmentation heads."
+  },
+  {
+    "config": {"shape": [2048, 7, 7], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8010506/",
+    "reason": "CNN feature norm: sum(x^2) along spatial width=7 for ResNet-50/101/152 stage-4 feature map [C=2048, H=7, W=7]. Used in FPN/mask head normalization."
+  },
+  {
+    "config": {"shape": [4, 1000, 4096], "dim": [-1], "dtype": "float16", "keepdim": true},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm with keepdim: [batch=4, seq=1000, hidden=4096] reducing last dim with keepdim=True for broadcasting in downstream normalization (divide by RMS). Common in LLaMA-2-7B inference."
+  },
+  {
+    "config": {"shape": [32, 128, 128], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "Multi-head attention Q/K norm: [batch=32, num_tokens=128, head_dim=128] computing sum(q^2) along head_dim for attention score scaling in LLaMA-2-7B."
+  },
+  {
+    "config": {"shape": [4096], "dim": [-1], "dtype": "float16", "keepdim": true},
+    "source": "https://huggingface.co/TheBloke/Llama-2-7B-fp16/blob/main/config.json",
+    "reason": "RMSNorm single token: sum(x^2) along hidden_size=4096 with keepdim=True, for broadcasting the RMS division. LLaMA-2-7B/3-8B."
+  },
+  {
+    "config": {"shape": [8192], "dim": [-1], "dtype": "float16", "keepdim": true},
+    "source": "https://huggingface.co/TheBloke/Llama-2-70B-fp16/blob/main/config.json",
+    "reason": "RMSNorm single token: sum(x^2) along hidden_size=8192 with keepdim=True for LLaMA-2-70B/3-70B."
+  },
+  {
+    "config": {"shape": [2, 512, 2048], "dim": [1, 2], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/docs/transformers/en/model_doc/llama",
+    "reason": "Multi-axis reduction: sum(x^2) over [seq_len=512, hidden=2048] for LLaMA-3.2-1B weight statistics in a batch of 2. Multi-axis squared-sum for gradient norm monitoring across layers."
+  },
+  {
+    "config": {"shape": [4096, 14336], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": "https://huggingface.co/docs/transformers/en/model_doc/llama",
+    "reason": "L2 norm per row of MLP up-projection weight [hidden_size=4096, intermediate_size=14336] in LLaMA-3-8B. sum(w^2) along intermediate dim."
+  },
+  {
+    "config": {"shape": [768], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": null,
+    "reason": "BERT-base LayerNorm variance: sum(x^2) along hidden_size=768 for LayerNorm (E[x^2] - (E[x])^2 computation). fp32 training dtype."
+  },
+  {
+    "config": {"shape": [1024], "dim": [-1], "dtype": "float32", "keepdim": false},
+    "source": null,
+    "reason": "BERT-large/GPT-2 medium LayerNorm variance: sum(x^2) along hidden_size=1024. Common transformer config."
+  },
+  {
+    "config": {"shape": [64, 64], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": null,
+    "reason": "Small head_dim=64 attention scaling: sum(q^2) along head_dim=64 for models with smaller heads (e.g., BERT-base: 768/12=64). Used in attention score normalization."
+  },
+  {
+    "config": {"shape": [256], "dim": [-1], "dtype": "float16", "keepdim": false},
+    "source": null,
+    "reason": "Mid-size head_dim or embedding reduction: sum(x^2) along dim=256 for medium-sized model configurations."
+  }
+]

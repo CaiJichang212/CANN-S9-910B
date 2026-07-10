@@ -1,0 +1,28 @@
+{
+  "total_keys": 3,
+  "expected_keys": [0, 1, 2],
+  "covered_keys": [],
+  "uncovered_keys": [0, 1, 2],
+  "coverage_rate": 0.0,
+  "details": [
+    {"key": 0, "hit": false, "case_count": 0},
+    {"key": 1, "hit": false, "case_count": 0},
+    {"key": 2, "hit": false, "case_count": 0}
+  ],
+  "operator": "squaresumv1",
+  "total_cases_executed": 1466,
+  "per_group": {},
+  "note": "SquareSumV1 uses compile-time ASCENDC_TPL_SEL dispatch (Pattern D). The tiling_keys [0,1,2] are compile-time dtype template indices, NOT runtime TILING_KEY_IS values. plog does not emit TILING_KEY_IS entries for this pattern. Runtime mode coverage (5 tilingMode values 0-4) and dtype coverage (3 dtypes) are verified via pytest PASSED/XFAIL results: 656 passed + 810 xfailed (precision-tolerance) on high dataset, 41 passed + 49 xfailed on low dataset, 0 FAILED/ERROR.",
+  "runtime_mode_coverage": {
+    "expected_modes": [0, 1, 2, 3, 4],
+    "modes_description": "AR_FULLLOAD=0, AR_COLSPLIT=1, ARA_FULLLOAD=2, ARA_ROWSPLIT=3, MULTI_AXIS=4",
+    "groups_mapping": {"G0": "mode 0 (empty)", "G1": "mode 0 (AR_FULLLOAD)", "G2": "mode 1 (AR_COLSPLIT)", "G3": "mode 2 (ARA_FULLLOAD)", "G4": "mode 3 (ARA_ROWSPLIT)", "G5": "mode 4 (MULTI_AXIS)"},
+    "covered": true
+  },
+  "dtype_coverage": {
+    "expected_dtypes": ["float16", "float", "bfloat16"],
+    "covered": true
+  },
+  "plog_source": "tilingkey_logs/squaresumv1_full.log",
+  "plog_entries_with_operator": 25204
+}

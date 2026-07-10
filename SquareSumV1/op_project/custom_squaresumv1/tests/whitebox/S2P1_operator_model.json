@@ -1,0 +1,219 @@
+{
+  "op_name": "SquareSumV1",
+  "platform": "ASCEND910B",
+  "inputs": [
+    {
+      "name": "input",
+      "dtype": {
+        "values": [
+          "float16",
+          "bfloat16",
+          "float"
+        ]
+      },
+      "rank": {
+        "min": 1,
+        "max": 5
+      },
+      "shape": {
+        "constraints": [
+          "最多 5 维 (...,N4,N3,N2,N)",
+          "各维度范围: N∈[1,10000], N2∈[1,10000], N3∈[1,1000], N4∈[1,200]",
+          "任意维度可能不对齐 32B 边界（需要 tail/非对齐路径）",
+          "支持空 tensor（input->IsEmpty() 为 true 时直接返回 workspaceSize=0）",
+          "aclnn 层强制 rank <= 8 (ACLNN_MAX_SHAPE_RANK=8)，但算子语义规约限制最多 5D"
+        ]
+      }
+    }
+  ],
+  "attributes": [
+    {
+      "name": "axis",
+      "type": "list_int",
+      "range": "[-rank, rank-1] 中的整数列表；支持负索引；不允许重复（归一化后去重）；可多值",
+      "default": null,
+      "source": "squaresumv1_def.cpp:34-36, aclnn_squaresumv1.cpp:47-63",
+      "sampling_hint": "choice"
+    },
+    {
+      "name": "keep_dims",
+      "type": "bool",
+      "range": "true | false",
+      "default": false,
+      "source": "squaresumv1_def.cpp:38-40",
+      "sampling_hint": "choice"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "dtype": {
+        "sync_with": "input"
+      },
+      "shape": {
+        "rule": "derived",
+        "expr": "output_shape = input.shape with reduced axes removed (keep_dims=false) or set to 1 (keep_dims=true); output tensor is pre-allocated by the caller based on torch.sum(torch.square(x), axis, keepdim=keep_dims).shape; InferShape copies inputShape to outputShape but the actual shape is determined by the framework before kernel invocation",
+        "source": "squaresumv1_infershape.cpp:30, test_op.py:69-72"
+      }
+    }
+  ],
+  "caller_options": [],
+  "torch_npu_api_exposure": {
+    "status": "not_found",
+    "unavailable_reason": null,
+    "torch_npu_functions": [],
+    "mapping_note": null,
+    "torch_npu_inputs": [],
+    "torch_npu_outputs": [],
+    "param_gaps": [
+      {
+        "aclnn_param": "input",
+        "torch_npu_status": "absent",
+        "fixed_value": null,
+        "blocked_values": [
+          "unknown"
+        ],
+        "blocked_desc": "torch_npu has no npu_squaresumv1/npu_square_sum_v1 function; SquareSumV1 is invoked exclusively through the custom_ops_lib pybind11 extension (custom_op.cpp), which calls EXEC_NPU_CMD(aclnnSquareSumV1, input, axis, keep_dims, result). torch_npu cannot verify Python API exposure."
+      },
+      {
+        "aclnn_param": "axis",
+        "torch_npu_status": "absent",
+        "fixed_value": null,
+        "blocked_values": [
+          "unknown"
+        ],
+        "blocked_desc": "torch_npu has no npu_squaresumv1/npu_square_sum_v1 function; axis is passed via custom_ops_lib pybind11 extension, not via torch_npu native API."
+      },
+      {
+        "aclnn_param": "keep_dims",
+        "torch_npu_status": "absent",
+        "fixed_value": null,
+        "blocked_values": [
+          "unknown"
+        ],
+        "blocked_desc": "torch_npu has no npu_squaresumv1/npu_square_sum_v1 function; keep_dims is passed via custom_ops_lib pybind11 extension, not via torch_npu native API."
+      },
+      {
+        "aclnn_param": "result",
+        "torch_npu_status": "absent",
+        "fixed_value": null,
+        "blocked_values": [
+          "unknown"
+        ],
+        "blocked_desc": "torch_npu has no npu_squaresumv1/npu_square_sum_v1 function; result tensor is pre-allocated and passed via custom_ops_lib pybind11 extension, not via torch_npu native API."
+      }
+    ]
+  },
+  "shape_mapping": {
+    "dtype": {
+      "param": "dtype",
+      "values": [
+        "float16",
+        "bfloat16",
+        "float"
+      ]
+    },
+    "shape_params": {
+      "totalRows": {
+        "role": "leading_product",
+        "type": "int",
+        "default": 1
+      },
+      "rLength": {
+        "role": "trailing_size",
+        "type": "int"
+      },
+      "a0Length": {
+        "role": "trailing_size",
+        "type": "int",
+        "default": 1,
+        "group_defaults": {
+          "G0": 1,
+          "G1": 1,
+          "G2": 1,
+          "G5": 1
+        }
+      },
+      "keep_dims": {
+        "role": "other",
+        "type": "bool",
+        "default": false
+      }
+    },
+    "ndim": {
+      "source": "random",
+      "range": [
+        3,
+        4
+      ],
+      "tensor_constraints": {
+        "input": [
+          {
+            "when": "_group == 'G0'",
+            "min": 3,
+            "max": 3
+          },
+          {
+            "when": "_group == 'G1'",
+            "min": 3,
+            "max": 3
+          },
+          {
+            "when": "_group == 'G2'",
+            "min": 3,
+            "max": 3
+          },
+          {
+            "when": "_group == 'G3'",
+            "min": 3,
+            "max": 3
+          },
+          {
+            "when": "_group == 'G4'",
+            "min": 3,
+            "max": 3
+          },
+          {
+            "when": "_group == 'G5'",
+            "min": 4,
+            "max": 4
+          }
+        ]
+      }
+    },
+    "inputs": {
+      "input": {
+        "rule": "decompose",
+        "decompose": {
+          "leading": {
+            "param": "totalRows",
+            "strategy": "balanced"
+          },
+          "trailing": [
+            {
+              "param": "rLength"
+            },
+            {
+              "param": "a0Length"
+            }
+          ],
+          "parts_expr": "ndim - len(trailing)"
+        }
+      }
+    },
+    "outputs": {
+      "result": {
+        "rule": "derived",
+        "derived": {
+          "expr": "input.shape[:-2] + input.shape[-1:]"
+        }
+      }
+    },
+    "attrs": {
+      "keep_dims": {
+        "param": "keep_dims",
+        "type": "bool"
+      }
+    }
+  }
+}

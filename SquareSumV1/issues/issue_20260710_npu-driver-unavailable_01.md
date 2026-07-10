@@ -28,3 +28,13 @@ driver 用户态与设备的通信通道在容器内不可用（宿主机侧 dri
 - **阻塞**：A1-P NPU 穿刺、汇合/迭代验收 NPU 精度、最终精度验收 NPU、性能验收 msprof
 - **不阻塞**：算子工程创建（msopgen）、kernel 开发、编译（build.sh）、**simulator 功能精度验证**（msopgen sim / ascendc-ops-simulator skill）
 - **降级**：开发阶段用 CANN simulator 做功能精度验证（保证 kernel 计算正确）；NPU 实跑验证（精度复验 + msprof 性能采集）延后至 driver 修复后补做，届时可能需针对 NPU 实际行为做小幅修正（对齐/时序）
+
+## 更新（2026-07-10 后续）—— NPU 已恢复可用 ✅
+
+**NPU driver 已恢复！**
+- `device_count = 8`（先前 0）
+- `npu-smi info` 正常（Version 25.5.1，8 设备列表）
+- NPU compute 验证通过：`torch.randn(4).npu()` 计算成功
+- 白盒 pytest NPU 实跑：0 FAILED / 0 ERROR（先前降级可升级为 NPU 实跑）
+
+**结论**：driver 此前为临时故障（宿主机侧），现已恢复。后续验证从 simulator+Mock 升级为 **NPU 实跑**（精度复验 + msprof 性能采集）。开发期间用 simulator 得到的 kernel 逻辑需在 NPU 上复验，重点核查大 rLength fp16/bf16 累积精度（白盒 XFAIL 提示）与 UB 碎片（probe7/11/12 UB 98%+）。

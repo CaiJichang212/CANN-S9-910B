@@ -1,0 +1,1801 @@
+{
+  "op_name": "SquareSumV1",
+  "platform": "ASCEND910B",
+  "groups": [
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5"
+  ],
+  "paths": [
+    {
+      "id": "P1",
+      "name": "EMPTY_empty_tensor_guard",
+      "group": "G0",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "input_totalRows == 0 || input_rLength == 0",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_shape"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "totalRows",
+        "rLength",
+        "coalesced.isTailReduce"
+      ],
+      "key_instructions": [
+        "memset_s",
+        "SetBlockDim(1)",
+        "ASCENDC_TPL_SEL_PARAM"
+      ],
+      "source": "squaresumv1_tiling.cpp:533-544 → squaresumv1.h:332 (myRows_==0 early return)"
+    },
+    {
+      "id": "P2",
+      "name": "AR_FULLLOAD_input_dtype_half_bf16",
+      "group": "G1",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "totalRows",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "expr": "ubNeededFullLoad_nonfp32 <= ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "rLengthAlignInput",
+        "rLengthAlignFp32",
+        "rLengthAlign",
+        "tmpBufBytes",
+        "ubNeededFullLoad",
+        "canFullLoad",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float>",
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:712-727 (canFullLoad=true, tilingMode=0) → squaresumv1.h:335 ProcessArFullLoad, L367-389 ArFullLoadCompute (!isFloatInput path)"
+    },
+    {
+      "id": "P3",
+      "name": "AR_FULLLOAD_input_dtype_fp32",
+      "group": "G1",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "totalRows",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "expr": "ubNeededFullLoad_fp32 <= ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "rLengthAlignInput",
+        "rLengthAlignFp32",
+        "rLengthAlign",
+        "tmpBufBytes",
+        "ubNeededFullLoad",
+        "canFullLoad",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float>",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:712-727 (canFullLoad=true, tilingMode=0, DT_FLOAT UB path L718-719) → squaresumv1.h:335 ProcessArFullLoad, L373-376 ArFullLoadCompute (isFloatInput path)"
+    },
+    {
+      "id": "P4",
+      "name": "AR_COLSPLIT_input_dtype_half_bf16",
+      "group": "G2",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "totalRows",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "expr": "ubNeededFullLoad_nonfp32 > ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "rLengthAlignInput",
+        "rLengthAlignFp32",
+        "rLengthAlign",
+        "tmpBufBytes",
+        "ubNeededFullLoad",
+        "canFullLoad",
+        "tilingMode",
+        "chunkTmpBuf",
+        "chunkCols",
+        "numChunks"
+      ],
+      "key_instructions": [
+        "DataCopyPad(chunk)",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float>",
+        "scalar_accum(accVal += partial)",
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:728-746 (canFullLoad=false, tilingMode=1, non-fp32 chunkCols L738-740) → squaresumv1.h:336 ProcessArColSplit, L459-466 (!isFloatInput path)"
+    },
+    {
+      "id": "P5",
+      "name": "AR_COLSPLIT_input_dtype_fp32",
+      "group": "G2",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "totalRows",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "expr": "ubNeededFullLoad_fp32 > ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "rLengthAlignInput",
+        "rLengthAlignFp32",
+        "rLengthAlign",
+        "tmpBufBytes",
+        "ubNeededFullLoad",
+        "canFullLoad",
+        "tilingMode",
+        "chunkTmpBuf",
+        "chunkCols",
+        "numChunks"
+      ],
+      "key_instructions": [
+        "DataCopyPad(chunk)",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float>",
+        "scalar_accum(accVal += partial)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:728-746 (canFullLoad=false, tilingMode=1, fp32 chunkCols L733-736) → squaresumv1.h:336 ProcessArColSplit, L455-458 (isFloatInput path)"
+    },
+    {
+      "id": "P6",
+      "name": "ARA_FULLLOAD_input_dtype_half_bf16",
+      "group": "G3",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_nonfp32 <= ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(2D block)",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:748-774 (ubNeededAraFull<=ubSize, tilingMode=2, numA0Tiles=1) → squaresumv1.h:337 ProcessAraFullLoad, L537-550 (!isFloatInput path)"
+    },
+    {
+      "id": "P7",
+      "name": "ARA_FULLLOAD_input_dtype_fp32",
+      "group": "G3",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_fp32 <= ubSize",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(2D block)",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:748-774 (ubNeededAraFull<=ubSize, tilingMode=2, numA0Tiles=1) → squaresumv1.h:337 ProcessAraFullLoad, L530-536 (isFloatInput path)"
+    },
+    {
+      "id": "P8",
+      "name": "ARA_FULLLOAD_multi_tile_input_dtype_half_bf16",
+      "group": "G3",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_nonfp32 > ubSize",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "bestTileA0 >= fp32ElementsPerBlock",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "maxTileA0",
+        "minTileA0",
+        "bestTileA0",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(2D block per tile)",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(out per tile)"
+      ],
+      "source": "squaresumv1_tiling.cpp:775-799 (binary search, bestTileA0>=fp32Epb, tilingMode=2 multi-tile) → squaresumv1.h:337 ProcessAraFullLoad, L537-550 (!isFloatInput path), L504-510 multi-tile loop"
+    },
+    {
+      "id": "P9",
+      "name": "ARA_FULLLOAD_multi_tile_input_dtype_fp32",
+      "group": "G3",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_fp32 > ubSize",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "bestTileA0 >= fp32ElementsPerBlock",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "maxTileA0",
+        "minTileA0",
+        "bestTileA0",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(2D block per tile)",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "DataCopyPad(out per tile)"
+      ],
+      "source": "squaresumv1_tiling.cpp:775-799 (binary search, bestTileA0>=fp32Epb, tilingMode=2 multi-tile) → squaresumv1.h:337 ProcessAraFullLoad, L530-536 (isFloatInput path), L504-510 multi-tile loop"
+    },
+    {
+      "id": "P10",
+      "name": "ARA_ROWSPLIT_input_dtype_half_bf16",
+      "group": "G4",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_nonfp32 > ubSize",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "bestTileA0 < fp32ElementsPerBlock",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "bestTileA0",
+        "maxRChunk",
+        "minRChunk",
+        "bestRChunk",
+        "rChunkSize",
+        "numRChunks",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "Duplicate(accLocal, 0)",
+        "DataCopyPad(2D block per r-chunk)",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Add(accLocal, accLocal, chunkResult)",
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:800-825 (bestTileA0<fp32Epb, tilingMode=3) → squaresumv1.h:338 ProcessAraRowSplit, L636-649 (!isFloatInput path)"
+    },
+    {
+      "id": "P11",
+      "name": "ARA_ROWSPLIT_input_dtype_fp32",
+      "group": "G4",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "var": "input_coalesced.isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "expr": "totalRows",
+          "op": "!=",
+          "value": -1
+        },
+        {
+          "expr": "ubNeededAraFull_fp32 > ubSize",
+          "op": "==",
+          "value": true
+        },
+        {
+          "expr": "bestTileA0 < fp32ElementsPerBlock",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "inputElementsPerBlock",
+        "fp32ElementsPerBlock",
+        "fp32ElementsPerRepeat",
+        "a0LengthAlign",
+        "tileA0Len",
+        "tileA0Align",
+        "numA0Tiles",
+        "computeAraUbNeeded",
+        "ubNeededAraFull",
+        "bestTileA0",
+        "maxRChunk",
+        "minRChunk",
+        "bestRChunk",
+        "rChunkSize",
+        "numRChunks",
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "Duplicate(accLocal, 0)",
+        "DataCopyPad(2D block per r-chunk)",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Add(accLocal, accLocal, chunkResult)",
+        "DataCopyPad(out)"
+      ],
+      "source": "squaresumv1_tiling.cpp:800-825 (bestTileA0<fp32Epb, tilingMode=3) → squaresumv1.h:338 ProcessAraRowSplit, L629-635 (isFloatInput path)"
+    },
+    {
+      "id": "P12",
+      "name": "MULTI_AXIS_layer_submode_AR_FULLLOAD_input_dtype_half_bf16_first_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerIsTailReduce",
+        "layerMode",
+        "layerChunkCols",
+        "layerNumChunks",
+        "layerTileA0Align",
+        "layerTileA0Len",
+        "layerNumA0Tiles",
+        "layerRChunkSize",
+        "layerNumRChunks"
+      ],
+      "key_instructions": [
+        "DataCopyPad(inputGM)",
+        "Cast(half/bf16->float, CAST_NONE)",
+        "Mul(xFp32, xFp32, xFp32)",
+        "ReduceSum<float>",
+        "DataCopyPad(workspaceGM float32)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1081 ProcessMultiAxisLayer → L1103-1106 subMode==0 → L686 MultiAxisArFullLoadRow (isFirstLayer=true, !isFloatInput path L712-718)"
+    },
+    {
+      "id": "P13",
+      "name": "MULTI_AXIS_layer_submode_AR_FULLLOAD_input_dtype_fp32_first_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "var": "input_dtype",
+          "op": "==",
+          "value": "DT_FLOAT"
+        },
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "typeSize",
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerIsTailReduce",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(inputGM)",
+        "Mul(xLocal, xLocal, xLocal)",
+        "ReduceSum<float>",
+        "DataCopyPad(workspaceGM float32)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1081 ProcessMultiAxisLayer → L1103-1106 subMode==0 → L686 MultiAxisArFullLoadRow (isFirstLayer=true, isFloatInput path L709-711)"
+    },
+    {
+      "id": "P14",
+      "name": "MULTI_AXIS_layer_submode_AR_FULLLOAD_subsequent_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerIsTailReduce",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(workspaceGM float32)",
+        "ReduceSum<float>",
+        "DataCopyPad(workspaceGM or resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1081 ProcessMultiAxisLayer → L1103-1106 subMode==0 → L686 MultiAxisArFullLoadRow (isFirstLayer=false, L719-735)"
+    },
+    {
+      "id": "P15",
+      "name": "MULTI_AXIS_layer_submode_AR_COLSPLIT_first_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 1
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerChunkCols",
+        "layerNumChunks",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(inputGM chunk)",
+        "Cast(half/bf16->float or Mul for fp32)",
+        "ReduceSum<float>",
+        "scalar_accum(accVal += partial)",
+        "DataCopyPad(workspaceGM or resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1107-1111 subMode==1 → L739 MultiAxisArColSplitRow (isFirstLayer=true, L754-780)"
+    },
+    {
+      "id": "P16",
+      "name": "MULTI_AXIS_layer_submode_AR_COLSPLIT_subsequent_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 1
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerChunkCols",
+        "layerNumChunks",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(workspaceGM float32 chunk)",
+        "ReduceSum<float>",
+        "scalar_accum(accVal += partial)",
+        "DataCopyPad(workspaceGM or resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1107-1111 subMode==1 → L739 MultiAxisArColSplitRow (isFirstLayer=false, L781-797)"
+    },
+    {
+      "id": "P17",
+      "name": "MULTI_AXIS_layer_submode_ARA_FULLLOAD_first_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 2
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerA0Length",
+        "layerTileA0Align",
+        "layerTileA0Len",
+        "layerNumA0Tiles",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(inputGM 2D block)",
+        "Cast(half/bf16->float or Mul for fp32)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "DataCopyPad(workspaceGM float32)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1154-1155 subMode==2 → L803 MultiAxisAraFullLoad (isFirstLayer=true, L827-876)"
+    },
+    {
+      "id": "P18",
+      "name": "MULTI_AXIS_layer_submode_ARA_FULLLOAD_subsequent_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 2
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerA0Length",
+        "layerTileA0Align",
+        "layerTileA0Len",
+        "layerNumA0Tiles",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "DataCopyPad(workspaceGM float32 2D block)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "DataCopyPad(workspaceGM or resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1154-1155 subMode==2 → L803 MultiAxisAraFullLoad (isFirstLayer=false, L877-935)"
+    },
+    {
+      "id": "P19",
+      "name": "MULTI_AXIS_layer_submode_ARA_ROWSPLIT_first_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 3
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerA0Length",
+        "layerTileA0Align",
+        "layerTileA0Len",
+        "layerNumA0Tiles",
+        "layerRChunkSize",
+        "layerNumRChunks",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "Duplicate(accLocal, 0)",
+        "DataCopyPad(inputGM 2D block per r-chunk)",
+        "Cast(half/bf16->float or Mul for fp32)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Add(accLocal, accLocal, chunkResult)",
+        "DataCopyPad(workspaceGM float32)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1156-1157 subMode==3 → L939 MultiAxisAraRowSplit (isFirstLayer=true, L978-1018)"
+    },
+    {
+      "id": "P20",
+      "name": "MULTI_AXIS_layer_submode_ARA_ROWSPLIT_subsequent_layer",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "layer_isTailReduce",
+          "op": "==",
+          "value": false
+        },
+        {
+          "var": "layer_subMode",
+          "op": "==",
+          "value": 3
+        },
+        {
+          "var": "layer_isFirstLayer",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "layerRLength",
+        "layerA0Length",
+        "layerTileA0Align",
+        "layerTileA0Len",
+        "layerNumA0Tiles",
+        "layerRChunkSize",
+        "layerNumRChunks",
+        "layerMode"
+      ],
+      "key_instructions": [
+        "Duplicate(accLocal, 0)",
+        "DataCopyPad(workspaceGM float32 2D block per r-chunk)",
+        "ReduceSum<float, Pattern::Reduce::RA, true>",
+        "Add(accLocal, accLocal, chunkResult)",
+        "DataCopyPad(workspaceGM or resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1156-1157 subMode==3 → L939 MultiAxisAraRowSplit (isFirstLayer=false, L1019-1042)"
+    },
+    {
+      "id": "P21",
+      "name": "MULTI_AXIS_last_layer_cast_to_output_dtype_half_bf16",
+      "group": "G5",
+      "reachability": "reachable",
+      "conditions": [
+        {
+          "expr": "coalesced.totalRows == -1",
+          "op": "==",
+          "value": true
+        },
+        {
+          "var": "input_dtype",
+          "op": "in",
+          "value": [
+            "DT_FLOAT16",
+            "DT_BF16"
+          ]
+        },
+        {
+          "var": "layer_isLastLayer",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [
+        "input_dtype",
+        "input_shape",
+        "axis"
+      ],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode",
+        "numLayers",
+        "isLastLayer"
+      ],
+      "key_instructions": [
+        "Cast(float->half/bf16, CAST_NONE)",
+        "DataCopyPad(resultGM)"
+      ],
+      "source": "squaresumv1_tiling.cpp:579-710 (totalRows==-1, tilingMode=4) → squaresumv1.h:339 ProcessMultiAxis → L1081 ProcessMultiAxisLayer → L1117-1140 (isLastLayer=true, !isFloatInput Cast L1120-1123) or L905-907 / L1049-1052 / L1132-1139"
+    },
+    {
+      "id": "P_dead_1",
+      "name": "default_switch_fallback_to_AR_FULLLOAD",
+      "group": null,
+      "reachability": "dead",
+      "dead_reason": "kernel_has_impl_but_no_tiling_path",
+      "dead_detail": "kernel Process() switch default at squaresumv1.h:340 dispatches to ProcessArFullLoad() for any tilingMode not matching cases 0-4. Tiling function only produces tilingMode values 0-4 (squaresumv1_tiling.cpp:541,727,729,773,796,801,652), so default is unreachable from valid tiling output.",
+      "conditions": [
+        {
+          "expr": "tilingMode not in {0,1,2,3,4}",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "input_variables": [],
+      "caller_options": [],
+      "internal_variables": [
+        "tilingMode"
+      ],
+      "key_instructions": [
+        "ProcessArFullLoad (via switch default)"
+      ],
+      "source": "squaresumv1.h:340 (no tiling source code can produce this)"
+    }
+  ],
+  "source_constraints": [
+    {
+      "id": "C1",
+      "source_expr": "if (totalRows == 0 || rLength == 0)",
+      "source_location": "squaresumv1_tiling.cpp:533",
+      "variables": [
+        "totalRows",
+        "rLength"
+      ],
+      "semantics": "Empty tensor guard: if coalesced shape has zero rows or zero reduce length, set tilingMode=0 and return early with SetBlockDim(1)"
+    },
+    {
+      "id": "C2",
+      "source_expr": "switch (dataType)",
+      "source_location": "squaresumv1_tiling.cpp:549",
+      "variables": [
+        "dataType"
+      ],
+      "semantics": "Type size selection: DT_FLOAT16=2 bytes, DT_BF16=2 bytes, DT_FLOAT=4 bytes, default=2 bytes"
+    },
+    {
+      "id": "C3",
+      "source_expr": "case ge::DT_FLOAT16: typeSize = 2; break;",
+      "source_location": "squaresumv1_tiling.cpp:550",
+      "variables": [
+        "dataType",
+        "typeSize"
+      ],
+      "semantics": "float16 has typeSize=2"
+    },
+    {
+      "id": "C4",
+      "source_expr": "case ge::DT_BF16: typeSize = 2; break;",
+      "source_location": "squaresumv1_tiling.cpp:551",
+      "variables": [
+        "dataType",
+        "typeSize"
+      ],
+      "semantics": "bfloat16 has typeSize=2"
+    },
+    {
+      "id": "C5",
+      "source_expr": "case ge::DT_FLOAT: typeSize = 4; break;",
+      "source_location": "squaresumv1_tiling.cpp:552",
+      "variables": [
+        "dataType",
+        "typeSize"
+      ],
+      "semantics": "float32 has typeSize=4"
+    },
+    {
+      "id": "C6",
+      "source_expr": "default: typeSize = 2; break;",
+      "source_location": "squaresumv1_tiling.cpp:553",
+      "variables": [
+        "dataType",
+        "typeSize"
+      ],
+      "semantics": "Unknown dtype defaults to typeSize=2"
+    },
+    {
+      "id": "C7",
+      "source_expr": "uint32_t inputElementsPerBlock = 32 / typeSize",
+      "source_location": "squaresumv1_tiling.cpp:556",
+      "variables": [
+        "typeSize",
+        "inputElementsPerBlock"
+      ],
+      "semantics": "Elements per 32B block for input dtype: 16 for half/bf16, 8 for float"
+    },
+    {
+      "id": "C8",
+      "source_expr": "uint32_t fp32ElementsPerBlock = 32 / sizeof(float)",
+      "source_location": "squaresumv1_tiling.cpp:557",
+      "variables": [
+        "fp32ElementsPerBlock"
+      ],
+      "semantics": "fp32 elements per 32B block = 8 (fixed constant)"
+    },
+    {
+      "id": "C9",
+      "source_expr": "uint32_t fp32ElementsPerRepeat = 256 / sizeof(float)",
+      "source_location": "squaresumv1_tiling.cpp:558",
+      "variables": [
+        "fp32ElementsPerRepeat"
+      ],
+      "semantics": "fp32 elements per repeat = 64 (fixed constant)"
+    },
+    {
+      "id": "C10",
+      "source_expr": "int64_t rLengthAlignInput = CeilAlign(rLength, static_cast<int64_t>(inputElementsPerBlock))",
+      "source_location": "squaresumv1_tiling.cpp:561",
+      "variables": [
+        "rLength",
+        "inputElementsPerBlock",
+        "rLengthAlignInput"
+      ],
+      "semantics": "Align reduce length to input dtype's block boundary"
+    },
+    {
+      "id": "C11",
+      "source_expr": "int64_t rLengthAlignFp32 = CeilAlign(rLength, static_cast<int64_t>(fp32ElementsPerBlock))",
+      "source_location": "squaresumv1_tiling.cpp:562",
+      "variables": [
+        "rLength",
+        "fp32ElementsPerBlock",
+        "rLengthAlignFp32"
+      ],
+      "semantics": "Align reduce length to fp32 block boundary (8 elements)"
+    },
+    {
+      "id": "C12",
+      "source_expr": "int64_t rLengthAlign = std::max(rLengthAlignInput, rLengthAlignFp32)",
+      "source_location": "squaresumv1_tiling.cpp:563",
+      "variables": [
+        "rLengthAlignInput",
+        "rLengthAlignFp32",
+        "rLengthAlign"
+      ],
+      "semantics": "Use the larger of input-aligned and fp32-aligned reduce length"
+    },
+    {
+      "id": "C13",
+      "source_expr": "uint32_t isAlign32B = (rLength * typeSize % 32 == 0) ? 1 : 0",
+      "source_location": "squaresumv1_tiling.cpp:565",
+      "variables": [
+        "rLength",
+        "typeSize",
+        "isAlign32B"
+      ],
+      "semantics": "Whether the reduce axis data is naturally 32-byte aligned"
+    },
+    {
+      "id": "C14",
+      "source_expr": "if (totalRows == -1)",
+      "source_location": "squaresumv1_tiling.cpp:579",
+      "variables": [
+        "totalRows"
+      ],
+      "semantics": "MULTI_AXIS detection: CoalesceAxis returns totalRows=-1 when reduce axes are non-contiguous (separated by non-reduce dims)"
+    },
+    {
+      "id": "C15",
+      "source_expr": "tilingMode = 4",
+      "source_location": "squaresumv1_tiling.cpp:581",
+      "variables": [
+        "tilingMode"
+      ],
+      "semantics": "Set tilingMode=4 for MULTI_AXIS (non-contiguous multi-axis reduce)"
+    },
+    {
+      "id": "C16",
+      "source_expr": "if (isTailReduce)",
+      "source_location": "squaresumv1_tiling.cpp:712",
+      "variables": [
+        "isTailReduce"
+      ],
+      "semantics": "Branch between AR mode (tail reduce, reduce dims at the end) and ARA mode (non-tail reduce)"
+    },
+    {
+      "id": "C17",
+      "source_expr": "if (dataType == ge::DT_FLOAT) { ubNeededFullLoad = 2 * rLengthAlign * sizeof(float) + tmpBufBytes + 2 * 32; }",
+      "source_location": "squaresumv1_tiling.cpp:718-719",
+      "variables": [
+        "dataType",
+        "rLengthAlign",
+        "tmpBufBytes",
+        "ubNeededFullLoad"
+      ],
+      "semantics": "UB needed for AR_FULLLOAD with fp32 input: 2 buffers of rLengthAlign*4 + tmpBuf + 64 bytes overhead"
+    },
+    {
+      "id": "C18",
+      "source_expr": "else { ubNeededFullLoad = 2 * rLengthAlign * typeSize + rLengthAlignFp32 * sizeof(float) + tmpBufBytes + 2 * 32; }",
+      "source_location": "squaresumv1_tiling.cpp:720-721",
+      "variables": [
+        "dataType",
+        "rLengthAlign",
+        "typeSize",
+        "rLengthAlignFp32",
+        "tmpBufBytes",
+        "ubNeededFullLoad"
+      ],
+      "semantics": "UB needed for AR_FULLLOAD with half/bf16 input: 2 input buffers + fp32 compute buffer + tmpBuf + 64 bytes overhead"
+    },
+    {
+      "id": "C19",
+      "source_expr": "bool canFullLoad = (ubNeededFullLoad <= ubSize)",
+      "source_location": "squaresumv1_tiling.cpp:724",
+      "variables": [
+        "ubNeededFullLoad",
+        "ubSize",
+        "canFullLoad"
+      ],
+      "semantics": "Determine if entire reduce row fits in UB for full-load mode"
+    },
+    {
+      "id": "C20",
+      "source_expr": "if (canFullLoad) { tilingMode = 0; }",
+      "source_location": "squaresumv1_tiling.cpp:726-727",
+      "variables": [
+        "canFullLoad",
+        "tilingMode"
+      ],
+      "semantics": "AR_FULLLOAD: when full load is possible, set tilingMode=0"
+    },
+    {
+      "id": "C21",
+      "source_expr": "else { tilingMode = 1; ... }",
+      "source_location": "squaresumv1_tiling.cpp:728-729",
+      "variables": [
+        "canFullLoad",
+        "tilingMode"
+      ],
+      "semantics": "AR_COLSPLIT: when full load is not possible, set tilingMode=1 and compute chunk columns"
+    },
+    {
+      "id": "C22",
+      "source_expr": "if (dataType == ge::DT_FLOAT) { ... maxCols = static_cast<int64_t>((ubSize - overhead) / sizeof(float)); }",
+      "source_location": "squaresumv1_tiling.cpp:733-736",
+      "variables": [
+        "dataType",
+        "ubSize",
+        "chunkCols"
+      ],
+      "semantics": "AR_COLSPLIT chunkCols for fp32: max cols = (ubSize - overhead) / 4"
+    },
+    {
+      "id": "C23",
+      "source_expr": "else { ... maxCols = static_cast<int64_t>((ubSize - overhead) / (typeSize + sizeof(float))); }",
+      "source_location": "squaresumv1_tiling.cpp:738-740",
+      "variables": [
+        "dataType",
+        "ubSize",
+        "typeSize",
+        "chunkCols"
+      ],
+      "semantics": "AR_COLSPLIT chunkCols for half/bf16: max cols = (ubSize - overhead) / (typeSize + 4)"
+    },
+    {
+      "id": "C24",
+      "source_expr": "chunkCols = std::min(maxCols, static_cast<int64_t>(255 * fp32ElementsPerRepeat))",
+      "source_location": "squaresumv1_tiling.cpp:736,740",
+      "variables": [
+        "chunkCols",
+        "maxCols",
+        "fp32ElementsPerRepeat"
+      ],
+      "semantics": "Cap chunkCols at 255 repeats worth of elements (255*64=16320)"
+    },
+    {
+      "id": "C25",
+      "source_expr": "a0LengthAlign = CeilAlign(a0Length, static_cast<int64_t>(fp32ElementsPerBlock))",
+      "source_location": "squaresumv1_tiling.cpp:752",
+      "variables": [
+        "a0Length",
+        "fp32ElementsPerBlock",
+        "a0LengthAlign"
+      ],
+      "semantics": "Align A0 (non-reduce tail) to fp32 block boundary"
+    },
+    {
+      "id": "C26",
+      "source_expr": "if (dataType != ge::DT_FLOAT) { computeBytes = rRows * cols * sizeof(float); }",
+      "source_location": "squaresumv1_tiling.cpp:760-761",
+      "variables": [
+        "dataType",
+        "computeBytes",
+        "rRows",
+        "cols"
+      ],
+      "semantics": "ARA UB computation includes fp32 compute buffer only for non-fp32 dtypes"
+    },
+    {
+      "id": "C27",
+      "source_expr": "uint64_t ubNeededAraFull = computeAraUbNeeded(rLength, tileA0Align)",
+      "source_location": "squaresumv1_tiling.cpp:770",
+      "variables": [
+        "ubNeededAraFull",
+        "rLength",
+        "tileA0Align"
+      ],
+      "semantics": "Total UB needed for ARA full-load with full rLength and aligned A0 columns"
+    },
+    {
+      "id": "C28",
+      "source_expr": "if (ubNeededAraFull <= ubSize) { tilingMode = 2; numA0Tiles = 1; }",
+      "source_location": "squaresumv1_tiling.cpp:772-774",
+      "variables": [
+        "ubNeededAraFull",
+        "ubSize",
+        "tilingMode",
+        "numA0Tiles"
+      ],
+      "semantics": "ARA_FULLLOAD single tile: when full A0 fits in UB"
+    },
+    {
+      "id": "C29",
+      "source_expr": "if (bestTileA0 >= static_cast<int64_t>(fp32ElementsPerBlock)) { tilingMode = 2; ... }",
+      "source_location": "squaresumv1_tiling.cpp:795-796",
+      "variables": [
+        "bestTileA0",
+        "fp32ElementsPerBlock",
+        "tilingMode"
+      ],
+      "semantics": "ARA_FULLLOAD multi-tile: binary search found a tile A0 >= 8 elements, split A0 into multiple tiles"
+    },
+    {
+      "id": "C30",
+      "source_expr": "else { tilingMode = 3; ... }",
+      "source_location": "squaresumv1_tiling.cpp:800-801",
+      "variables": [
+        "bestTileA0",
+        "fp32ElementsPerBlock",
+        "tilingMode"
+      ],
+      "semantics": "ARA_ROWSPLIT: binary search found no viable tile A0, fall back to R-chunk splitting"
+    },
+    {
+      "id": "C31",
+      "source_expr": "int64_t usedCoreNum = std::min(static_cast<int64_t>(coreNum), CeilDiv(totalRows, minRowsPerCore))",
+      "source_location": "squaresumv1_tiling.cpp:830",
+      "variables": [
+        "coreNum",
+        "totalRows",
+        "minRowsPerCore",
+        "usedCoreNum"
+      ],
+      "semantics": "Multi-core splitting: use min(coreNum, totalRows) cores"
+    },
+    {
+      "id": "C32",
+      "source_expr": "int64_t rowsPerCore = CeilDiv(totalRows, usedCoreNum)",
+      "source_location": "squaresumv1_tiling.cpp:833",
+      "variables": [
+        "totalRows",
+        "usedCoreNum",
+        "rowsPerCore"
+      ],
+      "semantics": "Rows assigned to each core"
+    },
+    {
+      "id": "C33",
+      "source_expr": "constexpr uint32_t UB_SIZE_910B = 192 * 1024",
+      "source_location": "squaresumv1_tiling.cpp:36",
+      "variables": [
+        "UB_SIZE_910B"
+      ],
+      "semantics": "Platform UB size fallback constant: 192KB = 196608 bytes"
+    },
+    {
+      "id": "C34",
+      "source_expr": "constexpr uint32_t UB_SAFE_LIMIT = 184 * 1024",
+      "source_location": "squaresumv1_tiling.cpp:37",
+      "variables": [
+        "UB_SAFE_LIMIT"
+      ],
+      "semantics": "UB safe limit declared but unused in current code"
+    },
+    {
+      "id": "C35",
+      "source_expr": "constexpr uint32_t WS_SYS_SIZE = 0U",
+      "source_location": "squaresumv1_tiling.cpp:34",
+      "variables": [
+        "WS_SYS_SIZE"
+      ],
+      "semantics": "Workspace size for non-MULTI_AXIS modes: 0 bytes"
+    },
+    {
+      "id": "C36",
+      "source_expr": "constexpr size_t WORKSPACE_NUM = 1",
+      "source_location": "squaresumv1_tiling.cpp:35",
+      "variables": [
+        "WORKSPACE_NUM"
+      ],
+      "semantics": "Number of workspace regions: 1"
+    },
+    {
+      "id": "C37",
+      "source_expr": "constexpr int32_t SS_MAX_LAYERS = 5",
+      "source_location": "squaresumv1_tiling_data.h:20",
+      "variables": [
+        "SS_MAX_LAYERS"
+      ],
+      "semantics": "Maximum number of reduce layers for MULTI_AXIS mode"
+    },
+    {
+      "id": "C38",
+      "source_expr": "static constexpr bool isFloatInput = std::is_same_v<T, float>",
+      "source_location": "squaresumv1.h:135",
+      "variables": [
+        "isFloatInput",
+        "T"
+      ],
+      "semantics": "Compile-time flag: true when template parameter T is float, controlling whether Cast operations are skipped"
+    },
+    {
+      "id": "C39",
+      "source_expr": "if constexpr (isFloatInput) { Mul(xLocal, xLocal, xLocal, rLength_); ReduceSum<float>(...); }",
+      "source_location": "squaresumv1.h:373-376",
+      "variables": [
+        "isFloatInput"
+      ],
+      "semantics": "In AR_FULLLOAD compute, fp32 path skips Cast, directly does Mul then ReduceSum"
+    },
+    {
+      "id": "C40",
+      "source_expr": "if constexpr (!isFloatInput) { Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_); Mul(xFp32, xFp32, xFp32, rLength_); ReduceSum<float>(...); Cast(yLocal, ..., RoundMode::CAST_NONE, 8); }",
+      "source_location": "squaresumv1.h:378-384",
+      "variables": [
+        "isFloatInput"
+      ],
+      "semantics": "In AR_FULLLOAD compute, half/bf16 path: Cast->float, Mul, ReduceSum, Cast back to T"
+    },
+    {
+      "id": "C41",
+      "source_expr": "switch (tilingMode_) { case 0: ProcessArFullLoad(); break; case 1: ProcessArColSplit(); break; case 2: ProcessAraFullLoad(); break; case 3: ProcessAraRowSplit(); break; case 4: ProcessMultiAxis(); break; default: ProcessArFullLoad(); break; }",
+      "source_location": "squaresumv1.h:334-341",
+      "variables": [
+        "tilingMode_"
+      ],
+      "semantics": "Kernel runtime dispatch: select processing function based on tilingMode field"
+    },
+    {
+      "id": "C42",
+      "source_expr": "if (myRows_ == 0) return;",
+      "source_location": "squaresumv1.h:332",
+      "variables": [
+        "myRows_"
+      ],
+      "semantics": "Kernel early return when this core has zero rows to process"
+    },
+    {
+      "id": "C43",
+      "source_expr": "result.totalRows = -1",
+      "source_location": "squaresumv1_tiling.cpp:156",
+      "variables": [
+        "totalRows"
+      ],
+      "semantics": "CoalesceAxis sets totalRows=-1 to signal non-contiguous multi-axis reduce (reduce dims separated by non-reduce dims)"
+    },
+    {
+      "id": "C44",
+      "source_expr": "if (reduceAfterNonReduce) { result.totalRows = -1; result.rLength = -1; result.a0Length = -1; result.isTailReduce = false; return result; }",
+      "source_location": "squaresumv1_tiling.cpp:153-161",
+      "variables": [
+        "reduceAfterNonReduce",
+        "totalRows",
+        "rLength",
+        "a0Length",
+        "isTailReduce"
+      ],
+      "semantics": "MULTI_AXIS trigger: any reduce axis appearing after a non-reduce axis in the dim sequence"
+    },
+    {
+      "id": "C45",
+      "source_expr": "bool isTailReduce = (posInShape == nDims - 1)",
+      "source_location": "squaresumv1_tiling.cpp:451",
+      "variables": [
+        "isTailReduce",
+        "posInShape",
+        "nDims"
+      ],
+      "semantics": "In ComputeMultiAxisLayers, tail reduce is determined by whether the reduce axis is the last dimension in the current shape"
+    },
+    {
+      "id": "C46",
+      "source_expr": "if (isTailReduce || a0Length == 0) { ... if (ubNeededFullLoad <= ubSize) { layer.subMode = 0; } else { layer.subMode = 1; ... } }",
+      "source_location": "squaresumv1_tiling.cpp:251-265",
+      "variables": [
+        "isTailReduce",
+        "a0Length",
+        "ubNeededFullLoad",
+        "ubSize",
+        "subMode"
+      ],
+      "semantics": "Per-layer sub-mode selection in MULTI_AXIS: AR_FULLLOAD (subMode=0) if UB fits, else AR_COLSPLIT (subMode=1)"
+    },
+    {
+      "id": "C47",
+      "source_expr": "else { ... if (ubNeeded <= ubSize) { layer.subMode = 2; } else { ... if (bestA0 >= static_cast<int64_t>(fp32Epb)) { layer.subMode = 2; } else { layer.subMode = 3; ... } } }",
+      "source_location": "squaresumv1_tiling.cpp:281-349",
+      "variables": [
+        "ubNeeded",
+        "ubSize",
+        "bestA0",
+        "fp32Epb",
+        "subMode"
+      ],
+      "semantics": "Per-layer sub-mode selection in MULTI_AXIS ARA path: ARA_FULLLOAD (subMode=2) if UB fits or binary search finds viable tile, else ARA_ROWSPLIT (subMode=3)"
+    },
+    {
+      "id": "C48",
+      "source_expr": "ASCENDC_TPL_ARGS_DECL(SquareSumV1, ASCENDC_TPL_DATATYPE_DECL(D_T_X, C_DT_FLOAT16, C_DT_FLOAT, C_DT_BF16, ASCENDC_TPL_INPUT(0)))",
+      "source_location": "squaresumv1_tiling_key.h:17-19",
+      "variables": [
+        "D_T_X"
+      ],
+      "semantics": "Compile-time dtype template declaration: 3 dtypes (half, float, bfloat16_t) selected from input(0) dtype"
+    },
+    {
+      "id": "C49",
+      "source_expr": "ASCENDC_TPL_SEL(ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_FLOAT16)), ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_FLOAT)), ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_BF16)))",
+      "source_location": "squaresumv1_tiling_key.h:21-31",
+      "variables": [
+        "D_T_X"
+      ],
+      "semantics": "3 template instances registered for kernel dispatch: half, float, bfloat16_t"
+    },
+    {
+      "id": "C50",
+      "source_expr": "size_t wsSize = static_cast<size_t>(totalInputElems) * sizeof(float) * 2; wsSize = (wsSize + 4095) & ~static_cast<size_t>(4095);",
+      "source_location": "squaresumv1_tiling.cpp:697-699",
+      "variables": [
+        "totalInputElems",
+        "wsSize"
+      ],
+      "semantics": "MULTI_AXIS workspace size = 2 * totalInputElements * 4 bytes (ping-pong), aligned to 4096"
+    },
+    {
+      "id": "C51",
+      "source_expr": "int64_t firstLayerRows = ...; int64_t usedCoreNum = std::min(coreNum, CeilDiv(firstLayerRows, static_cast<int64_t>(1)));",
+      "source_location": "squaresumv1_tiling.cpp:627-636",
+      "variables": [
+        "firstLayerRows",
+        "coreNum",
+        "usedCoreNum"
+      ],
+      "semantics": "MULTI_AXIS multi-core splitting: cores split by first layer's row count (product of dims before first reduce axis)"
+    }
+  ],
+  "completeness_checklist": {
+    "api_variants": {
+      "status": "na",
+      "evidence": [
+        "Single API: aclnnSquareSumV1(input, axis, keep_dims, result). No Tensor/Scalar or inplace/outplace variants."
+      ]
+    },
+    "format_variants": {
+      "status": "na",
+      "evidence": [
+        "All inputs/outputs use FORMAT_ND (squaresumv1_def.cpp:23,30). No NCHW/NHWC/5D variants."
+      ]
+    },
+    "mode_variants": {
+      "status": "na",
+      "evidence": [
+        "DynamicCompileStaticFlag(true), DynamicShapeSupportFlag(true) in def — no separate static/dynamic paths in kernel. Single compilation unit."
+      ]
+    },
+    "quant_variants": {
+      "status": "na",
+      "evidence": [
+        "No quantization support. Input dtypes: float16/bfloat16/float only (squaresumv1_def.cpp:22)."
+      ]
+    },
+    "optional_input_combos": {
+      "status": "na",
+      "evidence": [
+        "No optional inputs. Only 'input' (required) and 'result' (required output). 'keep_dims' is optional attribute with default false but does not affect kernel code path (only affects output shape which is pre-computed by framework)."
+      ]
+    },
+    "dispatch_coverage": {
+      "status": "covered",
+      "evidence": [
+        "3 compile-time dtype template instances (ASCENDC_TPL_SEL): half, float, bfloat16_t (squaresumv1_tiling_key.h:21-31) — all covered by P2-P20 across dtype variants",
+        "5 runtime tilingMode switch cases (0-4) in squaresumv1.h:334-339 — all covered: mode 0 (P1,P2,P3), mode 1 (P4,P5), mode 2 (P6,P7,P8,P9), mode 3 (P10,P11), mode 4 (P12-P21)",
+        "1 switch default case (squaresumv1.h:340) — dead path P_dead_1 (unreachable from valid tiling output)",
+        "MULTI_AXIS per-layer sub-modes 0-3 (squaresumv1_tiling.cpp:263,265,305,324,330) — covered by P12-P20",
+        "Total kernel keys: 3 (dtype templates) x 5 (tilingModes) = conceptually 15 dispatch targets; all tilingMode values reachable from tiling function"
+      ]
+    },
+    "tiling_analysis": {
+      "status": "covered",
+      "evidence": [
+        "SquareSumV1TilingFunc fully analyzed: squaresumv1_tiling.cpp:494-894",
+        "All helper functions defined in same file (GetPlatformInfo, NormalizeAxis, CoalesceAxis, ComputeTmpBufSize, ComputeLayerSubTiling, ComputeMultiAxisLayers, GetWorkspaceSize) — all read",
+        "No external functions with unknown return values affecting branch decisions",
+        "Platform constants verified: ubSize=196608, coreNum=24 for target platform DAV_2201",
+        "No platform guard branches (#if / IsRegbaseSocVersion / IsSocVersionXxx) present"
+      ]
+    }
+  }
+}

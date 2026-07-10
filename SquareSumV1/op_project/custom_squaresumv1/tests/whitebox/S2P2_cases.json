@@ -1,0 +1,575 @@
+[
+  {
+    "_group": "G0",
+    "dtype": "float16",
+    "rLength": 0,
+    "keep_dims": false
+  },
+  {
+    "_group": "G0",
+    "dtype": "float",
+    "rLength": 0,
+    "keep_dims": false
+  },
+  {
+    "_group": "G0",
+    "dtype": "bfloat16",
+    "rLength": 0,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float16",
+    "rLength": 1,
+    "totalRows": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float16",
+    "rLength": 256,
+    "totalRows": 7,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float16",
+    "rLength": 4096,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float16",
+    "rLength": 8192,
+    "totalRows": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float16",
+    "rLength": 24368,
+    "totalRows": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float",
+    "rLength": 1,
+    "totalRows": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float",
+    "rLength": 256,
+    "totalRows": 7,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float",
+    "rLength": 4096,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float",
+    "rLength": 8192,
+    "totalRows": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "float",
+    "rLength": 24376,
+    "totalRows": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "bfloat16",
+    "rLength": 1,
+    "totalRows": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "bfloat16",
+    "rLength": 256,
+    "totalRows": 7,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "bfloat16",
+    "rLength": 4096,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "bfloat16",
+    "rLength": 8192,
+    "totalRows": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G1",
+    "dtype": "bfloat16",
+    "rLength": 24368,
+    "totalRows": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float16",
+    "rLength": 24576,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float16",
+    "rLength": 65536,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float16",
+    "rLength": 1000000,
+    "totalRows": 777,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float16",
+    "rLength": 10000000,
+    "totalRows": 30000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float16",
+    "rLength": 100000000,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float",
+    "rLength": 24576,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float",
+    "rLength": 65536,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float",
+    "rLength": 1000000,
+    "totalRows": 777,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float",
+    "rLength": 10000000,
+    "totalRows": 30000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "float",
+    "rLength": 100000000,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "bfloat16",
+    "rLength": 24576,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "bfloat16",
+    "rLength": 65536,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "bfloat16",
+    "rLength": 1000000,
+    "totalRows": 777,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "bfloat16",
+    "rLength": 10000000,
+    "totalRows": 30000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G2",
+    "dtype": "bfloat16",
+    "rLength": 100000000,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float16",
+    "rLength": 1,
+    "totalRows": 100,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float16",
+    "rLength": 128,
+    "totalRows": 5000,
+    "a0Length": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float16",
+    "rLength": 512,
+    "totalRows": 256,
+    "a0Length": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float16",
+    "rLength": 1024,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float16",
+    "rLength": 2047,
+    "totalRows": 127,
+    "a0Length": 8,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float",
+    "rLength": 1,
+    "totalRows": 100,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float",
+    "rLength": 128,
+    "totalRows": 5000,
+    "a0Length": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float",
+    "rLength": 1024,
+    "totalRows": 256,
+    "a0Length": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float",
+    "rLength": 2048,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "float",
+    "rLength": 3070,
+    "totalRows": 127,
+    "a0Length": 8,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "bfloat16",
+    "rLength": 1,
+    "totalRows": 100,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "bfloat16",
+    "rLength": 128,
+    "totalRows": 5000,
+    "a0Length": 97,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "bfloat16",
+    "rLength": 512,
+    "totalRows": 256,
+    "a0Length": 10000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "bfloat16",
+    "rLength": 1024,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G3",
+    "dtype": "bfloat16",
+    "rLength": 2047,
+    "totalRows": 127,
+    "a0Length": 8,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float16",
+    "rLength": 4095,
+    "totalRows": 2000,
+    "a0Length": 1000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float16",
+    "rLength": 5120,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float16",
+    "rLength": 6144,
+    "totalRows": 1,
+    "a0Length": 3000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float16",
+    "rLength": 8192,
+    "totalRows": 30000,
+    "a0Length": 211,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float16",
+    "rLength": 10000,
+    "totalRows": 64,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float",
+    "rLength": 6142,
+    "totalRows": 2000,
+    "a0Length": 1000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float",
+    "rLength": 7168,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float",
+    "rLength": 8192,
+    "totalRows": 1,
+    "a0Length": 3000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float",
+    "rLength": 9216,
+    "totalRows": 30000,
+    "a0Length": 211,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "float",
+    "rLength": 10000,
+    "totalRows": 64,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "bfloat16",
+    "rLength": 4095,
+    "totalRows": 2000,
+    "a0Length": 1000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "bfloat16",
+    "rLength": 5120,
+    "totalRows": 65536,
+    "a0Length": 997,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "bfloat16",
+    "rLength": 6144,
+    "totalRows": 1,
+    "a0Length": 3000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "bfloat16",
+    "rLength": 8192,
+    "totalRows": 30000,
+    "a0Length": 211,
+    "keep_dims": false
+  },
+  {
+    "_group": "G4",
+    "dtype": "bfloat16",
+    "rLength": 10000,
+    "totalRows": 64,
+    "a0Length": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float16",
+    "rLength": 1,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float16",
+    "rLength": 8,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float16",
+    "rLength": 128,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float16",
+    "rLength": 1024,
+    "totalRows": 65536,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float16",
+    "rLength": 10000,
+    "totalRows": 128,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float",
+    "rLength": 1,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float",
+    "rLength": 8,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float",
+    "rLength": 128,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float",
+    "rLength": 1024,
+    "totalRows": 65536,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "float",
+    "rLength": 10000,
+    "totalRows": 128,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "bfloat16",
+    "rLength": 1,
+    "totalRows": 1,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "bfloat16",
+    "rLength": 8,
+    "totalRows": 5000,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "bfloat16",
+    "rLength": 128,
+    "totalRows": 100,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "bfloat16",
+    "rLength": 1024,
+    "totalRows": 65536,
+    "keep_dims": false
+  },
+  {
+    "_group": "G5",
+    "dtype": "bfloat16",
+    "rLength": 10000,
+    "totalRows": 128,
+    "keep_dims": false
+  }
+]

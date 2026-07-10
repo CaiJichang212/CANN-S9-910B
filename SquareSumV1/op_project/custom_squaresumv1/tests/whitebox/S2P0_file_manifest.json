@@ -1,0 +1,130 @@
+{
+  "operator": "SquareSumV1",
+  "platform": {
+    "npu_arch": "DAV_2201",
+    "soc_version": "ASCEND910B",
+    "chip_model": "Ascend910B2",
+    "core_count": 24,
+    "ub_size": 196608
+  },
+  "verification": {
+    "status": "pass",
+    "auto_fixes": [],
+    "gaps_found": 0,
+    "gaps_resolved": 0
+  },
+  "tiling": {
+    "entry_function": "SquareSumV1TilingFunc",
+    "file_list": [
+      {
+        "path": "op_host/arch22/squaresumv1_tiling.cpp",
+        "priority": "P0",
+        "symbols": [
+          "SquareSumV1TilingFunc",
+          "IMPL_OP_OPTILING(SquareSumV1)",
+          "GetPlatformInfo",
+          "NormalizeAxis",
+          "CoalesceAxis",
+          "ComputeTmpBufSize",
+          "ComputeMultiAxisLayers",
+          "ComputeLayerSubTiling",
+          "GetWorkspaceSize",
+          "WS_SYS_SIZE",
+          "WORKSPACE_NUM",
+          "UB_SIZE_910B",
+          "UB_SAFE_LIMIT"
+        ],
+        "read_strategy": "full"
+      },
+      {
+        "path": "op_kernel/arch22/squaresumv1_tiling_data.h",
+        "priority": "P1",
+        "symbols": [
+          "SquareSumV1TilingData",
+          "SS_MAX_LAYERS"
+        ],
+        "read_strategy": "function_level"
+      },
+      {
+        "path": "op_kernel/arch22/squaresumv1_tiling_key.h",
+        "priority": "P1",
+        "symbols": [
+          "ASCENDC_TPL_ARGS_DECL(SquareSumV1)",
+          "ASCENDC_TPL_SEL"
+        ],
+        "read_strategy": "function_level"
+      },
+      {
+        "path": "op_host/squaresumv1_def.cpp",
+        "priority": "P1",
+        "symbols": [
+          "class SquareSumV1 : public OpDef",
+          "OP_ADD(SquareSumV1)"
+        ],
+        "read_strategy": "function_level"
+      },
+      {
+        "path": "op_host/squaresumv1_infershape.cpp",
+        "priority": "P1",
+        "symbols": [
+          "InferShape4SquareSumV1",
+          "IMPL_OP_INFERSHAPE(SquareSumV1)"
+        ],
+        "read_strategy": "function_level"
+      }
+    ],
+    "excluded": [
+      {
+        "path": "op_host/arch35/squaresumv1_tiling.cpp",
+        "reason": "CMakeLists.txt 中 ASCEND_COMPUTE_UNIT == \"ascend950\" 时才编译，目标平台为 910B（非 ascend950）；且该文件在源码树中不存在。命中排除规则 a)（arch35 与 arch_dir=arch22 不一致）"
+      }
+    ]
+  },
+  "kernel": {
+    "total_key_count": 3,
+    "file_list": [
+      {
+        "path": "op_kernel/squaresumv1_arch22.cpp",
+        "priority": "P0",
+        "pattern": "D",
+        "key_count": 3,
+        "arch_constraint": "",
+        "dtype_constraint": "half / float / bfloat16_t"
+      },
+      {
+        "path": "op_kernel/arch22/squaresumv1.h",
+        "priority": "P0",
+        "pattern": "D",
+        "key_count": 3,
+        "arch_constraint": "",
+        "dtype_constraint": "half / float / bfloat16_t"
+      },
+      {
+        "path": "op_kernel/arch22/squaresumv1_tiling_key.h",
+        "priority": "P0",
+        "pattern": "D",
+        "key_count": 3,
+        "arch_constraint": "",
+        "dtype_constraint": "half / float / bfloat16_t"
+      },
+      {
+        "path": "op_kernel/arch22/squaresumv1_tiling_data.h",
+        "priority": "P0",
+        "pattern": "D",
+        "key_count": 3,
+        "arch_constraint": "",
+        "dtype_constraint": "half / float / bfloat16_t"
+      }
+    ],
+    "excluded": []
+  },
+  "notes": [
+    "本算子不使用传统 TILING_KEY_IS 宏进行 kernel dispatch。采用双层 dispatch 机制：(1) 编译时 ASCENDC_TPL_SEL 宏实例化 3 个 dtype 模板（half / float / bfloat16_t），dispatch 模式为 D；(2) 运行时 switch(tilingMode_) 分发到 5 个处理路径（AR_FULLLOAD / AR_COLSPLIT / ARA_FULLLOAD / ARA_ROWSPLIT / MULTI_AXIS）+ 1 个 default。total_key_count=3 计入的是编译时 dtype 模板实例数量。",
+    "tiling_data.h 注释中标注的 TilingKey=0..4 实际上是 tilingMode 字段的语义值（uint32_t），并非通过 TILING_KEY_IS 宏注册的独立 tiling key。kernel 通过 GET_TILING_DATA_WITH_STRUCT 读取 tilingMode 字段后在 Process() 中做运行时 switch。",
+    "MULTI_AXIS (tilingMode=4) 内部还有逐层 sub-mode dispatch（ProcessMultiAxisLayer），layerMode=0..3 分别对应 AR_FULLLOAD / AR_COLSPLIT / ARA_FULLLOAD / ARA_ROWSPLIT 子模式。",
+    "编译时通过 if constexpr (isFloatInput) 区分 fp32 和 half/bf16 的计算路径（fp32 跳过 Cast 操作）。",
+    "Scout-T 报告将 squaresumv1_infershape.cpp 同时列于 P1 信息区和 P2 排除区。经验证该文件仅含 InferShape 函数，不参与 tiling 分支判断，正确分类为 P2/排除。P1 中的提及仅作算子定义上下文的信息性记录，不构成冲突。此处保留在 tiling.file_list 中以提供完整的项目文件上下文。",
+    "全部源码中无 #if __NPU_ARCH__ / ASCEND_VERSION / __CCE_AICORE__ / IsRegbaseSocVersion / IsSocVersionXxx 条件编译指令。唯一的平台过滤通过 CMakeLists.txt 的 ASCEND_COMPUTE_UNIT 分支实现（arch22 vs arch35），目标平台 910B 走 else() 分支选择 arch22，已确认。",
+    "arch35 对应的源文件（op_host/arch35/squaresumv1_tiling.cpp、op_kernel/squaresumv1_arch35.cpp）在当前源码树中均不存在，仅作为 CMakeLists.txt 中的预留分支引用。"
+  ]
+}

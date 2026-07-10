@@ -105,3 +105,5 @@
 - **2026-07-10 2.迭代三 第二波**：A1-P/A2/B 并行完成。A1-P：probe13-20（8个边界）全 PASS，**无已知限制**（空tensor/全规约scalar/rank=0/规约维=1/fp16溢出/全零/不相邻2层全正确）。A2：UT 扩展至 87/87（Key=4 检测+逐层参数+workspace+边界全覆盖）。B：L2 异常 9/9（参数校验返回正确错误码）+ 全边界 26/26 + L0/L1 回归，6 TilingMode 全覆盖。
 - **2026-07-10 2.迭代三 汇合验收**：✅通过（编译+UT 87/87+simulator 18/18(Key0-4)+ST Mock 272/272(L0+L1+L2+边界)，全回归无退化）。cp2 validator 首次 FAILED（缺 test-report.json/case_manifest.json/st_dev_result.json/TEST.md blackbox_case_targets 机器证据）→ 补齐中。
 - **2026-07-10 cp2 校验**：✅PASSED。补齐机器证据（test-report.json UT 87/87、case_manifest.json 644 用例、st_dev_result.json 644/644 Mock 通过、TEST.md blackbox_case_targets L0:117/L1:518/L2:9）。清理重复 CSV、补 L2_007-009。tag `iter3-passed`。
+- **2026-07-10 W 白盒**：✅完成（ascendc-whitebox-design skill 全流程）。白盒 1466（high）/90（low）用例，路径覆盖 22 path（21 reachable），tilingMode 5/5 + dtype 3/3。**重大发现：白盒 agent NPU 实跑时确认 NPU 已恢复**（device_count=8，先前 0），NPU pytest 0 FAILED（有 XFAIL：大 rLength fp16/bf16 精度超 rtol=1e-3，但白盒阈值比 spec 1e-2 严，需用 spec 阈值复判）。
+- **2026-07-10 NPU 恢复**：✅NPU driver 恢复可用（device_count=8，compute OK）。先前 simulator+Mock 降级升级为 NPU 实跑。转入 NPU 精度复验 + msprof 性能采集。

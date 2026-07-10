@@ -1,0 +1,79 @@
+{
+  "status": "pass_with_warnings",
+  "checks": [
+    {
+      "id": "values_traceable",
+      "status": "pass",
+      "detail": "所有 group 的 per_dtype 取值均可追溯到 tiling 源码分支条件或常量定义。已独立复算关键 UB 阈值：(1) AR_FULLLOAD 边界——half/bf16 rLengthAlign=24368 时 ubNeededFullLoad=2*24368*2+24368*4+tmpBufBytes+64=196592<=196608（L718-724），rLength=24369 时溢出（tiling.cpp:718-721）；fp32 rLengthAlign=24376 时 ubNeededFullLoad=2*24376*4+tmpBufBytes+64=196608<=196608（L718-719），rLength=24377 溢出。(2) ARA_FULLLOAD 边界——a0Align=8 时 half/bf16 rLength<=4094（computeAraUbNeeded(4094,8)=196592<=196608, L757-768），fp32 rLength<=6141（computeAraUbNeeded(6141,8)=196608<=196608）。(3) ARA_ROWSPLIT 触发——half rLength=4095 时 ubNeeded=196640>196608，即使 tileA0=8 也溢出，bestTileA0<fp32Epb 触发 mode=3（L795-801）。totalRows 取值 0、1-65536 均在源码合法范围内（L830 min(coreNum, CeilDiv(totalRows,1))）。"
+    },
+    {
+      "id": "groups_coverage",
+      "status": "pass",
+      "detail": "源码 6 个主要分支全部被 G0-G5 覆盖：(1) totalRows==0||rLength==0 -> G0 (tiling.cpp:533)；(2) totalRows==-1 -> G5 MULTI_AXIS (tiling.cpp:579)；(3) isTailReduce=true, canFullLoad -> G1 AR_FULLLOAD (tiling.cpp:726-727)；(4) isTailReduce=true, !canFullLoad -> G2 AR_COLSPLIT (tiling.cpp:728-729)；(5) isTailReduce=false, ubNeededAraFull<=ubSize 或 bestTileA0>=8 -> G3 ARA_FULLLOAD (tiling.cpp:772-774,795-796)；(6) isTailReduce=false, bestTileA0<8 -> G4 ARA_ROWSPLIT (tiling.cpp:800-801)。无遗漏分支。"
+    },
+    {
+      "id": "dimension_values_complete",
+      "status": "pass",
+      "detail": "dtype 维度：所有 group 的 per_dtype 均包含 float16/float/bfloat16 三个键，与 def.cpp:22 的 DataType 注册和 tiling_key.h:17-31 的 3 个 ASCENDC_TPL_SEL 模板实例一致。totalRows 维度：G0=[0]，G1-G5 覆盖 1 至 65536 的代表性值（含素数、2 的幂、10000 等）。rLength 维度：覆盖 0、1、小值（8/128/256）、中值（1024/4096/8192）、边界值（24368/24376/4094/4095/6141/6142）和超大值（100000000）。a0Length 维度（G3/G4）：覆盖 1 至 10000。无源码合法值被遗漏。"
+    },
+    {
+      "id": "constraint_note_correct",
+      "status": "warn",
+      "detail": "数值与取值列表范围一致：G1 note 称 half<=24368/float<=24376，per_dtype max 分别为 24368/24376，匹配；G2 note 称 half>24368/float>24376，per_dtype min 均为 24576，满足；G3 note 称 half<=4094/float<=6141，per_dtype max 为 2047/3070，在范围内；G4 note 称 half>4094/float>6141，per_dtype min 为 4095/6142，匹配。但发现 constraint_note 中引用了内部变量名（违反 schema 禁止规定）：G1/G2/G3/G4 的 note 中出现 'isTailReduce'（如 'isTailReduce=true'），G4 出现 'fp32ElementsPerBlock'，G5 出现 'tilingMode'。这些是用作路由条件描述的附随性引用，并非作为 param 维度名使用，但严格按 schema 规则（04-step4-output.md L46：'禁止引用内部变量名'）构成违规。建议将 'isTailReduce' 替换为 '尾部连续规约' 等自然语言描述，将 'fp32ElementsPerBlock' 替换为 '8（fp32 对齐粒度）'，将 'tilingMode=4' 替换为 '模式 4'。"
+    },
+    {
+      "id": "value_ranges_match",
+      "status": "pass",
+      "detail": "所有取值列表的 min/max 均在源码 source_constraints 定义的合法范围内。G0 rLength=0 匹配 C1 (L533)。G1 rLength max=24368(half)/24376(fp32) 匹配 C17-C19 (L718-724) 的 UB 阈值。G2 rLength min=24576 > 24368/24376 匹配 C20-C21 (L726-729) 的 canFullLoad=false 路径。G3 rLength 全部 <=4094(half)/<=6141(fp32) 匹配 C27-C28 (L770-774) 的 ARA 全载入条件。G4 rLength 全部 >4094(half)/ >6141(fp32) 匹配 C29-C30 (L795-801) 的 ARA 行分块路径。totalRows 范围 0-65536 在 source code L830 的 min(coreNum, CeilDiv(totalRows,1)) 逻辑内合法。a0Length 范围 1-10000 匹配 spec 约束。"
+    },
+    {
+      "id": "platform_consistency",
+      "status": "pass",
+      "detail": "param_def platform='ASCEND910B' 与 S2P0_file_manifest.json platform.soc_version='ASCEND910B' 一致。platform_cores=24 与 S2P0 core_count=24 一致。UB 容量 196608 字节（192KB）与 S2P0 ub_size=196608 和源码 UB_SIZE_910B=192*1024 (tiling.cpp:36) 一致。dtype 组合 {float16, float, bfloat16} 与 def.cpp:22 的注册和 tiling_key.h:17-31 的 ASCENDC_TPL_SEL 实例一致。所有数值基于 DAV_2201 (910B) 平台计算。"
+    },
+    {
+      "id": "execution_mode_coverage",
+      "status": "pass",
+      "detail": "S2P3_test_design.md 第 6 节包含执行模式分析，含轴映射表（分核=totalRows、UB 切分=rLength/rLength×a0Length、指令对齐=rLength）。分核轴覆盖 <coreNum (totalRows=1)、>coreNum (totalRows=65536, 65536%24=16 有尾核)、非整除 (totalRows=10000, 10000%24=16)。UB 切分轴：AR 模式 G1 单 pass (rLength<=24368) 和 G2 多 pass (rLength>24368)；ARA 模式 G3 单/多 tile 和 G4 行分块。指令对齐轴：aligned (rLength=256/4096/8192) 和 non-aligned (rLength=1/7/97/128/997)。axis_role 标注与源码实际逻辑一致。"
+    },
+    {
+      "id": "path_dimension_coverage",
+      "status": "pass",
+      "detail": "S2P1_path_list.json 中所有 21 条 reachable 路径的 input_variables 均为 ['input_dtype', 'input_shape', 'axis']，caller_options 均为空。input_dtype 映射到 per_dtype 的 dtype key（float16/float/bfloat16），input_shape 映射到 group 级维度 totalRows 和 per_dtype 维度 rLength/a0Length，axis 映射到 group 路由（决定 isTailReduce、totalRows==-1 等）。所有路径的 input_variables 和 caller_options 均被对应 group 的维度覆盖。"
+    },
+    {
+      "id": "completeness_check",
+      "status": "pass",
+      "detail": "S2P1 completeness_checklist 中：api_variants=na（单一 API 无变体），format_variants=na（全部 FORMAT_ND），mode_variants=na（单一编译单元），quant_variants=na（无量化），optional_input_combos=na（无可选输入），dispatch_coverage=covered（3 个编译时 dtype 模板 + 5 个运行时 tilingMode 全覆盖），tiling_analysis=covered（tiling 函数完整分析，无外部未溯源函数）。无 status=missing 项。"
+    },
+    {
+      "id": "cross_file_consistency",
+      "status": "pass",
+      "detail": "(1) 路径数：S2P3 第 3 节声明 22 条路径（21 reachable + 1 dead）== S2P1 paths 数组长度 22。一致。(2) group 数：S2P3 第 5 节有 6 个 group (G0-G5) == S2P2 groups 数组长度 6。一致。(3) group ID：S2P3 {G0,G1,G2,G3,G4,G5} == S2P2 {G0,G1,G2,G3,G4,G5}。一致。(4) 路径覆盖：S2P3 第 3 节列出的路径 ID 集合 {P1-P21, P_dead_1} ⊇ S2P1 paths ID 集合。一致。(5) 关键参数值：S2P3 第 2 节 dtype={float16,bfloat16,float}、UB 阈值 half=24368/fp32=24376 与 S2P2 per_dtype 取值一致。"
+    },
+    {
+      "id": "public_function_traced",
+      "status": "pass",
+      "detail": "S2P1 paths 引用的所有自定义函数均在当前算子目录下有定义：GetPlatformInfo (tiling.cpp:40-58)、NormalizeAxis (tiling.cpp:61-73)、CoalesceAxis (tiling.cpp:83-197)、ComputeTmpBufSize (tiling.cpp:200-210)、ComputeLayerSubTiling (tiling.cpp:236-356)、ComputeMultiAxisLayers (tiling.cpp:358-484)、GetWorkspaceSize (tiling.cpp:486-492)。平台 API（CeilAlign/CeilDiv/FloorDiv/GetUbBlockSize 来自 op_common/op_host/util/math_util.h，PlatformAscendC 来自 CANN 标准库）均为标准 CANN 接口，无需算子级溯源。抽查验证：GetPlatformInfo 在 platformInfoPtr!=nullptr 时通过 PlatformAscendC 获取 ubSize=196608 和 coreNum=24，与路径 conditions 中的 ubSize=196608 一致。无未溯源的公共函数。"
+    },
+    {
+      "id": "path_triggerability",
+      "status": "pass",
+      "detail": "所有 21 条 reachable 路径的 input_variable/caller_option 条件均可被 per_dtype 取值列表满足。逐路径验证 dtype 条件：P2(G1) DT_FLOAT16/DT_BF16 -> G1 per_dtype 含 float16/bfloat16 key；P3(G1) DT_FLOAT -> G1 含 float key；P4-P11 同理在对应 group 的 per_dtype 中找到匹配 key。P12(G5) DT_FLOAT16/DT_BF16 -> G5 含 float16/bfloat16；P13(G5) DT_FLOAT -> G5 含 float。P21(G5) DT_FLOAT16/DT_BF16 -> G5 含 float16/bfloat16。P1(G0) 和 P14-P20 的 dtype 条件通过 per_dtype key 覆盖。所有内部变量条件（isTailReduce、totalRows!=-1、ubNeededFullLoad<=ubSize 等）由 group 路由隐式保证——每个 group 的取值范围已设计为必然满足该 group 的路由条件。"
+    },
+    {
+      "id": "coverage_gaps",
+      "status": "warn",
+      "detail": "发现两处测试取值覆盖间隙（不影响模式路由正确性，但边界间值未被采样）：(1) G1-G2 之间 rLength 范围 24369-24575（half/bf16）和 24377-24575（fp32）——G1 max 为边界值 24368/24376，G2 min 为 24576，中间约 200 个值未采样。这些值会正确路由到 G2（rLength>边界），但不被显式测试。(2) G3-G4 之间 rLength 范围 2048-4094（half/bf16）和 3071-6141（fp32）——G3 的代表性最大值 2047/3070 远低于实际边界 4094/6141，中间约 2000-3000 个值属于 G3 模式但未被采样。S2P1_path_list.json 无 boundary_check 字段，因此不构成 fail。建议在 G3 补充接近边界的 rLength 值（如 half=4090、fp32=6138）以增强边界覆盖。"
+    },
+    {
+      "id": "schema_compliance",
+      "status": "pass",
+      "detail": "S2P2_param_def.json 结构完全合规。顶层 keys = {platform, platform_cores, tiling_keys, groups}，4 个必填字段齐全，无禁止字段。每个 group 含必填字段 id/mode/per_dtype/constraint_note，共享维度字段 totalRows/a0Length 为合法可选字段。per_dtype 每个 value 含必填 path/key 及维度取值列表。无禁止字段（t/coverage/thresholds/anchor_dim/per_value/alignment/constraints/low_configs/desc_rules/group_tilingkeys）。tiling_keys=[0,1,2] 对应 3 个编译时 dtype 模板实例（half=0, float=1, bf16=2），与 tiling_key.h ASCENDC_TPL_SEL 声明一致。"
+    }
+  ],
+  "issues": [
+    "constraint_note 违规（warn）：G1/G2/G3/G4 的 constraint_note 中出现内部变量名 'isTailReduce'，G4 出现 'fp32ElementsPerBlock'，G5 出现 'tilingMode'。04-step4-output.md L46 明确禁止 constraint_note 引用内部变量名。虽然这些是用作路由条件描述而非 param 维度引用，但严格按 schema 规则构成违规。建议替换为自然语言描述（如 'isTailReduce=true' -> '尾部连续规约模式'，'fp32ElementsPerBlock' -> '8（fp32 对齐粒度）'，'tilingMode=4' -> '模式 4'）。",
+    "覆盖间隙（warn）：G1-G2 之间 rLength 约 200 个值（24369-24575）和 G3-G4 之间 rLength 约 2000-3000 个值（half: 2048-4094, fp32: 3071-6141）未被任何 group 的取值列表采样。虽然模式路由正确（边界值本身已被测试），但建议在 G3 补充接近实际边界的 rLength 代表值（如 half=4090、fp32=6138）以增强边界覆盖。"
+  ]
+}

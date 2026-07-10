@@ -1,0 +1,2346 @@
+{
+  "cases": [
+    {
+      "id": "case00000",
+      "params": {
+        "_group": "G0",
+        "dtype": "float16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 0, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00001",
+      "params": {
+        "_group": "G0",
+        "dtype": "float",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 0, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00002",
+      "params": {
+        "_group": "G0",
+        "dtype": "bfloat16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 0, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00003",
+      "params": {
+        "_group": "G1",
+        "dtype": "float16",
+        "rLength": 1,
+        "totalRows": 997,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [997, 1, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [997, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00004",
+      "params": {
+        "_group": "G1",
+        "dtype": "float16",
+        "rLength": 256,
+        "totalRows": 7,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [7, 256, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [7, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00005",
+      "params": {
+        "_group": "G1",
+        "dtype": "float16",
+        "rLength": 4096,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 4096, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00006",
+      "params": {
+        "_group": "G1",
+        "dtype": "float16",
+        "rLength": 8192,
+        "totalRows": 10000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10000, 8192, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10000, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00007",
+      "params": {
+        "_group": "G1",
+        "dtype": "float16",
+        "rLength": 24368,
+        "totalRows": 97,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [97, 24368, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [97, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00008",
+      "params": {
+        "_group": "G1",
+        "dtype": "float",
+        "rLength": 1,
+        "totalRows": 997,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [997, 1, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [997, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00009",
+      "params": {
+        "_group": "G1",
+        "dtype": "float",
+        "rLength": 256,
+        "totalRows": 7,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [7, 256, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [7, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00010",
+      "params": {
+        "_group": "G1",
+        "dtype": "float",
+        "rLength": 4096,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 4096, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00011",
+      "params": {
+        "_group": "G1",
+        "dtype": "float",
+        "rLength": 8192,
+        "totalRows": 10000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10000, 8192, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10000, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00012",
+      "params": {
+        "_group": "G1",
+        "dtype": "float",
+        "rLength": 24376,
+        "totalRows": 97,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [97, 24376, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [97, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00013",
+      "params": {
+        "_group": "G1",
+        "dtype": "bfloat16",
+        "rLength": 1,
+        "totalRows": 997,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [997, 1, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [997, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00014",
+      "params": {
+        "_group": "G1",
+        "dtype": "bfloat16",
+        "rLength": 256,
+        "totalRows": 7,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [7, 256, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [7, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00015",
+      "params": {
+        "_group": "G1",
+        "dtype": "bfloat16",
+        "rLength": 4096,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 4096, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00016",
+      "params": {
+        "_group": "G1",
+        "dtype": "bfloat16",
+        "rLength": 8192,
+        "totalRows": 10000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10000, 8192, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10000, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00017",
+      "params": {
+        "_group": "G1",
+        "dtype": "bfloat16",
+        "rLength": 24368,
+        "totalRows": 97,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [97, 24368, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [97, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00018",
+      "params": {
+        "_group": "G2",
+        "dtype": "float16",
+        "rLength": 24576,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 24576, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00019",
+      "params": {
+        "_group": "G2",
+        "dtype": "float16",
+        "rLength": 65536,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 65536, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00023",
+      "params": {
+        "_group": "G2",
+        "dtype": "float",
+        "rLength": 24576,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 24576, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00024",
+      "params": {
+        "_group": "G2",
+        "dtype": "float",
+        "rLength": 65536,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 65536, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00028",
+      "params": {
+        "_group": "G2",
+        "dtype": "bfloat16",
+        "rLength": 24576,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 24576, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00029",
+      "params": {
+        "_group": "G2",
+        "dtype": "bfloat16",
+        "rLength": 65536,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 65536, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00033",
+      "params": {
+        "_group": "G3",
+        "dtype": "float16",
+        "rLength": 1,
+        "totalRows": 100,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 1, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00034",
+      "params": {
+        "_group": "G3",
+        "dtype": "float16",
+        "rLength": 128,
+        "totalRows": 5000,
+        "a0Length": 97,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [5000, 128, 97],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [5000, 97],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00037",
+      "params": {
+        "_group": "G3",
+        "dtype": "float16",
+        "rLength": 2047,
+        "totalRows": 127,
+        "a0Length": 8,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [127, 2047, 8],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [127, 8],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00038",
+      "params": {
+        "_group": "G3",
+        "dtype": "float",
+        "rLength": 1,
+        "totalRows": 100,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 1, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00039",
+      "params": {
+        "_group": "G3",
+        "dtype": "float",
+        "rLength": 128,
+        "totalRows": 5000,
+        "a0Length": 97,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [5000, 128, 97],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [5000, 97],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00042",
+      "params": {
+        "_group": "G3",
+        "dtype": "float",
+        "rLength": 3070,
+        "totalRows": 127,
+        "a0Length": 8,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [127, 3070, 8],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [127, 8],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00043",
+      "params": {
+        "_group": "G3",
+        "dtype": "bfloat16",
+        "rLength": 1,
+        "totalRows": 100,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [100, 1, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [100, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00044",
+      "params": {
+        "_group": "G3",
+        "dtype": "bfloat16",
+        "rLength": 128,
+        "totalRows": 5000,
+        "a0Length": 97,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [5000, 128, 97],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [5000, 97],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00047",
+      "params": {
+        "_group": "G3",
+        "dtype": "bfloat16",
+        "rLength": 2047,
+        "totalRows": 127,
+        "a0Length": 8,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [127, 2047, 8],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [127, 8],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00050",
+      "params": {
+        "_group": "G4",
+        "dtype": "float16",
+        "rLength": 6144,
+        "totalRows": 1,
+        "a0Length": 3000,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 6144, 3000],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 3000],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00052",
+      "params": {
+        "_group": "G4",
+        "dtype": "float16",
+        "rLength": 10000,
+        "totalRows": 64,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [64, 10000, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [64, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00055",
+      "params": {
+        "_group": "G4",
+        "dtype": "float",
+        "rLength": 8192,
+        "totalRows": 1,
+        "a0Length": 3000,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 8192, 3000],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 3000],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00057",
+      "params": {
+        "_group": "G4",
+        "dtype": "float",
+        "rLength": 10000,
+        "totalRows": 64,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [64, 10000, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [64, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00060",
+      "params": {
+        "_group": "G4",
+        "dtype": "bfloat16",
+        "rLength": 6144,
+        "totalRows": 1,
+        "a0Length": 3000,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 6144, 3000],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 3000],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00062",
+      "params": {
+        "_group": "G4",
+        "dtype": "bfloat16",
+        "rLength": 10000,
+        "totalRows": 64,
+        "a0Length": 1,
+        "keep_dims": false
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [64, 10000, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [64, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00063",
+      "params": {
+        "_group": "G5",
+        "dtype": "float16",
+        "rLength": 1,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 1, 1, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00064",
+      "params": {
+        "_group": "G5",
+        "dtype": "float16",
+        "rLength": 8,
+        "totalRows": 5000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [50, 100, 8, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [50, 100, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00065",
+      "params": {
+        "_group": "G5",
+        "dtype": "float16",
+        "rLength": 128,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10, 10, 128, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10, 10, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00066",
+      "params": {
+        "_group": "G5",
+        "dtype": "float16",
+        "rLength": 1024,
+        "totalRows": 65536,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [256, 256, 1024, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [256, 256, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00067",
+      "params": {
+        "_group": "G5",
+        "dtype": "float16",
+        "rLength": 10000,
+        "totalRows": 128,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8, 16, 10000, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [8, 16, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00068",
+      "params": {
+        "_group": "G5",
+        "dtype": "float",
+        "rLength": 1,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 1, 1, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00069",
+      "params": {
+        "_group": "G5",
+        "dtype": "float",
+        "rLength": 8,
+        "totalRows": 5000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [50, 100, 8, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [50, 100, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00070",
+      "params": {
+        "_group": "G5",
+        "dtype": "float",
+        "rLength": 128,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10, 10, 128, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10, 10, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00071",
+      "params": {
+        "_group": "G5",
+        "dtype": "float",
+        "rLength": 1024,
+        "totalRows": 65536,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [256, 256, 1024, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [256, 256, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00072",
+      "params": {
+        "_group": "G5",
+        "dtype": "float",
+        "rLength": 10000,
+        "totalRows": 128,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8, 16, 10000, 1],
+            "dtype": "float",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [8, 16, 1],
+            "dtype": "float"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00073",
+      "params": {
+        "_group": "G5",
+        "dtype": "bfloat16",
+        "rLength": 1,
+        "totalRows": 1,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 1, 1, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00074",
+      "params": {
+        "_group": "G5",
+        "dtype": "bfloat16",
+        "rLength": 8,
+        "totalRows": 5000,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [50, 100, 8, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [50, 100, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00075",
+      "params": {
+        "_group": "G5",
+        "dtype": "bfloat16",
+        "rLength": 128,
+        "totalRows": 100,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [10, 10, 128, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [10, 10, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00076",
+      "params": {
+        "_group": "G5",
+        "dtype": "bfloat16",
+        "rLength": 1024,
+        "totalRows": 65536,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [256, 256, 1024, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [256, 256, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case00077",
+      "params": {
+        "_group": "G5",
+        "dtype": "bfloat16",
+        "rLength": 10000,
+        "totalRows": 128,
+        "keep_dims": false,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8, 16, 10000, 1],
+            "dtype": "bfloat16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [8, 16, 1],
+            "dtype": "bfloat16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00000",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00001",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00002",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [8192]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8192],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00003",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [8192]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8192],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00004",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [5120]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [5120],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00005",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [2048]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [2048],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00006",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [3072]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [3072],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00007",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [16384]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [16384],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00008",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [128, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [128, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [128],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00009",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [2048, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [2048, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [2048],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00010",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [1024, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1024, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1024],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00011",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [128]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [128],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00012",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [128]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [128],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00013",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [4096, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [4096],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00014",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          0,
+          1
+        ],
+        "shape": [4096, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00015",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [4096, 11008]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096, 11008],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [4096],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00016",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [8192, 8192]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8192, 8192],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [8192],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00017",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [8192, 28672]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8192, 28672],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [8192],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00018",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          0
+        ],
+        "shape": [4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00019",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [3, 224, 224]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [3, 224, 224],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [3, 224],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00020",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [512, 7, 7]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [512, 7, 7],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [512, 7],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00021",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [2048, 7, 7]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [2048, 7, 7],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [2048, 7],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00022",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": true,
+        "axis": [
+          -1
+        ],
+        "shape": [4, 1000, 4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4, 1000, 4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [4, 1000, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00023",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [32, 128, 128]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [32, 128, 128],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [32, 128],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00024",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": true,
+        "axis": [
+          -1
+        ],
+        "shape": [4096]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00025",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": true,
+        "axis": [
+          -1
+        ],
+        "shape": [8192]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [8192],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00026",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          1,
+          2
+        ],
+        "shape": [2, 512, 2048]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [2, 512, 2048],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [2],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00027",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [4096, 14336]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [4096, 14336],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [4096],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00028",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [768]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [768],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00029",
+      "params": {
+        "dtype": "float32",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [1024]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1024],
+            "dtype": "float32",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float32"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00030",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [64, 64]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [64, 64],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [64],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "network00031",
+      "params": {
+        "dtype": "float16",
+        "keep_dims": false,
+        "axis": [
+          -1
+        ],
+        "shape": [256]
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [256],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case_empty_input_totalRows",
+      "params": {
+        "_group": "input_empty",
+        "dtype": "float16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 0,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [0, 0, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [0, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case_empty_input_rLength",
+      "params": {
+        "_group": "input_empty",
+        "dtype": "float16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 0, 1],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 1],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case_empty_input_a0Length",
+      "params": {
+        "_group": "input_empty",
+        "dtype": "float16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 0
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [1, 0, 0],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [1, 0],
+            "dtype": "float16"
+          }
+        }
+      }
+    },
+    {
+      "id": "case_empty_all_zero",
+      "params": {
+        "_group": "input_empty",
+        "dtype": "float16",
+        "rLength": 0,
+        "keep_dims": false,
+        "totalRows": 1,
+        "a0Length": 1
+      },
+      "tensors": {
+        "inputs": {
+          "input": {
+            "shape": [0, 0, 0],
+            "dtype": "float16",
+            "_data_range": "normal"
+          }
+        },
+        "outputs": {
+          "result": {
+            "shape": [0, 0],
+            "dtype": "float16"
+          }
+        }
+      }
+    }
+  ]
+}
