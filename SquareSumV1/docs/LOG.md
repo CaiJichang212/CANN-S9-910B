@@ -54,7 +54,7 @@
 | 1.4R | 测试设计评审 | ✅ | 2026-07-10 |
 | — | CP2 用户确认 | ⬜ | |
 | 2.迭代一 | ✅（汇合验收通过，sim+Mock 路径） | 2026-07-10 |
-| 2.迭代二 | 策略整合 | ⬜ | |
+| 2.迭代二 | A1-Main✅(4分支)；第二波进行中 | 🔄 | 2026-07-10 |
 | 2.迭代三 | 全量覆盖 | ⬜ | |
 | W | 白盒测试生成与汇合 | ⬜ | |
 | C | PyTorch ST 开发 | ⬜ | |
@@ -80,7 +80,7 @@
 | 测试设计 | `SquareSumV1/docs/TEST.md` | ✅ |
 | 测试评审 | `SquareSumV1/docs/TEST_REVIEW.md` | ✅ |
 | ST 用例 | `SquareSumV1/tests/st/testcases/` | ✅ |
-| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ✅(AR_FULLLOAD) |
+| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ✅(4 TilingKey) |
 | 穿刺验证 | `SquareSumV1/probe/` | ✅(5/5 sim) |
 | UT 测试 | `SquareSumV1/tests/ut/` | ✅(25/25) |
 | ST 测试工程 | `SquareSumV1/tests/st/` | ✅(Mock 117/117) |
@@ -98,3 +98,4 @@
 - **2026-07-10 2.迭代一 A1-Main**：主线骨架完成（developer）。创建完整算子工程（op_host/op_kernel/op_api/op_graph），实现 AR_FULLLOAD（Key=0）链路 DataCopyPad→Cast→Mul→ReduceSum→Cast→DataCopyPad，Double Buffer，动态 blockDim。编译通过，3 kernel binary（FP16/FP32/BF16），产物 custom_opp_{openEuler,ubuntu}_aarch64.run。simulator 精度全通过（fp16 [4,1000] axis=-1 keep_dims T/F，NaN/inf 传播正确）。解决 4 个 API 适配问题（gert::IntArray→RuntimeAttrs::GetListInt、DT_BFLOAT16→DT_BF16、kernel 函数名 snake_case、OpAttrDef API）。运行环境=simulator。
 - **2026-07-10 2.迭代一 第二波**：A1-P/A2/B 并行完成。A1-P：5 穿刺 simulator 全 PASS（小R/大R UB41%/非对齐/fp32快路径/NaN-inf），修复 verify_result inf 配对。A2：25 UT 100%（dtype/合轴/blockDim/UB/边界），发现 TilingKey 编码 fp16=1/fp32=0/bf16=27。B：ST 工程编译通过，L0 126→过滤9超限→117 有效，CPU golden 10/10 + Mock 117/117。NPU 实跑均延后。
 - **2026-07-10 2.迭代一 汇合验收**：✅通过（编译+UT 25/25+simulator 10/10+ST Mock 117/117=100%）。NPU 不可用，验收降级为 simulator+Mock 综合（tester NPU C++ 测试延后）。tag `iter1-passed`。
+- **2026-07-10 2.迭代二 A1-Main**：4 TilingKey 全实现并编译通过。tiling 扩展 axis 位置判定（最内层→AR/非尾轴→ARA）+ 全载/分载阈值（ARA 二分搜索）。Kernel：AR_COLSPLIT(分chunk fp32累加器跨chunk+=)、ARA_FULLLOAD(Pattern::Reduce::RA 全载)、ARA_ROWSPLIT(R分chunk+Duplicate/Add合并)。simulator 6 用例全通过（Key0回归2 + Key1/2/3 各分支）。修复 Pattern 模板参数(AscendC::Pattern::Reduce::RA)+二分搜索初值 bug。
