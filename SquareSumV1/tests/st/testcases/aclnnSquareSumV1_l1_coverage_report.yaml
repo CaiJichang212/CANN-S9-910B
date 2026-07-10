@@ -1,0 +1,34 @@
+details:
+  axis_constraint:
+    axis_in_range: true
+    axis_unique: true
+    description: 所有 L1 用例的 axis 值均在 [-rank, rank-1] 范围内，无重复，output shape 正确推导
+    output_shape_correct: true
+  boundary_coverage:
+    B1_reduce_axis_size_1: true
+    B2_rank_0_scalar: true
+    B3_empty_tensor: true
+    E5_fp16_overflow_65504: true
+  pairwise_coverage:
+    coverage_rate: 100.00%
+    covered_combinations: 15
+    total_combinations: 15
+summary:
+  dimensions_coverage:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  dtype_coverage:
+  - bfloat16
+  - float16
+  - float32
+  keep_dims_coverage:
+  - 'False'
+  - 'True'
+  level: L1
+  pairwise_dtype_ndim_coverage_rate: 100.00%
+  strategy: pairwise_coverage
+  total_cases: 518

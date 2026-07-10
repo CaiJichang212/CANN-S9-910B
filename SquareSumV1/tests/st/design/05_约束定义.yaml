@@ -1,0 +1,164 @@
+metadata:
+  operator: "aclnnSquareSumV1"
+  version: "1.1"
+  description: "SquareSumV1算子约束关系定义：平方+规约融合算子（v1.1 修复 axis-rank/唯一性/output shape 约束）"
+
+factors:
+  # ── 输入 Tensor ──
+  input.dtype: {type: dtype, param: input, io_type: input}
+  input.shape: {type: shape, param: input, io_type: input}
+  input.format: {type: format, param: input, io_type: input}
+  input.exist: {type: exist, param: input, io_type: input}
+  input.dimensions: {type: dimensions, param: input, io_type: input}
+
+  # ── axis (aclIntArray) ──
+  axis.dtype: {type: dtype, param: axis, io_type: input}
+  axis.exist: {type: exist, param: axis, io_type: input}
+  axis.length_ranges: {type: length_ranges, param: axis, io_type: input}
+  axis.length: {type: length, param: axis, io_type: input}
+  axis.value_range: {type: value_range, param: axis, io_type: input}
+  axis.value: {type: value, param: axis, io_type: input}
+
+  # ── keepDims (bool) ──
+  keepDims.dtype: {type: dtype, param: keepDims, io_type: input}
+  keepDims.exist: {type: exist, param: keepDims, io_type: input}
+  keepDims.value: {type: value, param: keepDims, io_type: input}
+
+  # ── 输出 Tensor ──
+  result.dtype: {type: dtype, param: result, io_type: output}
+  result.shape: {type: shape, param: result, io_type: output}
+  result.format: {type: format, param: result, io_type: output}
+  result.exist: {type: exist, param: result, io_type: output}
+  result.dimensions: {type: dimensions, param: result, io_type: output}
+
+constraints:
+
+  # ========================================
+  # 隐式约束（自动生成）
+  # ========================================
+
+  - id: "IMPLICIT-SHAPE-input"
+    type: calculate
+    sources: [input.dimensions]
+    target: "input.shape"
+    expression: "derive_shape_from_dimensions(sources[0])"
+    description: "根据dimensions生成input.shape"
+    implicit: True
+  - id: "IMPLICIT-RANGE-input"
+    type: calculate
+    sources: [input.dtype]
+    target: "input.value_range"
+    expression: "derive_value_range_from_dtype(sources[0])"
+    description: "根据dtype选择input.value_range"
+    implicit: True
+  - id: "IMPLICIT-RANGE-axis"
+    type: calculate
+    sources: [axis.dtype]
+    target: "axis.value_range"
+    expression: "derive_value_range_from_dtype(sources[0])"
+    description: "根据dtype选择axis.value_range"
+    implicit: True
+  - id: "IMPLICIT-LENGTH-axis"
+    type: calculate
+    sources: [axis.length_ranges]
+    target: "axis.length"
+    expression: "derive_length_from_length_ranges(sources[0])"
+    description: "根据length_ranges生成axis.length"
+    implicit: True
+  - id: "IMPLICIT-VALUE-LIST-axis"
+    type: calculate
+    sources: [axis.length, axis.value_range]
+    target: "axis.value"
+    expression: "derive_array_value_from_length_and_value_range(sources[0], sources[1])"
+    description: "根据length和value_range生成axis.value"
+    implicit: True
+  - id: "IMPLICIT-SHAPE-result"
+    type: calculate
+    sources: [result.dimensions]
+    target: "result.shape"
+    expression: "derive_shape_from_dimensions(sources[0])"
+    description: "根据dimensions生成result.shape"
+    implicit: True
+
+  # ========== 类型约束 ==========
+  # 输出 dtype 与输入 dtype 保持一致
+  - id: "C-TYPE-001"
+    type: calculate
+    sources: ["input.dtype"]
+    target: "result.dtype"
+    expression: "sources[0]"
+    description: "result.dtype = input.dtype（输出类型等于输入类型）"
+
+  # ========== 格式约束 ==========
+  # 输出 format 与输入 format 保持一致
+  - id: "C-FMT-001"
+    type: calculate
+    sources: ["input.format"]
+    target: "result.format"
+    expression: "sources[0]"
+    description: "result.format = input.format（输出格式等于输入格式）"
+
+  # ========================================
+  # axis 动态约束（v1.1 新增 - 修复 1.4R HIGH 缺陷）
+  # ========================================
+  # 注：以下三条约束为跨因子动态约束，标准生成器无法自动求解。
+  # 通过 regenerate_testcases.py 脚本在用例生成阶段强制保证。
+
+  # C-AXIS-001: axis 元素值必须在 [-rank, rank-1] 范围内
+  # 来源: spec.yaml attributes[0].axis.machine_constraint
+  #        lower_inclusive: "-rank(x)"
+  #        upper_exclusive: "rank(x)"
+  # 实现: regenerate_testcases.py::generate_valid_axis() 按 rank 动态限定取值范围
+  - id: "C-AXIS-001"
+    type: calculate
+    sources: ["input.dimensions"]
+    target: "axis.value_range"
+    expression: "dynamic_axis_range_from_rank(sources[0])"
+    description: >
+      axis 每个元素值必须在 [-rank(input), rank(input)-1] 范围内。
+      此为跨因子动态约束：axis 的合法取值范围依赖于 input 的维度数。
+      生成器无法自动求解，通过 regenerate_testcases.py 在用例生成时逐条保证。
+
+  # C-AXIS-002: axis 元素归一化后不可重复
+  # 来源: spec.yaml attributes[0].axis.semantics: "元素不可重复"
+  #        boundary_conditions[5]: axis 含重复值 → 报错
+  # 实现: regenerate_testcases.py::generate_valid_axis() 使用无重复采样
+  - id: "C-AXIS-002"
+    type: calculate
+    sources: ["axis.value"]
+    target: "axis.value"
+    expression: "distinct_elements_after_normalization(sources[0])"
+    description: >
+      axis 列表中的元素在归一化（负索引转正索引）后不可重复。
+      例如 axis=[0, -3] 对于 rank=3 的输入是非法的（-3+3=0 与 0 重复）。
+      L2 异常用例 L2_003 覆盖重复 axis 报错场景。
+      生成器无法自动求解，通过 regenerate_testcases.py 在用例生成时逐条保证。
+
+  # C-AXIS-003: axis 元素数量不超过 rank
+  # 来源: spec.yaml attributes[0].axis 语义（最多 5 维，axis 元素数 <= rank）
+  # 实现: regenerate_testcases.py::generate_valid_axis() 中 length = min(length, rank)
+  - id: "C-AXIS-003"
+    type: calculate
+    sources: ["input.dimensions", "axis.length"]
+    target: "axis.length"
+    expression: "min(sources[1], sources[0])"
+    description: >
+      axis 元素数量不超过输入维度数 rank(input)。
+      归一化后无重复的 axis 元素数最多等于 rank。
+
+  # C-SHAPE-001: output shape 由 input.shape + axis + keep_dims 推导
+  # 来源: spec.yaml outputs[0].shape_rule + shape_constraints.notes
+  # 实现: regenerate_testcases.py::derive_output_shape()
+  - id: "C-SHAPE-001"
+    type: calculate
+    sources: ["input.shape", "axis.value", "keepDims.value"]
+    target: "result.shape"
+    expression: "derive_output_shape(sources[0], sources[1], sources[2])"
+    description: >
+      output shape 推导规则：
+      - keep_dims=True: 被规约维度（axis 指定的维度）置为 1，其余维度保持不变
+      - keep_dims=False: 被规约维度从 output shape 中去除
+      - axis=[]: output shape = input shape（不做规约，输出 = square(x)）
+      - rank=0 (scalar): output shape = () (scalar)
+      注: 实际运行时 output shape 由调用方（test_op.py）预计算并预分配，
+      kernel 只负责计算。CSV 中的 output shape 用于可追溯性验证。

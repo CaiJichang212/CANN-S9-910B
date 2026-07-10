@@ -1,0 +1,97 @@
+# 求解配置
+# 基于约束定义自动生成
+# 
+# 依赖关系分析：
+# - IMPLICIT-SHAPE-input: input.shape <- input.dimensions (隐式)
+# - IMPLICIT-RANGE-input: input.value_range <- input.dtype (隐式)
+# - IMPLICIT-RANGE-axis: axis.value_range <- axis.dtype (隐式)
+# - IMPLICIT-LENGTH-axis: axis.length <- axis.length_ranges (隐式)
+# - IMPLICIT-VALUE-LIST-axis: axis.value <- axis.length, axis.value_range (隐式)
+# - IMPLICIT-SHAPE-result: result.shape <- result.dimensions (隐式)
+# - C-TYPE-001: result.dtype <- input.dtype
+# - C-FMT-001: result.format <- input.format
+
+solver:
+  strategy: topological
+  
+  # ========== 锚点因子 ==========
+  # 定义：入度为0的因子，无依赖，可独立随机采样
+  anchors:
+    # 类型锚点
+    - axis.dtype
+    - input.dtype
+    - keepDims.dtype
+    - keepDims.value
+    # 固定值因子（无依赖）
+    - axis.exist
+    - axis.length_ranges
+    - input.dimensions
+    - input.exist
+    - input.format
+    - keepDims.exist
+    - result.dimensions
+    - result.exist
+  
+  # ========== 推导顺序 ==========
+  derivation_order:
+    # Level 0: 锚点因子（无依赖，可独立采样）
+    level_0:
+      - axis.dtype
+      - axis.exist
+      - axis.length_ranges
+      - input.dimensions
+      - input.dtype
+      - input.exist
+      - input.format
+      - keepDims.dtype
+      - keepDims.exist
+      - keepDims.value
+      - result.dimensions
+      - result.exist
+    # Level 1: 从前面层级推导
+    #   - axis.length <- [axis.length_ranges]
+    #   - axis.value_range <- [axis.dtype]
+    #   - input.shape <- [input.dimensions]
+    #   - input.value_range <- [input.dtype]
+    #   - result.dtype <- [input.dtype]
+    #   ... (+2 more)
+    level_1:
+      - axis.length
+      - axis.value_range
+      - input.shape
+      - input.value_range
+      - result.dtype
+      - result.format
+      - result.shape
+    # Level 2: 从前面层级推导
+    #   - axis.value <- [axis.length, axis.value_range]
+    level_2:
+      - axis.value
+
+# ========== 隐式依赖说明 ==========
+# 
+# 隐式约束由 generate_implicit_constraints.py 自动生成，
+# 描述参数内部属性的推导关系。
+# 
+#   input.shape <- input.dimensions  (IMPLICIT-SHAPE-input: 根据dimensions生成input.shape)
+#   input.value_range <- input.dtype  (IMPLICIT-RANGE-input: 根据dtype选择input.value_range)
+#   axis.value_range <- axis.dtype  (IMPLICIT-RANGE-axis: 根据dtype选择axis.value_range)
+#   axis.length <- axis.length_ranges  (IMPLICIT-LENGTH-axis: 根据length_ranges生成axis.length)
+#   axis.value <- axis.length, axis.value_range  (IMPLICIT-VALUE-LIST-axis: 根据length和value_range生成axis.value)
+#   result.shape <- result.dimensions  (IMPLICIT-SHAPE-result: 根据dimensions生成result.shape)
+# 
+# ========== 依赖图说明 ==========
+# 
+# 类型依赖图：
+#   input.shape <- input.dimensions  (IMPLICIT-SHAPE-input)
+#   input.value_range <- input.dtype  (IMPLICIT-RANGE-input)
+#   axis.value_range <- axis.dtype  (IMPLICIT-RANGE-axis)
+#   axis.length <- axis.length_ranges  (IMPLICIT-LENGTH-axis)
+#   axis.value <- axis.length, axis.value_range  (IMPLICIT-VALUE-LIST-axis)
+#   result.shape <- result.dimensions  (IMPLICIT-SHAPE-result)
+#   result.dtype <- input.dtype  (C-TYPE-001)
+#   result.format <- input.format  (C-FMT-001)
+# 
+# 形状依赖图：
+#   input.shape <- input.dimensions  (IMPLICIT-SHAPE-input)
+#   result.shape <- result.dimensions  (IMPLICIT-SHAPE-result)

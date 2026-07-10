@@ -1,0 +1,54 @@
+details:
+  axis_constraint:
+    axis_in_range: true
+    axis_unique: true
+    description: 所有 L0 用例的 axis 值均在 [-rank, rank-1] 范围内，无重复，output shape 正确推导
+    output_shape_correct: true
+  input.dimensions:
+    covered:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    target:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+  input.dtype:
+    covered:
+    - bfloat16
+    - float16
+    - float32
+    target:
+    - float16
+    - float32
+    - bfloat16
+  keepDims.value:
+    covered:
+    - 'False'
+    - 'True'
+    target:
+    - 'False'
+    - 'True'
+summary:
+  dimensions_coverage:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  dtype_coverage:
+  - bfloat16
+  - float16
+  - float32
+  keep_dims_coverage:
+  - 'False'
+  - 'True'
+  level: L0
+  strategy: single_factor_coverage
+  total_cases: 126
+  value_range_count: 36
