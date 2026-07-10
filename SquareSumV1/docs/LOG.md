@@ -55,7 +55,7 @@
 | — | CP2 用户确认 | ⬜ | |
 | 2.迭代一 | ✅（汇合验收通过，sim+Mock 路径） | 2026-07-10 |
 | 2.迭代二 | ✅（汇合验收通过，sim+Mock，Key=3 已触发验证） | 2026-07-10 |
-| 2.迭代三 | 全量覆盖 | ⬜ | |
+| 2.迭代三 | A1-Main✅(5 TilingKey 含Key=4)；第二波进行中 | 🔄 | 2026-07-10 |
 | W | 白盒测试生成与汇合 | ⬜ | |
 | C | PyTorch ST 开发 | ⬜ | |
 | 3.1 | 最终精度验收 | ⬜ | |
@@ -80,7 +80,7 @@
 | 测试设计 | `SquareSumV1/docs/TEST.md` | ✅ |
 | 测试评审 | `SquareSumV1/docs/TEST_REVIEW.md` | ✅ |
 | ST 用例 | `SquareSumV1/tests/st/testcases/` | ✅ |
-| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ✅(4 TilingKey) |
+| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ✅(5 TilingKey) |
 | 穿刺验证 | `SquareSumV1/probe/` | ✅(12/12 sim) |
 | UT 测试 | `SquareSumV1/tests/ut/` | ✅(55/55) |
 | ST 测试工程 | `SquareSumV1/tests/st/` | ✅(Mock L0 117+L1 120+全量462) |
@@ -101,3 +101,4 @@
 - **2026-07-10 2.迭代二 A1-Main**：4 TilingKey 全实现并编译通过。tiling 扩展 axis 位置判定（最内层→AR/非尾轴→ARA）+ 全载/分载阈值（ARA 二分搜索）。Kernel：AR_COLSPLIT(分chunk fp32累加器跨chunk+=)、ARA_FULLLOAD(Pattern::Reduce::RA 全载)、ARA_ROWSPLIT(R分chunk+Duplicate/Add合并)。simulator 6 用例全通过（Key0回归2 + Key1/2/3 各分支）。修复 Pattern 模板参数(AscendC::Pattern::Reduce::RA)+二分搜索初值 bug。
 - **2026-07-10 2.迭代二 第二波**：A1-P/A2/B 并行完成。A1-P：probe6-12（7个）全 PASS，覆盖 Key0/1/2+全dtype；**发现 Key=3 端到端未触发**（tiling 优先 Key=2，设计正确，UT#39/#40 已验证 Key=3 逻辑）；UB 紧极限 98%+。A2：新增30→总55全通过，迭代一25无回归。B：L0 117+L1采样120+L1全量462 Mock 全通过，覆盖 4 TilingKey+空张量+多值axis+全dtype。
 - **2026-07-10 2.迭代二 汇合验收**：✅通过（UT 55/55 + sim 18/18 + ST Mock 237/237，迭代一无回归；Key=3 经构造 [4,10000,100] 成功触发验证；6 TilingMode 全覆盖）。tag `iter2-passed`。剩余风险：probe7/11/12 UB 98%+，NPU 上板需关注碎片。
+- **2026-07-10 2.迭代三 A1-Main**：Key=4 MULTI_AXIS 逐层规约实现（不相邻多值 axis）。tiling 检测合轴连续性（连续→Key0-3，不连续→Key4）。Kernel：逐层从内到外 reduce，第0层 square+reduce（fp32），后续层纯 reduce，中间结果 fp32 存 workspace（2*inputElems 乒乓），最终 Cast 回 dtype。simulator 13 用例全通过（不相邻多值 3D/4D/5D + 负索引 + 全dtype + keep_dims T/F），Key0-3 回归 10 用例无回归。**5 TilingKey 全部实现**。

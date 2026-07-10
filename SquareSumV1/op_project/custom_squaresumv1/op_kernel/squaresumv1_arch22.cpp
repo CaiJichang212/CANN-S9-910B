@@ -5,8 +5,6 @@
  *
  * Template parameter:
  *   D_T_X: data type (half / float / bfloat16_t)
- *
- * For iteration 1, only half (float16) is supported.
  */
 
 #include "arch22/squaresumv1.h"
@@ -17,6 +15,6 @@ __global__ __aicore__ void square_sum_v1(GM_ADDR input, GM_ADDR result, GM_ADDR 
     REGISTER_TILING_DEFAULT(SquareSumV1TilingData);
     GET_TILING_DATA_WITH_STRUCT(SquareSumV1TilingData, tilingData, tiling);
     NsSquareSumV1::SquareSumV1<D_T_X> op;
-    op.Init(input, result, &tilingData);
+    op.Init(input, result, workspace, &tilingData);
     op.Process();
 }

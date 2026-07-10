@@ -7,12 +7,17 @@
  * TilingKey=1: AR_COLSPLIT  - tail axis reduce, column chunk
  * TilingKey=2: ARA_FULLLOAD - non-tail axis reduce, full load (Pattern::Reduce::RA)
  * TilingKey=3: ARA_ROWSPLIT - non-tail axis reduce, row chunk
+ * TilingKey=4: MULTI_AXIS   - non-contiguous multi-axis, layer-by-layer reduce
  */
 
 #ifndef _SQUARESUMV1_TILING_DATA_H_
 #define _SQUARESUMV1_TILING_DATA_H_
 
 #include <cstdint>
+
+// Maximum number of reduction layers for MULTI_AXIS mode
+// For up to 5D input, at most 5 reduce axes, but after coalescing max 3 non-contiguous groups
+constexpr int32_t SS_MAX_LAYERS = 5;
 
 struct SquareSumV1TilingData {
     // === Multi-core splitting (all modes) ===
@@ -38,8 +43,29 @@ struct SquareSumV1TilingData {
     int64_t rChunkSize;       // R chunk size for ARA_ROWSPLIT mode
     int64_t numRChunks;       // Number of R chunks for ARA_ROWSPLIT mode
 
+    // === MULTI_AXIS (Key=4) parameters ===
+    int32_t  numLayers;                                          // Number of reduce layers (sorted innermost first)
+    int32_t  layerAxis[SS_MAX_LAYERS];                           // Original axis index for each layer (sorted ascending)
+    int64_t  layerShapeBefore[SS_MAX_LAYERS][SS_MAX_LAYERS + 1]; // Shape before each layer reduce (max 6 dims for 5D input)
+    int32_t  layerNDims[SS_MAX_LAYERS];                          // Number of dims in shape before each layer
+    int64_t  layerReduceAxisIdx[SS_MAX_LAYERS];                  // Position of the reduce axis within the current shape (0-indexed)
+    int64_t  layerRLength[SS_MAX_LAYERS];                        // Reduce axis length for each layer
+    int64_t  layerA0Length[SS_MAX_LAYERS];                       // Non-reduce tail length for each layer (0 = tail reduce)
+    int64_t  layerInputElemCount[SS_MAX_LAYERS];                 // Total element count at each layer input
+    int64_t  layerOutputElemCount[SS_MAX_LAYERS];                // Total element count at each layer output
+    int64_t  layerIsTailReduce[SS_MAX_LAYERS];                   // 1 = tail reduce (AR), 0 = non-tail (ARA)
+    int64_t  layerWorkspaceOffset[SS_MAX_LAYERS];                // Workspace offset (in bytes) for each layer's output
+    int64_t  layerChunkCols[SS_MAX_LAYERS];                      // Chunk columns for tail-reduce layers (AR_COLSPLIT fallback)
+    int64_t  layerNumChunks[SS_MAX_LAYERS];                      // Number of chunks for tail-reduce layers
+    int64_t  layerTileA0Align[SS_MAX_LAYERS];                    // Tile A0 aligned for ARA layers
+    int64_t  layerNumA0Tiles[SS_MAX_LAYERS];                     // Number of A0 tiles for ARA layers
+    int64_t  layerTileA0Len[SS_MAX_LAYERS];                      // Tile A0 length for ARA layers
+    int64_t  layerRChunkSize[SS_MAX_LAYERS];                     // R chunk size for ARA_ROWSPLIT layers
+    int64_t  layerNumRChunks[SS_MAX_LAYERS];                     // Number of R chunks for ARA_ROWSPLIT layers
+    int64_t  layerMode[SS_MAX_LAYERS];                           // Sub-mode per layer: 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT
+
     // === General parameters ===
-    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT
+    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT, 4=MULTI_AXIS
     uint32_t inputDtype;      // Input dtype (ge::DataType value)
     uint32_t isAlign32B;      // Whether rLength data is 32B aligned (0=no, 1=yes)
 };
