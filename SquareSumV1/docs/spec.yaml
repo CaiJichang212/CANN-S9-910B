@@ -1,0 +1,218 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root directory of the software repository for the full text of the License.
+
+# ============================================================
+# square_sum_v1 — L0 数学约束 spec
+# 覆盖范式: Reduction, Elementwise, FusedComposite
+# 语义: Y = sum(X^2, dim=axis, keepdim=keep_dims)
+# 平台: Ascend910B (DAV_2201), CANN 8.5.0
+# 注意: 输入名用 x（不能使用 input，Python built-in 被 AST 沙箱禁用）
+# ============================================================
+schema_version: 1
+
+op:
+  name: square_sum_v1
+  version: "1.0"
+  description: "Fused square+reduction: Y = sum(square(X), dim=axis, keepdim=keep_dims)"
+  category: reduction_composite
+  paradigms: [Reduction, Elementwise, FusedComposite]
+  lifecycle: stable
+  error_codes:
+    - null_input
+    - dtype_not_supported
+    - attribute_value_out_of_range
+  platform_constraints:
+    supported_chips: [Ascend910B]
+    requires_hccl: false
+
+inputs:
+  - name: x
+    role: tensor
+    dtype_set: [float16, float32, bfloat16]
+    rank_range: [0, 5]
+    layout: ND
+    shape:
+      symbolic: ["...d"]
+    contiguous: optional
+
+attributes:
+  - name: axis
+    type: list[int64]
+    default: [-1]
+    semantics: "规约轴列表，可多值，支持负索引；元素不可重复"
+    machine_constraint:
+      kind: list_of_int_in_range_relative_to_rank
+      target: x
+      lower_inclusive: "-rank(x)"
+      upper_exclusive: "rank(x)"
+
+  - name: keep_dims
+    type: bool
+    default: false
+    semantics: "是否保留被规约的维度（保留时该维大小为 1）"
+    machine_constraint:
+      kind: bool
+
+outputs:
+  - name: result
+    shape_rule_kind: numpy_expr
+    shape_rule: |
+      result.shape = x.shape[:-1]
+    dtype_rule_kind: numpy_expr
+    dtype_rule: |
+      result.dtype = x.dtype
+    layout: ND
+    aliasing: none
+
+shape_constraints:
+  symbols: {}
+  global_constraints:
+    - "rank(x) <= 5"
+  notes:
+    - "输入最多 5 维 (...,N4,N3,N2,N)；N/N2∈[1,10000]、N3∈[1,1000]、N4∈[1,200]"
+    - "任意维度可能不对齐 32 字节边界"
+    - "输出 shape 由 axis 和 keep_dims 决定（shape_rule 以默认 axis=[-1],keep_dims=false 求解）"
+    - "keep_dims=true 时被规约维度保留为 1；keep_dims=false 时被规约维度被去除"
+    - "axis 为多值时逐层规约；axis=[] 时不做规约（输出=square(x)）"
+    - "输出 tensor 由调用方预分配，kernel 只负责计算"
+
+dtype_policy:
+  promotion: same_as_first_input
+  supported_combinations:
+    - {inputs: {x: float16},  outputs: {result: float16}}
+    - {inputs: {x: float32},  outputs: {result: float32}}
+    - {inputs: {x: bfloat16}, outputs: {result: bfloat16}}
+  accumulator_dtype: float32
+
+broadcast:
+  kind: none
+
+math_semantics:
+  formula_kind: numpy_expr
+  formula: |
+    result = np.sum(np.square(x), axis=(*axis,), keepdims=keep_dims)
+
+  reference_oracle:
+    framework: torch
+    api: torch.sum
+    kwargs:
+      dim: "${attr.axis}"
+      keepdim: "${attr.keep_dims}"
+    available_for_dtype: [float16, float32, bfloat16]
+    absent: true
+    absent_reason: "本算子为融合算子 (square+sum)；oracle 为 torch.sum(torch.square(x), dim=axis, keepdim=keep_dims) 的两步组合，非单 API 可达。以 formula + boundary + invariants 覆盖语义校验。"
+    absent_governance: "需求方确认：陆张弛，2026-07-10；对齐 PyTorch 2.5.1 torch.sum+torch.square 两步语义"
+
+  invariants:
+    # value 组：输出非负（平方求和结果 >= 0）
+    - name: nonneg
+      kind: elementwise_ge
+      value: 0.0
+    # algebraic 组：全零输入 → 输出全零
+    - name: zero_in_zero_out
+      kind: equals_when_input_is_zero
+      value: 0.0
+    # structural 组：composition 中间 tensor (x_sq) 不外漏
+    - name: no_leak
+      kind: no_leak_intermediates
+      tolerance_inherit: false
+
+  # FusedComposite 范式必填：把 formula 拆成白盒原语序列
+  composition:
+    primitives:
+      - id: square
+        op: elementwise_binary                # x * x = x^2（binary: 同输入双侧）
+        inputs: [x, x]
+        outputs: [x_sq]
+      - id: reduce_sum
+        op: reduce                            # 沿 axis 求和
+        inputs: [x_sq]
+        outputs: [result]
+    dataflow:
+      intermediates: [x_sq]                   # 中间平方结果，不外漏 GM
+      no_leak: true
+      fusable_groups:
+        - [square, reduce_sum]
+
+numerical_stability:
+  required: true
+  techniques:
+    - name: fp32_accumulation
+      applies_to: "fp16/bfloat16 输入在 fp32 下平方和累加，最终 Cast 回原始 dtype"
+      rationale: "fp16 最大值 65504，平方后溢出；fp32 累加保证精度和动态范围"
+      anti_pattern_id: AP-006
+  affects_invariants: false
+
+numerical_tolerance:
+  source: "ops-precision-standard/float_compute_community.md"
+  per_dtype:
+    float16:  {rtol: 1.0e-2, atol: 1.0e-2, metric: max_relative}
+    bfloat16: {rtol: 1.0e-2, atol: 1.0e-2, metric: max_relative}
+    float32:  {rtol: 1.0e-4, atol: 1.0e-4, metric: max_relative}
+
+boundary_conditions:
+  - case: "reduce 轴长度为 1（退化为平方输出）"
+    tags: [reduce_axis_size_1]
+    synthesize: {x.shape: "[2, 1, 4]"}
+    machine_check: {kind: matches_oracle}
+  - case: "rank=0 标量输入"
+    tags: [rank_zero_scalar]
+    synthesize: {x.shape: "[]"}
+    machine_check: {kind: matches_oracle}
+  - case: "空 Tensor（含 0 维）"
+    tags: [empty_tensor]
+    synthesize: {x.shape: "[0, 4]"}
+    machine_check: {kind: returns_empty}
+  - case: "axis 越界（正向）→ 报错"
+    synthesize: {x.shape: "[2, 3]", attr.axis: "[2]"}
+    machine_check: {kind: raises_error, error_type: attribute_value_out_of_range}
+  - case: "axis 越界（负向）→ 报错"
+    synthesize: {x.shape: "[2, 3]", attr.axis: "[-3]"}
+    machine_check: {kind: raises_error, error_type: attribute_value_out_of_range}
+  - case: "axis 含重复值 → 报错"
+    synthesize: {x.shape: "[2, 3, 4]", attr.axis: "[0, 0]"}
+    machine_check: {kind: raises_error, error_type: attribute_value_out_of_range}
+
+extreme_inputs:
+  - case: "含 NaN（NaN 平方=NaN，污染求和结果）"
+    synthesize:
+      shapes: {x: "[8]"}
+      patterns:
+        - {pattern: inject_nan_one_element, target: x}
+    machine_check: {kind: produces_nan, scope: "规约结果"}
+  - case: "含 +inf（inf 平方=inf，求和结果=inf）"
+    synthesize:
+      shapes: {x: "[8]"}
+      patterns:
+        - {pattern: single_pos_inf, target: x}
+    machine_check: {kind: matches_oracle}
+  - case: "含 -inf（(-inf)^2=inf，求和结果=inf）"
+    synthesize:
+      shapes: {x: "[8]"}
+      patterns:
+        - {pattern: single_neg_inf, target: x}
+    machine_check: {kind: matches_oracle}
+  - case: "全零 → 输出全零"
+    synthesize:
+      shapes: {x: "[16]"}
+      patterns:
+        - {pattern: all_zero, target: x}
+    machine_check: {kind: equals, value: 0.0}
+  - case: "fp16 上溢边界（65504^2 超出 fp16 范围，需 fp32 累加）"
+    synthesize:
+      shapes: {x: "[8]"}
+      patterns:
+        - {pattern: "all_same(65504.0)", target: x}
+      dtype: float16
+    machine_check: {kind: matches_oracle}
+
+determinism:
+  required: true
+  accumulation_order: stable_in_axis
+  partition_constraint: "禁止跨核 reduce 同一行；多核切分仅切非归约维"
+  bitwise_reproducible: true
