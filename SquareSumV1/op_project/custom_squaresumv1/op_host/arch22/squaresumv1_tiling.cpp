@@ -726,7 +726,7 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         // === ARA mode ===
         if (a0Length == 0) a0Length = 1;
 
-        a0LengthAlign = CeilAlign(a0Length, static_cast<int64_t>(64));  // 对齐 64 fp32(256B=1 repeat) 避免 Vector count 非 repeat 对齐的 NPU 偶发
+        a0LengthAlign = CeilAlign(a0Length, static_cast<int64_t>(fp32ElementsPerBlock));
 
         tileA0Len = a0Length;
         tileA0Align = a0LengthAlign;
