@@ -297,9 +297,17 @@ output = torch.sum(torch.square(x), axis, keepdim=keep_dims)
 
 | 级别 | 用例数 | 覆盖目标 | 文件 |
 |------|--------|---------|------|
-| L0 | 126 | 核心功能直通，因子值 100% 覆盖，axis 合法率 100% | `aclnnSquareSumV1_l0_test_cases.csv` |
+| L0 | 117 | 核心功能直通，因子值覆盖（126 条原始 CSV 过滤 9 条超限维度后 117 条有效），axis 合法率 100% | `aclnnSquareSumV1_l0_test_cases.csv` |
 | L1 | 518 | 两两组合覆盖 + 边界场景（rank=0, 空 tensor, 65504），全部有效 | `aclnnSquareSumV1_l1_test_cases.csv` |
-| L2 | 6 | 异常用例（axis 越界、重复值、dtype 不支持等） | `aclnnSquareSumV1_l2_test_cases.csv` |
+| L2 | 9 | 异常用例（axis 越界、重复值、dtype 不支持、null 指针、rank>5 等） | `aclnnSquareSumV1_l2_test_cases.csv` |
+
+---
+
+blackbox_case_targets:
+
+- L0: 117
+- L1: 518
+- L2: 9
 
 ---
 

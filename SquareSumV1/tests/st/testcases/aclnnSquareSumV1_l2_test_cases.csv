@@ -1,7 +1,10 @@
 testcase_name,api_name,tensor_view_shapes,tensor_dtypes,scalar_dtypes,attributes,output_tensor_indexes,precision_tolerances,absolute_precision,input_data_ranges,scalar_data_ranges,tensor_list_distribution,expected_error
-aclnnSquareSumV1_L2_001,aclnnSquareSumV1,"((4, 5,),)", "('float32',)",,"{""axis"": [5], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
-aclnnSquareSumV1_L2_002,aclnnSquareSumV1,"((4, 5,),)", "('float16',)",,"{""axis"": [-3], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
-aclnnSquareSumV1_L2_003,aclnnSquareSumV1,"((2, 3, 4,),)", "('float32',)",,"{""axis"": [0, 0], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
-aclnnSquareSumV1_L2_004,aclnnSquareSumV1,"((4, 5,),)", "('bfloat16',)",,"{""axis"": [0, 1, 2], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
-aclnnSquareSumV1_L2_005,aclnnSquareSumV1,"((4, 5,),)", "('int32',)",,"{""axis"": [0], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
-aclnnSquareSumV1_L2_006,aclnnSquareSumV1,"((4, 5,),)", "('float32',)",,"{""axis"": [0], ""keepDims"": false}","(0,)","",,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
+aclnnSquareSumV1_L2_001,aclnnSquareSumV1,"((4, 5,),)"," ""('float32'",")""",,"{""axis"": [5], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_002,aclnnSquareSumV1,"((4, 5,),)"," ""('float16'",")""",,"{""axis"": [-3], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_003,aclnnSquareSumV1,"((2, 3, 4,),)"," ""('float32'",")""",,"{""axis"": [0, 0], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_004,aclnnSquareSumV1,"((4, 5,),)"," ""('bfloat16'",")""",,"{""axis"": [0, 1, 2], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_005,aclnnSquareSumV1,"((4, 5,),)"," ""('int32'",")""",,"{""axis"": [0], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_006,aclnnSquareSumV1,"((4, 5,),)"," ""('float32'",")""",,"{""axis"": [0], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,
+aclnnSquareSumV1_L2_007,aclnnSquareSumV1,"((4, 5,),)","('float32',)",,"{""axis"": [0], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,,ACLNN_ERR_PARAM_NULLPTR
+aclnnSquareSumV1_L2_008,aclnnSquareSumV1,"((4, 5,),)","('float32',)",,"{""axis"": [-1, 1], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID
+aclnnSquareSumV1_L2_009,aclnnSquareSumV1,"((2, 3, 4, 5, 2, 2,),)","('float32',)",,"{""axis"": [0], ""keepDims"": false}","(0,)",,,"((-1, 1,),)",,,ACLNN_ERR_PARAM_INVALID

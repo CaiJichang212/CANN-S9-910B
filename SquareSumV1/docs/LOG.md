@@ -55,7 +55,7 @@
 | — | CP2 用户确认 | ⬜ | |
 | 2.迭代一 | ✅（汇合验收通过，sim+Mock 路径） | 2026-07-10 |
 | 2.迭代二 | ✅（汇合验收通过，sim+Mock，Key=3 已触发验证） | 2026-07-10 |
-| 2.迭代三 | A1-Main/第二波✅；汇合验收进行中 | 🔄 | 2026-07-10 |
+| 2.迭代三 | ✅（汇合验收通过 + cp2 PASSED 644/644） | 2026-07-10 |
 | W | 白盒测试生成与汇合 | ⬜ | |
 | C | PyTorch ST 开发 | ⬜ | |
 | 3.1 | 最终精度验收 | ⬜ | |
@@ -104,3 +104,4 @@
 - **2026-07-10 2.迭代三 A1-Main**：Key=4 MULTI_AXIS 逐层规约实现（不相邻多值 axis）。tiling 检测合轴连续性（连续→Key0-3，不连续→Key4）。Kernel：逐层从内到外 reduce，第0层 square+reduce（fp32），后续层纯 reduce，中间结果 fp32 存 workspace（2*inputElems 乒乓），最终 Cast 回 dtype。simulator 13 用例全通过（不相邻多值 3D/4D/5D + 负索引 + 全dtype + keep_dims T/F），Key0-3 回归 10 用例无回归。**5 TilingKey 全部实现**。
 - **2026-07-10 2.迭代三 第二波**：A1-P/A2/B 并行完成。A1-P：probe13-20（8个边界）全 PASS，**无已知限制**（空tensor/全规约scalar/rank=0/规约维=1/fp16溢出/全零/不相邻2层全正确）。A2：UT 扩展至 87/87（Key=4 检测+逐层参数+workspace+边界全覆盖）。B：L2 异常 9/9（参数校验返回正确错误码）+ 全边界 26/26 + L0/L1 回归，6 TilingMode 全覆盖。
 - **2026-07-10 2.迭代三 汇合验收**：✅通过（编译+UT 87/87+simulator 18/18(Key0-4)+ST Mock 272/272(L0+L1+L2+边界)，全回归无退化）。cp2 validator 首次 FAILED（缺 test-report.json/case_manifest.json/st_dev_result.json/TEST.md blackbox_case_targets 机器证据）→ 补齐中。
+- **2026-07-10 cp2 校验**：✅PASSED。补齐机器证据（test-report.json UT 87/87、case_manifest.json 644 用例、st_dev_result.json 644/644 Mock 通过、TEST.md blackbox_case_targets L0:117/L1:518/L2:9）。清理重复 CSV、补 L2_007-009。tag `iter3-passed`。

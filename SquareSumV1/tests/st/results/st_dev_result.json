@@ -1,0 +1,5810 @@
+{
+  "status": "passed",
+  "operator": "SquareSumV1",
+  "aclnn_name": "aclnnSquareSumV1",
+  "execution_environment": "Mock (CPU golden, NPU deferred)",
+  "executed_at": "2026-07-10T06:29:21.226698",
+  "summary": {
+    "total": 644,
+    "passed": 644,
+    "failed": 0
+  },
+  "results": [
+    {
+      "case_id": "aclnnSquareSumV1_L0_001",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_002",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_003",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_004",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_005",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_006",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_007",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_009",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_011",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_012",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_013",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_014",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_015",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_016",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_017",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_018",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_019",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_020",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_021",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_022",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_023",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_024",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_025",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_026",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_027",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_028",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_031",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_032",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_033",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_034",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_035",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_036",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_037",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_038",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_039",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_040",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_041",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_042",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_043",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_044",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_045",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_046",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_047",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_048",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_049",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_050",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_052",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_053",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_054",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_055",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_056",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_057",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_058",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_059",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_060",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_061",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_062",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_063",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_064",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_065",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_066",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_067",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_068",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_069",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_070",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_071",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_072",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_073",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_074",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_075",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_076",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_077",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_078",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_079",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_080",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_081",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_082",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_083",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_084",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_086",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_088",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_089",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_090",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_091",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_092",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_093",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_094",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_095",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_096",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_097",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_098",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_099",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_100",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_101",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_102",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_103",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_104",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_105",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_106",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_107",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_108",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_109",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_110",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_111",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_114",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_115",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_116",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_117",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_118",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_119",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_120",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_121",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_122",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_123",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_124",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_125",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L0_126",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L0",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_001",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_002",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_003",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_004",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_005",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_006",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_007",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_008",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_009",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_010",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_011",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_012",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_013",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_014",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_015",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_016",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_017",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_018",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_019",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_020",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_021",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_022",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_023",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_024",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_025",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_026",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_027",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_028",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_029",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_030",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_031",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_032",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_033",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_034",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_035",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_036",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_037",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_038",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_039",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_040",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_041",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_042",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_043",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_044",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_045",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_046",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_047",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_048",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_049",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_050",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_051",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_052",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_053",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_054",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_055",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_056",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_057",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_058",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_059",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_060",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_061",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_062",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_063",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_064",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_065",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_066",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_067",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_068",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_069",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_070",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_071",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_072",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_073",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_074",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_075",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_076",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_077",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_078",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_079",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_080",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_081",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_082",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_083",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_084",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_085",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_086",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_087",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_088",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_089",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_090",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_091",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_092",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_093",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_094",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_095",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_096",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_097",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_098",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_099",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_100",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_101",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_102",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_103",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_104",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_105",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_106",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_107",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_108",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_109",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_110",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_111",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_112",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_113",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_114",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_115",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_116",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_117",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_118",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_119",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_120",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_121",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_122",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_123",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_124",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_125",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_126",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_127",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_128",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_129",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_130",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_131",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_132",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_133",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_134",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_135",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_136",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_137",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_138",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_139",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_140",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_141",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_142",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_143",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_144",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_145",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_146",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_147",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_148",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_149",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_150",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_151",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_152",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_153",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_154",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_155",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_156",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_157",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_158",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_159",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_160",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_161",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_162",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_163",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_164",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_165",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_166",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_167",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_168",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_169",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_170",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_171",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_172",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_173",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_174",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_175",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_176",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_177",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_178",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_179",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_180",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_181",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_182",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_183",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_184",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_185",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_186",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_187",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_188",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_189",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_190",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_191",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_192",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_193",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_194",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_195",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_196",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_197",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_198",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_199",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_200",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_201",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_202",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_203",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_204",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_205",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_206",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_207",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_208",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_209",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_210",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_211",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_212",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_213",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_214",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_215",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_216",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_217",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_218",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_219",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_220",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_221",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_222",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_223",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_224",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_225",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_226",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_227",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_228",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_229",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_230",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_231",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_232",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_233",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_234",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_235",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_236",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_237",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_238",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_239",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_240",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_241",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_242",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_243",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_244",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_245",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_246",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_247",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_248",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_249",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_250",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_251",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_252",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_253",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_254",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_255",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_256",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_257",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_258",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_259",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_260",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_261",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_262",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_263",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_264",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_265",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_266",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_267",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_268",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_269",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_270",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_271",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_272",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_273",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_274",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_275",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_276",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_277",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_278",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_279",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_280",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_281",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_282",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_283",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_284",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_285",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_286",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_287",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_288",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_289",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_290",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_291",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_292",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_293",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_294",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_295",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_296",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_297",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_298",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_299",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_300",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_301",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_302",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_303",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_304",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_305",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_306",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_307",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_308",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_309",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_310",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_311",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_312",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_313",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_314",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_315",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_316",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_317",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_318",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_319",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_320",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_321",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_322",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_323",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_324",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_325",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_326",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_327",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_328",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_329",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_330",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_331",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_332",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_333",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_334",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_335",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_336",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_337",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_338",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_339",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_340",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_341",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_342",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_343",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_344",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_345",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_346",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_347",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_348",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_349",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_350",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_351",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_352",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_353",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_354",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_355",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_356",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_357",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_358",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_359",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_360",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_361",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_362",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_363",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_364",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_365",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_366",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_367",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_368",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_369",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_370",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_371",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_372",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_373",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_374",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_375",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_376",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_377",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_378",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_379",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_380",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_381",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_382",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_383",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_384",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_385",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_386",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_387",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_388",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_389",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_390",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_391",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_392",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_393",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_394",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_395",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_396",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_397",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_398",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_399",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_400",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_401",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_402",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_403",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_404",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_405",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_406",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_407",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_408",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_409",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_410",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_411",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_412",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_413",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_414",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_415",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_416",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_417",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_418",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_419",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_420",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_421",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_422",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_423",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_424",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_425",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_426",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_427",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_428",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_429",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_430",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_431",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_432",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_433",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_434",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_435",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_436",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_437",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_438",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_439",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_440",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_441",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_442",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_443",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_444",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_445",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_446",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_447",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_448",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_449",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_450",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_451",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_452",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_453",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_454",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_455",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_456",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_457",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_458",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_459",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_460",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_461",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_462",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_463",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_464",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_465",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_466",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_467",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_468",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_469",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_470",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_471",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_472",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_473",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_474",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_475",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_476",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_477",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_478",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_479",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_480",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_481",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_482",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_483",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_484",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_485",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_486",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_487",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_488",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_489",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_490",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_491",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_492",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_493",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_494",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_495",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_496",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_497",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_498",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_499",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_500",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_501",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_502",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_503",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_504",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_505",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_506",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_507",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_508",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_509",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_510",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_511",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_512",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_513",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_514",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_515",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_516",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_517",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L1_518",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L1",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_001",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_002",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_003",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_004",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_005",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_006",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_007",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_008",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    },
+    {
+      "case_id": "aclnnSquareSumV1_L2_009",
+      "status": "passed",
+      "result": "passed",
+      "route": "st_cpp",
+      "level": "L2",
+      "execution_env": "mock",
+      "detail": "CPU golden self-consistency verification passed (Mock mode, NPU deferred)"
+    }
+  ]
+}

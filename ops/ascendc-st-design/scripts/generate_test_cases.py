@@ -1,0 +1,1 @@
+/home/liyc/.claude/skills/ascendc-st-design/scripts/generate_test_cases.py

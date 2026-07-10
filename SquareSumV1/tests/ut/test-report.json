@@ -1,0 +1,448 @@
+{
+  "status": "passed",
+  "operator": "SquareSumV1",
+  "test_framework": "gtest",
+  "executed_at": "2026-07-10T06:29:21.235526",
+  "summary": {
+    "total": 87,
+    "passed": 87,
+    "failed": 0
+  },
+  "results": [
+    {
+      "case_id": "UT_SquareSumV1_001",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_002",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_003",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_004",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_005",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_006",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_007",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_008",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_009",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_010",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_011",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_012",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_013",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_014",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_015",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_016",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_017",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_018",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_019",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_020",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_021",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_022",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_023",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_024",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_025",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_026",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_027",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_028",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_029",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_030",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_031",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_032",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_033",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_034",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_035",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_036",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_037",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_038",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_039",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_040",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_041",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_042",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_043",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_044",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_045",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_046",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_047",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_048",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_049",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_050",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_051",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_052",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_053",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_054",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_055",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_056",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_057",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_058",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_059",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_060",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_061",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_062",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_063",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_064",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_065",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_066",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_067",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_068",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_069",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_070",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_071",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_072",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_073",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_074",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_075",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_076",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_077",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_078",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_079",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_080",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_081",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_082",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_083",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_084",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_085",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_086",
+      "status": "passed",
+      "result": "passed"
+    },
+    {
+      "case_id": "UT_SquareSumV1_087",
+      "status": "passed",
+      "result": "passed"
+    }
+  ]
+}
