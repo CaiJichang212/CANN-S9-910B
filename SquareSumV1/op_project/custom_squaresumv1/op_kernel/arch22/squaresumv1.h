@@ -463,19 +463,15 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rLength_ * alignedCols));
             PipeBarrier<PIPE_V>();
 
-            // 逐行 DataCopyPad：避免 2D srcStride 在 (a0Length-a0Len)*sizeof(T) 非 32B 倍数时截断错位
             DataCopyExtParams copyParams;
-            copyParams.blockCount = 1;
+            copyParams.blockCount = static_cast<uint16_t>(rLength_);
             copyParams.blockLen = a0Len * sizeof(T);
-            copyParams.srcStride = 0;
+            copyParams.srcStride = static_cast<uint16_t>((a0Length_ - a0Len) * sizeof(T) / 32);
             copyParams.dstStride = 0;
             copyParams.rsv = 0;
-
             DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-            for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
-                DataCopyPad(xLocal[rIdx * alignedCols], inputGM[gmOffset + rIdx * a0Length_], copyParams, padParams);
-            }
-            PipeBarrier<PIPE_V>();
+            DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
+            PipeBarrier<PIPE_ALL>();
 
             // 用 Add 循环沿 R 累加（替代 Pattern::Reduce::RA，避免小 R 的 NPU 行为差异）
             LocalTensor<float> accLocal = accBuf.Get<float>();
@@ -493,8 +489,6 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             } else {
                 LocalTensor<float> xFp32 = computeBuf.Get<float>();
                 uint32_t castCount = static_cast<uint32_t>(rLength_ * alignedCols);
-                uint32_t castAlign = 256 / sizeof(float);
-                castCount = ((castCount + castAlign - 1) / castAlign) * castAlign;
                 Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
                 PipeBarrier<PIPE_V>();
                 Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
