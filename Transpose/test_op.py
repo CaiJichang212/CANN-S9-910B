@@ -7,10 +7,66 @@ import numpy as np
 import sys  
 
 case_data = {
+    # --- case1: 基线 fp16 2D 转置 (128,256) ---
     'case1': {
         'input':np.random.uniform(-10, 10, [128, 256]).astype(np.float16),
         'dims': (1,0)
-    }
+    },
+    # --- case2: fp32 2D 转置，非对齐列 (37x53) ---
+    'case2': {
+        'input':np.random.uniform(-10, 10, [37, 53]).astype(np.float32),
+        'dims': (1,0)
+    },
+    # --- case3: int8 2D 转置，非对齐 (100, 33) ---
+    'case3': {
+        'input':np.random.randint(-127, 127, [100, 33]).astype(np.int8),
+        'dims': (1,0)
+    },
+    # --- case4: int32 2D 转置，大对齐 (256, 512) ---
+    'case4': {
+        'input':np.random.randint(-10000, 10000, [256, 512]).astype(np.int32),
+        'dims': (1,0)
+    },
+    # --- case5: fp16 3D 末两维交换 (12, 64, 97) 非对齐 ---
+    'case5': {
+        'input':np.random.uniform(-10, 10, [12, 64, 97]).astype(np.float16),
+        'dims': (0, 2, 1)
+    },
+    # --- case6: fp32 4D 末两维交换 (3, 5, 37, 53) 非对齐 ---
+    'case6': {
+        'input':np.random.uniform(-10, 10, [3, 5, 37, 53]).astype(np.float32),
+        'dims': (0, 1, 3, 2)
+    },
+    # --- case7: int8 5D 末两维交换 (2, 3, 4, 17, 9) 非对齐 ---
+    'case7': {
+        'input':np.random.randint(-127, 127, [2, 3, 4, 17, 9]).astype(np.int8),
+        'dims': (0, 1, 2, 4, 3)
+    },
+    # --- case8: fp16 恒等 permute (无实际重排, 走 COPY) ---
+    'case8': {
+        'input':np.random.uniform(-10, 10, [64, 128]).astype(np.float16),
+        'dims': (0, 1)
+    },
+    # --- case9: fp16 2D 转置 非对齐行 (33, 100) ---
+    'case9': {
+        'input':np.random.uniform(-10, 10, [33, 100]).astype(np.float16),
+        'dims': (1,0)
+    },
+    # --- case10: 边界 1 元素 (1,1) ---
+    'case10': {
+        'input':np.random.uniform(-10, 10, [1, 1]).astype(np.float16),
+        'dims': (1,0)
+    },
+    # --- case11: fp16 3D 任意 permute (非末两维交换: 维 0 移到末尾) (7, 11, 13) ---
+    'case11': {
+        'input':np.random.uniform(-10, 10, [7, 11, 13]).astype(np.float16),
+        'dims': (1, 2, 0)
+    },
+    # --- case12: fp32 3D 任意 permute (2, 19, 23) ---
+    'case12': {
+        'input':np.random.uniform(-10, 10, [2, 19, 23]).astype(np.float32),
+        'dims': (2, 0, 1)
+    },
 }
 
 def ensure_tuple(variable):
@@ -23,7 +79,17 @@ def ensure_tuple(variable):
         return (variable,)
 
 def verify_result(real_result, golden):
-    # 根据数据类型设置误差阈值（与原逻辑一致）
+    # 根据数据类型设置误差阈值
+    # int8/int32: 无误差（精确搬运）；fp32: 万分之一；fp16: 千分之一
+    if golden.dtype in (torch.int8, torch.int32):
+        # 整型要求完全一致
+        is_close = (real_result == golden)
+        err_num = torch.sum(~is_close).item()
+        if err_num > 0:
+            print(f"[ERROR] int result error, err_num={err_num}")
+            return False
+        print("test pass")
+        return True
     if golden.dtype == torch.float32:
         rtol = 1e-4  # fp32相对误差阈值
         atol = 1e-4  # fp32绝对误差阈值
