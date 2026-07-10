@@ -62,22 +62,6 @@ private:
     __aicore__ inline void ProcessMultiAxis();
     __aicore__ inline void ProcessMultiAxisLayer(int32_t layerIdx);
 
-    // Helper: reduce one row (AR_FULLLOAD sub-mode for MULTI_AXIS layers)
-    __aicore__ inline void MultiAxisArFullLoadRow(
-        int64_t rowIdx, int64_t rLen, int64_t rLenAlign,
-        LocalTensor<float>& accScalar, LocalTensor<float>& tmpLocal,
-        bool isFirstLayer);
-    __aicore__ inline void MultiAxisArColSplitRow(
-        int64_t rowIdx, int64_t rLen, int64_t chunkCols, int64_t numChunks,
-        LocalTensor<float>& accScalar, LocalTensor<float>& tmpLocal,
-        bool isFirstLayer);
-    __aicore__ inline void MultiAxisAraFullLoad(
-        int64_t layerIdx, int64_t rowIdx,
-        LocalTensor<float>& tmpLocal);
-    __aicore__ inline void MultiAxisAraRowSplit(
-        int64_t layerIdx, int64_t rowIdx,
-        LocalTensor<float>& tmpLocal);
-
 private:
     TPipe pipe;
 
@@ -231,94 +215,56 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
         // MULTI_AXIS: allocate workspace GM and UB buffers
         workspaceGM.SetGlobalBuffer((__gm__ float*)workspace);
 
-        // Allocate UB buffers for MULTI_AXIS processing
-        // We need flexible buffers that can handle the largest layer
-        // For layer 0: may need to read T (half/float/bf16) and compute in float
-        // For layer k>0: read float32, compute in float32
+        // Compute maximum buffer sizes needed across all layers.
+        // New approach: all layers use element-wise accumulate (no Pattern::Reduce::RA).
+        //   For ARA (non-tail reduce): per-row read -> Cast/Cast(skip) -> Mul(first only) -> Add accumulator
+        //   For AR (tail reduce): read row -> Cast/Mul -> ReduceSum scalar
+        // So we need:
+        //   - inputBuf: max(rLen) elements of T  (for reading one r-row)
+        //   - computeBuf: max(rLen) elements of float (for Cast/Mul)
+        //   - accBuf: max(tileA0Align) elements of float (ARA accumulator)
+        //   - outBuf: max(8, tileA0Align) elements of float (ReduceSum scalar or temp)
+        //   - tmpBuf: small, for ReduceSum scalar helper
 
-        // Find the maximum rLength across all layers
-        int64_t maxRLen = 0;
-        int64_t maxA0Align = 32 / sizeof(float); // minimum 8
-        int64_t maxBufSize = 0; // max(rLength_align, rRows * alignedCols)
+        int64_t maxRLen = 1;
+        int64_t maxA0Align = 8; // minimum 8 fp32 elements (32 bytes)
+
         for (int32_t li = 0; li < numLayers_; li++) {
             int64_t rLen = tilingData->layerRLength[li];
-            int64_t a0Len = tilingData->layerA0Length[li];
-            int64_t rChunkSz = tilingData->layerRChunkSize[li];
             int64_t tileA0Align = tilingData->layerTileA0Align[li];
-            int64_t chunkCols = tilingData->layerChunkCols[li];
-            int64_t mode = tilingData->layerMode[li];
+            int64_t a0Len = tilingData->layerA0Length[li];
+            int64_t isTail = tilingData->layerIsTailReduce[li];
 
-            int64_t maxChunkR;
-            if (mode == 0) {
-                // AR_FULLLOAD
-                int64_t rLenAlignInput = (rLen + (32 / sizeof(T)) - 1) / (32 / sizeof(T)) * (32 / sizeof(T));
-                int64_t rLenAlignFp32 = (rLen + 7) / 8 * 8;
-                maxChunkR = rLenAlignInput > rLenAlignFp32 ? rLenAlignInput : rLenAlignFp32;
-            } else if (mode == 1) {
-                // AR_COLSPLIT
-                maxChunkR = chunkCols;
-            } else if (mode == 2) {
-                // ARA_FULLLOAD
-                int64_t rRows = rLen;
-                int64_t cols = tileA0Align;
-                maxChunkR = rRows * cols;
-                if (tileA0Align > maxA0Align) maxA0Align = tileA0Align;
-            } else {
-                // ARA_ROWSPLIT
-                int64_t rRows = rChunkSz > 0 ? rChunkSz : 1;
-                int64_t cols = tileA0Align;
-                maxChunkR = rRows * cols;
-                if (tileA0Align > maxA0Align) maxA0Align = tileA0Align;
-            }
-            if (maxChunkR > maxBufSize) maxBufSize = maxChunkR;
             if (rLen > maxRLen) maxRLen = rLen;
+
+            // For tail reduce layers, a0Align not needed (scalar output)
+            if (!isTail && a0Len > 0) {
+                int64_t a0Align = (a0Len + 7) / 8 * 8; // align to 8 for fp32
+                if (a0Align > maxA0Align) maxA0Align = a0Align;
+            }
         }
 
-        // For layer 0, we may need to read T elements and have a compute buffer
-        // For layers > 0, we read float32 elements
-        // Allocate for the worst case: max(maxBufSize elements of T, maxBufSize elements of float)
-        // Plus compute buffer, accumulator, output buffer, tmpBuf
-
-        uint32_t inputBufBytes = static_cast<uint32_t>(maxBufSize * sizeof(T));
+        // inputBuf: needs max(maxRLen * sizeof(T), maxA0Align * sizeof(T)) for reuse
+        int64_t maxInputElements = maxRLen > maxA0Align ? maxRLen : maxA0Align;
+        uint32_t inputBufBytes = static_cast<uint32_t>(maxInputElements * sizeof(T));
         if (inputBufBytes < 32) inputBufBytes = 32;
         pipe.InitBuffer(multiInBuf, inputBufBytes);
 
-        uint32_t computeBufBytes = static_cast<uint32_t>(maxBufSize * sizeof(float));
+        // computeBuf: same size in float
+        uint32_t computeBufBytes = static_cast<uint32_t>(maxInputElements * sizeof(float));
         if (computeBufBytes < 32) computeBufBytes = 32;
         pipe.InitBuffer(multiComputeBuf, computeBufBytes);
 
-        // Output buffer: max aligned cols
-        uint32_t outBufBytes = static_cast<uint32_t>(maxA0Align * sizeof(float));
-        if (outBufBytes < 32) outBufBytes = 32;
-        pipe.InitBuffer(multiOutBuf, outBufBytes);
-
-        uint32_t accBufBytes = outBufBytes;
+        // accBuf: maxA0Align fp32 elements (for ARA accumulate)
+        uint32_t accBufBytes = static_cast<uint32_t>(maxA0Align * sizeof(float));
+        if (accBufBytes < 32) accBufBytes = 32;
         pipe.InitBuffer(multiAccBuf, accBufBytes);
 
-        // tmpBuf for ReduceSum
-        uint32_t maxTmpBuf = 4096;
-        // For AR_FULLLOAD sub-mode
-        for (int32_t li = 0; li < numLayers_; li++) {
-            int64_t rLen = tilingData->layerRLength[li];
-            int64_t mode = tilingData->layerMode[li];
-            int64_t chunkCols = tilingData->layerChunkCols[li];
-            int64_t actualR;
-            if (mode == 0) actualR = rLen;
-            else if (mode == 1) actualR = chunkCols;
-            else if (mode == 2) actualR = rLen;
-            else actualR = tilingData->layerRChunkSize[li];
-            if (actualR <= 0) actualR = 1;
+        // outBuf: same as accBuf (also used for scalar ReduceSum result)
+        pipe.InitBuffer(multiOutBuf, accBufBytes);
 
-            uint32_t epr = 256 / sizeof(float);
-            uint32_t epb = 32 / sizeof(float);
-            uint32_t firstMaxRep = (static_cast<uint32_t>(actualR) + epr - 1) / epr;
-            if (firstMaxRep == 0) firstMaxRep = 1;
-            uint32_t finalNeed = ((firstMaxRep + epb - 1) / epb) * epb;
-            if (finalNeed < epb) finalNeed = epb;
-            uint32_t need = finalNeed * sizeof(float);
-            if (need > maxTmpBuf) maxTmpBuf = need;
-        }
-        pipe.InitBuffer(multiTmpBuf, maxTmpBuf);
+        // tmpBuf: for ReduceSum helper (tail reduce layers). Only need 32 bytes.
+        pipe.InitBuffer(multiTmpBuf, 4096);
     }
 }
 
@@ -513,27 +459,37 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             int64_t gmOffset = globalRowIdx * rLength_ * a0Length_ + a0Start;
 
             LocalTensor<T> xLocal = inQueueXSingle.Get<T>();
+            // 清零 xLocal：最后 a0 tile 的 a0Len 可能 < alignedCols，避免未 Copy 的 padding 垃圾参与 reduce
+            Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rLength_ * alignedCols));
+            PipeBarrier<PIPE_V>();
 
+            // 逐行 DataCopyPad：避免 2D srcStride 在 (a0Length-a0Len)*sizeof(T) 非 32B 倍数时截断错位
             DataCopyExtParams copyParams;
-            copyParams.blockCount = static_cast<uint16_t>(rLength_);
+            copyParams.blockCount = 1;
             copyParams.blockLen = a0Len * sizeof(T);
-            copyParams.srcStride = static_cast<uint16_t>((a0Length_ - a0Len) * sizeof(T) / 32);
+            copyParams.srcStride = 0;
             copyParams.dstStride = 0;
             copyParams.rsv = 0;
 
             DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-            DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
+            for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
+                DataCopyPad(xLocal[rIdx * alignedCols], inputGM[gmOffset + rIdx * a0Length_], copyParams, padParams);
+            }
             PipeBarrier<PIPE_V>();
 
-            LocalTensor<float> reduceDst = outQueueYSingle.Get<float>();
+            // 用 Add 循环沿 R 累加（替代 Pattern::Reduce::RA，避免小 R 的 NPU 行为差异）
+            LocalTensor<float> accLocal = accBuf.Get<float>();
+            Duplicate(accLocal, static_cast<float>(0), static_cast<int32_t>(alignedCols));
+            PipeBarrier<PIPE_V>();
 
             if constexpr (isFloatInput) {
                 Mul(xLocal, xLocal, xLocal, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
-                uint32_t srcShape[2] = {static_cast<uint32_t>(rLength_),
-                                        static_cast<uint32_t>(alignedCols)};
-                ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                    reduceDst, xLocal, tmpLocal, srcShape, true);
+                for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
+                    Add(accLocal, accLocal, xLocal.template ReinterpretCast<float>() + rIdx * alignedCols,
+                        static_cast<int32_t>(alignedCols));
+                    PipeBarrier<PIPE_V>();
+                }
             } else {
                 LocalTensor<float> xFp32 = computeBuf.Get<float>();
                 uint32_t castCount = static_cast<uint32_t>(rLength_ * alignedCols);
@@ -543,17 +499,15 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
                 PipeBarrier<PIPE_V>();
                 Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
-                uint32_t srcShape[2] = {static_cast<uint32_t>(rLength_),
-                                        static_cast<uint32_t>(alignedCols)};
-                ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                    reduceDst, xFp32, tmpLocal, srcShape, true);
+                for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
+                    Add(accLocal, accLocal, xFp32[rIdx * alignedCols], static_cast<int32_t>(alignedCols));
+                    PipeBarrier<PIPE_V>();
+                }
             }
-
-            PipeBarrier<PIPE_V>();
 
             LocalTensor<T> yLocal = outQueueYSingle.Get<T>();
             if constexpr (!isFloatInput) {
-                Cast(yLocal, reduceDst, RoundMode::CAST_NONE, alignedCols);
+                Cast(yLocal, accLocal, RoundMode::CAST_NONE, alignedCols);
                 PipeBarrier<PIPE_V>();
             }
 
@@ -566,7 +520,7 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             copyParamsOut.rsv = 0;
 
             if constexpr (isFloatInput) {
-                DataCopyPad(resultGM[resultGmOffset], reduceDst.template ReinterpretCast<T>(), copyParamsOut);
+                DataCopyPad(resultGM[resultGmOffset], accLocal.template ReinterpretCast<T>(), copyParamsOut);
             } else {
                 DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
             }
@@ -678,409 +632,18 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
 
 // ============================================================
 // MULTI_AXIS (Key=4) - layer-by-layer reduce
+//
+// Workspace I/O convention: every scalar/vector element is stored as
+// a full 32-byte (8 fp32) block. This ensures all DataCopyPad GM
+// transfers are 32B-aligned and deterministic.
+//
+//   Tail reduce layer output: each scalar at offset rowIdx * 8
+//   Non-tail reduce layer output: each element at offset (rowIdx * a0Len + ei) * 8
 // ============================================================
-
-// Process one row for a tail-reduce layer in MULTI_AXIS mode
-// Uses AR_FULLLOAD or AR_COLSPLIT sub-mode
-template <typename T>
-__aicore__ inline void SquareSumV1<T>::MultiAxisArFullLoadRow(
-    int64_t rowIdx, int64_t rLen, int64_t rLenAlign,
-    LocalTensor<float>& accScalar, LocalTensor<float>& tmpLocal,
-    bool isFirstLayer)
-{
-    // Read rLen elements from source GM (input or workspace)
-    LocalTensor<T> xLocal = multiInBuf.Get<T>();
-
-    if (isFirstLayer) {
-        // Read from inputGM in T format
-        DataCopyExtParams copyParams;
-        copyParams.blockCount = 1;
-        copyParams.blockLen = rLen * sizeof(T);
-        copyParams.srcStride = 0;
-        copyParams.dstStride = 0;
-        copyParams.rsv = 0;
-        DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-        DataCopyPad(xLocal, inputGM[rowIdx * rLen], copyParams, padParams);
-        PipeBarrier<PIPE_V>();
-
-        // Cast to float and square
-        LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-        if constexpr (isFloatInput) {
-            Mul(xLocal, xLocal, xLocal, rLen);
-            PipeBarrier<PIPE_V>();
-            ReduceSum<float>(accScalar, xLocal, tmpLocal, static_cast<int32_t>(rLen));
-        } else {
-            Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
-            PipeBarrier<PIPE_V>();
-            Mul(xFp32, xFp32, xFp32, rLen);
-            PipeBarrier<PIPE_V>();
-            ReduceSum<float>(accScalar, xFp32, tmpLocal, static_cast<int32_t>(rLen));
-        }
-    } else {
-        // Read from workspaceGM in float32 format
-        LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-        // Copy float32 data from workspace
-        DataCopyExtParams copyParams;
-        copyParams.blockCount = 1;
-        copyParams.blockLen = rLen * sizeof(float);
-        copyParams.srcStride = 0;
-        copyParams.dstStride = 0;
-        copyParams.rsv = 0;
-        DataCopyPadExtParams<float> padParams{false, 0, 0, 0.0f};
-        DataCopyPad(xFp32, workspaceGM[rowIdx * rLen], copyParams, padParams);
-        PipeBarrier<PIPE_V>();
-
-        // No square needed - just reduce
-        ReduceSum<float>(accScalar, xFp32, tmpLocal, static_cast<int32_t>(rLen));
-    }
-}
-
-template <typename T>
-__aicore__ inline void SquareSumV1<T>::MultiAxisArColSplitRow(
-    int64_t rowIdx, int64_t rLen, int64_t chunkCols, int64_t numChunks,
-    LocalTensor<float>& accScalar, LocalTensor<float>& tmpLocal,
-    bool isFirstLayer)
-{
-    float accVal = 0.0f;
-
-    for (int64_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
-        int64_t chunkStart = chunkIdx * chunkCols;
-        int64_t chunkSize = chunkCols;
-        if (chunkStart + chunkSize > rLen) {
-            chunkSize = rLen - chunkStart;
-        }
-        if (chunkSize <= 0) break;
-
-        if (isFirstLayer) {
-            LocalTensor<T> xLocal = multiInBuf.Get<T>();
-            DataCopyExtParams copyParams;
-            copyParams.blockCount = 1;
-            copyParams.blockLen = chunkSize * sizeof(T);
-            copyParams.srcStride = 0;
-            copyParams.dstStride = 0;
-            copyParams.rsv = 0;
-            DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-            DataCopyPad(xLocal, inputGM[rowIdx * rLen + chunkStart], copyParams, padParams);
-            PipeBarrier<PIPE_V>();
-
-            LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-            LocalTensor<float> reduceDst = multiOutBuf.Get<float>();
-
-            if constexpr (isFloatInput) {
-                Mul(xLocal, xLocal, xLocal, chunkSize);
-                PipeBarrier<PIPE_V>();
-                ReduceSum<float>(reduceDst, xLocal, tmpLocal, static_cast<int32_t>(chunkSize));
-            } else {
-                Cast(xFp32, xLocal, RoundMode::CAST_NONE, chunkSize);
-                PipeBarrier<PIPE_V>();
-                Mul(xFp32, xFp32, xFp32, chunkSize);
-                PipeBarrier<PIPE_V>();
-                ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(chunkSize));
-            }
-            accVal += reduceDst.GetValue(0);
-        } else {
-            LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-            DataCopyExtParams copyParams;
-            copyParams.blockCount = 1;
-            copyParams.blockLen = chunkSize * sizeof(float);
-            copyParams.srcStride = 0;
-            copyParams.dstStride = 0;
-            copyParams.rsv = 0;
-            DataCopyPadExtParams<float> padParams{false, 0, 0, 0.0f};
-            DataCopyPad(xFp32, workspaceGM[rowIdx * rLen + chunkStart], copyParams, padParams);
-            PipeBarrier<PIPE_V>();
-
-            LocalTensor<float> reduceDst = multiOutBuf.Get<float>();
-            ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(chunkSize));
-            accVal += reduceDst.GetValue(0);
-        }
-    }
-
-    accScalar.SetValue(0, accVal);
-}
-
-template <typename T>
-__aicore__ inline void SquareSumV1<T>::MultiAxisAraFullLoad(
-    int64_t layerIdx, int64_t rowIdx,
-    LocalTensor<float>& tmpLocal)
-{
-    int64_t rLen = tilingData_->layerRLength[layerIdx];
-    int64_t a0Len = tilingData_->layerA0Length[layerIdx];
-    int64_t tileA0Align = tilingData_->layerTileA0Align[layerIdx];
-    int64_t numA0Tiles = tilingData_->layerNumA0Tiles[layerIdx];
-    int64_t tileA0Len = tilingData_->layerTileA0Len[layerIdx];
-    bool isFirstLayer = (layerIdx == 0);
-
-    LocalTensor<uint8_t> tmpU8 = multiTmpBuf.Get<uint8_t>();
-    LocalTensor<float> accLocal = multiAccBuf.Get<float>();
-
-    for (int64_t a0TileIdx = 0; a0TileIdx < numA0Tiles; a0TileIdx++) {
-        int64_t a0Start = a0TileIdx * tileA0Len;
-        int64_t curA0Len = tileA0Len;
-        if (a0Start + curA0Len > a0Len) {
-            curA0Len = a0Len - a0Start;
-        }
-        if (curA0Len <= 0) break;
-
-        int64_t alignedCols = tileA0Align;
-
-        if (isFirstLayer) {
-            // Read from inputGM in T format: [R, a0Len] block
-            LocalTensor<T> xLocal = multiInBuf.Get<T>();
-            int64_t gmOffset = rowIdx * rLen * a0Len + a0Start;
-
-            DataCopyExtParams copyParams;
-            copyParams.blockCount = static_cast<uint16_t>(rLen);
-            copyParams.blockLen = curA0Len * sizeof(T);
-            copyParams.srcStride = static_cast<uint16_t>((a0Len - curA0Len) * sizeof(T) / 32);
-            copyParams.dstStride = 0;
-            copyParams.rsv = 0;
-            DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-            DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
-            PipeBarrier<PIPE_V>();
-
-            // Square + reduce
-            LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-            LocalTensor<float> reduceDst = multiOutBuf.Get<float>();
-
-            if constexpr (isFloatInput) {
-                Mul(xLocal, xLocal, xLocal, rLen * alignedCols);
-                PipeBarrier<PIPE_V>();
-                uint32_t srcShape[2] = {static_cast<uint32_t>(rLen),
-                                        static_cast<uint32_t>(alignedCols)};
-                ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                    reduceDst, xLocal, tmpU8, srcShape, true);
-            } else {
-                uint32_t castCount = static_cast<uint32_t>(rLen * alignedCols);
-                uint32_t castAlign = 256 / sizeof(float);
-                castCount = ((castCount + castAlign - 1) / castAlign) * castAlign;
-                Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
-                PipeBarrier<PIPE_V>();
-                Mul(xFp32, xFp32, xFp32, rLen * alignedCols);
-                PipeBarrier<PIPE_V>();
-                uint32_t srcShape[2] = {static_cast<uint32_t>(rLen),
-                                        static_cast<uint32_t>(alignedCols)};
-                ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                    reduceDst, xFp32, tmpU8, srcShape, true);
-            }
-            PipeBarrier<PIPE_V>();
-
-            // Write result to workspace (float32)
-            int64_t wsOffset = rowIdx * a0Len + a0Start;
-            DataCopyExtParams copyParamsOut;
-            copyParamsOut.blockCount = 1;
-            copyParamsOut.blockLen = curA0Len * sizeof(float);
-            copyParamsOut.srcStride = 0;
-            copyParamsOut.dstStride = 0;
-            copyParamsOut.rsv = 0;
-            DataCopyPad(workspaceGM[wsOffset], reduceDst, copyParamsOut);
-        } else {
-            // Read from workspaceGM in float32 format: [R, a0Len] block
-            LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-            int64_t wsOffset = rowIdx * rLen * a0Len + a0Start;
-
-            DataCopyExtParams copyParams;
-            copyParams.blockCount = static_cast<uint16_t>(rLen);
-            copyParams.blockLen = curA0Len * sizeof(float);
-            copyParams.srcStride = static_cast<uint16_t>((a0Len - curA0Len) * sizeof(float) / 32);
-            copyParams.dstStride = 0;
-            copyParams.rsv = 0;
-            DataCopyPadExtParams<float> padParams{false, 0, 0, 0.0f};
-            DataCopyPad(xFp32, workspaceGM[wsOffset], copyParams, padParams);
-            PipeBarrier<PIPE_V>();
-
-            // No square - just reduce
-            LocalTensor<float> reduceDst = multiOutBuf.Get<float>();
-            uint32_t srcShape[2] = {static_cast<uint32_t>(rLen),
-                                    static_cast<uint32_t>(alignedCols)};
-            ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                reduceDst, xFp32, tmpU8, srcShape, true);
-            PipeBarrier<PIPE_V>();
-
-            // Write result to workspace (float32) or resultGM
-            bool isLastLayer = (layerIdx == numLayers_ - 1);
-            if (isLastLayer) {
-                // Cast to T and write to resultGM
-                LocalTensor<T> yLocal = multiInBuf.Get<T>();
-                if constexpr (!isFloatInput) {
-                    Cast(yLocal, reduceDst, RoundMode::CAST_NONE, alignedCols);
-                    PipeBarrier<PIPE_V>();
-                }
-                int64_t resultGmOffset = rowIdx * a0Len + a0Start;
-                DataCopyExtParams copyParamsOut;
-                copyParamsOut.blockCount = 1;
-                copyParamsOut.blockLen = curA0Len * sizeof(T);
-                copyParamsOut.srcStride = 0;
-                copyParamsOut.dstStride = 0;
-                copyParamsOut.rsv = 0;
-                if constexpr (isFloatInput) {
-                    DataCopyPad(resultGM[resultGmOffset], reduceDst.template ReinterpretCast<T>(), copyParamsOut);
-                } else {
-                    DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
-                }
-            } else {
-                // Write to workspace at next layer's offset
-                // Use the same workspace region (ping-pong: alternate between two halves)
-                int64_t wsOutOffset = tilingData_->layerWorkspaceOffset[layerIdx + 1]
-                                     + rowIdx * a0Len + a0Start;
-                DataCopyExtParams copyParamsOut;
-                copyParamsOut.blockCount = 1;
-                copyParamsOut.blockLen = curA0Len * sizeof(float);
-                copyParamsOut.srcStride = 0;
-                copyParamsOut.dstStride = 0;
-                copyParamsOut.rsv = 0;
-                DataCopyPad(workspaceGM[wsOutOffset], reduceDst, copyParamsOut);
-            }
-        }
-    }
-}
-
-template <typename T>
-__aicore__ inline void SquareSumV1<T>::MultiAxisAraRowSplit(
-    int64_t layerIdx, int64_t rowIdx,
-    LocalTensor<float>& tmpLocal)
-{
-    int64_t rLen = tilingData_->layerRLength[layerIdx];
-    int64_t a0Len = tilingData_->layerA0Length[layerIdx];
-    int64_t tileA0Align = tilingData_->layerTileA0Align[layerIdx];
-    int64_t numA0Tiles = tilingData_->layerNumA0Tiles[layerIdx];
-    int64_t tileA0Len = tilingData_->layerTileA0Len[layerIdx];
-    int64_t rChunkSize = tilingData_->layerRChunkSize[layerIdx];
-    int64_t numRChunks = tilingData_->layerNumRChunks[layerIdx];
-    bool isFirstLayer = (layerIdx == 0);
-    bool isLastLayer = (layerIdx == numLayers_ - 1);
-
-    LocalTensor<uint8_t> tmpU8 = multiTmpBuf.Get<uint8_t>();
-    LocalTensor<float> accLocal = multiAccBuf.Get<float>();
-
-    for (int64_t a0TileIdx = 0; a0TileIdx < numA0Tiles; a0TileIdx++) {
-        int64_t a0Start = a0TileIdx * tileA0Len;
-        int64_t curA0Len = tileA0Len;
-        if (a0Start + curA0Len > a0Len) {
-            curA0Len = a0Len - a0Start;
-        }
-        if (curA0Len <= 0) break;
-
-        int64_t alignedCols = tileA0Align;
-
-        // Initialize accumulator
-        Duplicate(accLocal, static_cast<float>(0), alignedCols);
-        PipeBarrier<PIPE_V>();
-
-        for (int64_t rChunkIdx = 0; rChunkIdx < numRChunks; rChunkIdx++) {
-            int64_t rStart = rChunkIdx * rChunkSize;
-            int64_t rSize = rChunkSize;
-            if (rStart + rSize > rLen) {
-                rSize = rLen - rStart;
-            }
-            if (rSize <= 0) break;
-
-            if (isFirstLayer) {
-                // Read from inputGM in T format: [rSize, curA0Len] block
-                LocalTensor<T> xLocal = multiInBuf.Get<T>();
-                int64_t gmOffset = rowIdx * rLen * a0Len + rStart * a0Len + a0Start;
-
-                DataCopyExtParams copyParams;
-                copyParams.blockCount = static_cast<uint16_t>(rSize);
-                copyParams.blockLen = curA0Len * sizeof(T);
-                copyParams.srcStride = static_cast<uint16_t>((a0Len - curA0Len) * sizeof(T) / 32);
-                copyParams.dstStride = 0;
-                copyParams.rsv = 0;
-                DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
-                DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
-                PipeBarrier<PIPE_V>();
-
-                LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-                LocalTensor<float> chunkResult = multiOutBuf.Get<float>();
-
-                if constexpr (isFloatInput) {
-                    Mul(xLocal, xLocal, xLocal, rSize * alignedCols);
-                    PipeBarrier<PIPE_V>();
-                    uint32_t srcShape[2] = {static_cast<uint32_t>(rSize),
-                                            static_cast<uint32_t>(alignedCols)};
-                    ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                        chunkResult, xLocal, tmpU8, srcShape, true);
-                } else {
-                    uint32_t castCount = static_cast<uint32_t>(rSize * alignedCols);
-                    uint32_t castAlign = 256 / sizeof(float);
-                    castCount = ((castCount + castAlign - 1) / castAlign) * castAlign;
-                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
-                    PipeBarrier<PIPE_V>();
-                    Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
-                    PipeBarrier<PIPE_V>();
-                    uint32_t srcShape[2] = {static_cast<uint32_t>(rSize),
-                                            static_cast<uint32_t>(alignedCols)};
-                    ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                        chunkResult, xFp32, tmpU8, srcShape, true);
-                }
-                PipeBarrier<PIPE_V>();
-                Add(accLocal, accLocal, chunkResult, alignedCols);
-                PipeBarrier<PIPE_V>();
-            } else {
-                // Read from workspaceGM in float32 format: [rSize, curA0Len] block
-                LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-                int64_t wsOffset = rowIdx * rLen * a0Len + rStart * a0Len + a0Start;
-
-                DataCopyExtParams copyParams;
-                copyParams.blockCount = static_cast<uint16_t>(rSize);
-                copyParams.blockLen = curA0Len * sizeof(float);
-                copyParams.srcStride = static_cast<uint16_t>((a0Len - curA0Len) * sizeof(float) / 32);
-                copyParams.dstStride = 0;
-                copyParams.rsv = 0;
-                DataCopyPadExtParams<float> padParams{false, 0, 0, 0.0f};
-                DataCopyPad(xFp32, workspaceGM[wsOffset], copyParams, padParams);
-                PipeBarrier<PIPE_V>();
-
-                LocalTensor<float> chunkResult = multiOutBuf.Get<float>();
-                uint32_t srcShape[2] = {static_cast<uint32_t>(rSize),
-                                        static_cast<uint32_t>(alignedCols)};
-                ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                    chunkResult, xFp32, tmpU8, srcShape, true);
-                PipeBarrier<PIPE_V>();
-                Add(accLocal, accLocal, chunkResult, alignedCols);
-                PipeBarrier<PIPE_V>();
-            }
-        }
-
-        // Write result
-        if (isLastLayer) {
-            // Cast to T and write to resultGM
-            LocalTensor<T> yLocal = multiInBuf.Get<T>();
-            if constexpr (!isFloatInput) {
-                Cast(yLocal, accLocal, RoundMode::CAST_NONE, alignedCols);
-                PipeBarrier<PIPE_V>();
-            }
-            int64_t resultGmOffset = rowIdx * a0Len + a0Start;
-            DataCopyExtParams copyParamsOut;
-            copyParamsOut.blockCount = 1;
-            copyParamsOut.blockLen = curA0Len * sizeof(T);
-            copyParamsOut.srcStride = 0;
-            copyParamsOut.dstStride = 0;
-            copyParamsOut.rsv = 0;
-            if constexpr (isFloatInput) {
-                DataCopyPad(resultGM[resultGmOffset], accLocal.template ReinterpretCast<T>(), copyParamsOut);
-            } else {
-                DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
-            }
-        } else {
-            // Write to workspace
-            int64_t wsOutOffset = tilingData_->layerWorkspaceOffset[layerIdx + 1]
-                                 + rowIdx * a0Len + a0Start;
-            DataCopyExtParams copyParamsOut;
-            copyParamsOut.blockCount = 1;
-            copyParamsOut.blockLen = curA0Len * sizeof(float);
-            copyParamsOut.srcStride = 0;
-            copyParamsOut.dstStride = 0;
-            copyParamsOut.rsv = 0;
-            DataCopyPad(workspaceGM[wsOutOffset], accLocal, copyParamsOut);
-        }
-    }
-}
 
 template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
 {
-    int64_t subMode = tilingData_->layerMode[layerIdx];
     int64_t rLen = tilingData_->layerRLength[layerIdx];
     int64_t a0Len = tilingData_->layerA0Length[layerIdx];
     bool isTailReduce = tilingData_->layerIsTailReduce[layerIdx] != 0;
@@ -1088,73 +651,207 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
     bool isFirstLayer = (layerIdx == 0);
 
     LocalTensor<float> tmpLocal = multiTmpBuf.Get<float>();
-    LocalTensor<float> accScalar = multiOutBuf.Get<float>();
+    constexpr int64_t PAD = 8; // 8 fp32 elements = 32 bytes
 
-    // Compute totalRows for this layer
-    // For MULTI_AXIS, rows are the product of dims before the reduce axis in the current shape
-    // We use the same row partitioning as layer 0 (myRows_, myRowOffset_)
-    // For subsequent layers, each row produces exactly 1 output row (tail) or a0Len outputs
+    // Compute per-layer totalRows
+    int64_t layerTotalRows;
+    if (isTailReduce || a0Len == 0) {
+        layerTotalRows = tilingData_->layerOutputElemCount[layerIdx];
+    } else {
+        layerTotalRows = tilingData_->layerOutputElemCount[layerIdx] / a0Len;
+    }
 
-    for (int64_t i = 0; i < myRows_; i++) {
-        int64_t rowIdx = myRowOffset_ + i;
+    for (int64_t i = 0; i < layerTotalRows; i++) {
+        int64_t rowIdx = i;
 
         if (isTailReduce || a0Len == 0) {
-            // Tail reduce sub-layer (AR_FULLLOAD or AR_COLSPLIT)
-            if (subMode == 0) {
-                // AR_FULLLOAD
-                int64_t rLenAlign = (rLen + 7) / 8 * 8; // align to 8 for fp32
-                MultiAxisArFullLoadRow(rowIdx, rLen, rLenAlign, accScalar, tmpLocal, isFirstLayer);
-            } else {
-                // AR_COLSPLIT
-                int64_t chunkCols = tilingData_->layerChunkCols[layerIdx];
-                int64_t numChunks = tilingData_->layerNumChunks[layerIdx];
-                MultiAxisArColSplitRow(rowIdx, rLen, chunkCols, numChunks, accScalar, tmpLocal, isFirstLayer);
-            }
+            // === Tail reduce: sum rLen scalars into 1 scalar ===
+            float accVal = 0.0f;
 
-            PipeBarrier<PIPE_V>();
+            if (isFirstLayer) {
+                // Read rLen elements from inputGM, square, ReduceSum
+                LocalTensor<T> xLocal = multiInBuf.Get<T>();
+                int64_t rLenAlign = (rLen + (32 / sizeof(T)) - 1) / (32 / sizeof(T)) * (32 / sizeof(T));
+                if (rLenAlign < (32 / sizeof(T))) rLenAlign = (32 / sizeof(T));
+                DataCopyExtParams copyParams;
+                copyParams.blockCount = 1;
+                copyParams.blockLen = rLenAlign * sizeof(T);
+                copyParams.srcStride = 0;
+                copyParams.dstStride = 0;
+                copyParams.rsv = 0;
+                DataCopyPadExtParams<T> padParams{true, 0, 0, static_cast<T>(0)};
+                DataCopyPad(xLocal, inputGM[rowIdx * rLen], copyParams, padParams);
+                PipeBarrier<PIPE_ALL>();
+
+                LocalTensor<float> reduceDst = multiOutBuf.Get<float>();
+                if constexpr (isFloatInput) {
+                    Mul(xLocal, xLocal, xLocal, rLen);
+                    PipeBarrier<PIPE_V>();
+                    ReduceSum<float>(reduceDst, xLocal, tmpLocal, static_cast<int32_t>(rLen));
+                } else {
+                    LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
+                    PipeBarrier<PIPE_V>();
+                    Mul(xFp32, xFp32, xFp32, rLen);
+                    PipeBarrier<PIPE_V>();
+                    ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(rLen));
+                }
+                PipeBarrier<PIPE_V>();
+                accVal = reduceDst.GetValue(0);
+            } else {
+                // Read rLen padded scalars from workspace, manual sum
+                LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
+                int64_t wsReadBase = tilingData_->layerWorkspaceOffset[layerIdx] + rowIdx * rLen * PAD;
+                // Read each scalar individually as 32B block
+                for (int64_t rIdx = 0; rIdx < rLen; rIdx++) {
+                    DataCopyExtParams cp;
+                    cp.blockCount = 1;
+                    cp.blockLen = 32;
+                    cp.srcStride = 0;
+                    cp.dstStride = 0;
+                    cp.rsv = 0;
+                    DataCopyPadExtParams<float> pp{false, 0, 0, 0.0f};
+                    DataCopyPad(xFp32, workspaceGM[wsReadBase + rIdx * PAD], cp, pp);
+                    PipeBarrier<PIPE_ALL>();
+                    accVal += xFp32.GetValue(0);
+                }
+            }
 
             // Write result
             if (isLastLayer) {
-                // Cast to T and write to resultGM
                 LocalTensor<T> yLocal = multiInBuf.Get<T>();
+                LocalTensor<float> yFp32 = multiOutBuf.Get<float>();
+                yFp32.SetValue(0, accVal);
+                PipeBarrier<PIPE_V>();
                 if constexpr (!isFloatInput) {
-                    Cast(yLocal, accScalar, RoundMode::CAST_NONE, 8);
+                    Cast(yLocal, yFp32, RoundMode::CAST_RINT, 8);
                     PipeBarrier<PIPE_V>();
                 }
-                if constexpr (isFloatInput) {
-                    DataCopyExtParams copyParamsOut;
-                    copyParamsOut.blockCount = 1;
-                    copyParamsOut.blockLen = sizeof(T);
-                    copyParamsOut.srcStride = 0;
-                    copyParamsOut.dstStride = 0;
-                    copyParamsOut.rsv = 0;
-                    DataCopyPad(resultGM[rowIdx], accScalar.template ReinterpretCast<T>(), copyParamsOut);
-                } else {
-                    DataCopyExtParams copyParamsOut;
-                    copyParamsOut.blockCount = 1;
-                    copyParamsOut.blockLen = sizeof(T);
-                    copyParamsOut.srcStride = 0;
-                    copyParamsOut.dstStride = 0;
-                    copyParamsOut.rsv = 0;
-                    DataCopyPad(resultGM[rowIdx], yLocal, copyParamsOut);
-                }
-            } else {
-                // Write float32 scalar to workspace
-                int64_t wsOutOffset = tilingData_->layerWorkspaceOffset[layerIdx + 1] + rowIdx;
                 DataCopyExtParams copyParamsOut;
                 copyParamsOut.blockCount = 1;
-                copyParamsOut.blockLen = sizeof(float);
+                copyParamsOut.blockLen = sizeof(T);
                 copyParamsOut.srcStride = 0;
                 copyParamsOut.dstStride = 0;
                 copyParamsOut.rsv = 0;
-                DataCopyPad(workspaceGM[wsOutOffset], accScalar, copyParamsOut);
+                if constexpr (isFloatInput) {
+                    DataCopyPad(resultGM[rowIdx], yFp32.template ReinterpretCast<T>(), copyParamsOut);
+                } else {
+                    DataCopyPad(resultGM[rowIdx], yLocal, copyParamsOut);
+                }
+                PipeBarrier<PIPE_ALL>();
+            } else {
+                // Write padded scalar to workspace
+                int64_t wsOutOffset = tilingData_->layerWorkspaceOffset[layerIdx + 1] + rowIdx * PAD;
+                LocalTensor<float> wsOut = multiOutBuf.Get<float>();
+                wsOut.SetValue(0, accVal);
+                PipeBarrier<PIPE_V>();
+                DataCopyExtParams cp;
+                cp.blockCount = 1;
+                cp.blockLen = 32;
+                cp.srcStride = 0;
+                cp.dstStride = 0;
+                cp.rsv = 0;
+                DataCopyPad(workspaceGM[wsOutOffset], wsOut, cp);
+                PipeBarrier<PIPE_ALL>();
             }
         } else {
-            // Non-tail reduce sub-layer (ARA_FULLLOAD or ARA_ROWSPLIT)
-            if (subMode == 2) {
-                MultiAxisAraFullLoad(layerIdx, rowIdx, tmpLocal);
+            // === Non-tail reduce: reduce along rLen, keep a0Len elements ===
+            int64_t a0Align = (a0Len + 7) / 8 * 8;
+            LocalTensor<float> accLocal = multiAccBuf.Get<float>();
+            Duplicate(accLocal, static_cast<float>(0), a0Align);
+            PipeBarrier<PIPE_V>();
+
+            for (int64_t rIdx = 0; rIdx < rLen; rIdx++) {
+                LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
+
+                if (isFirstLayer) {
+                    // Read a0Len elements from inputGM
+                    LocalTensor<T> xLocal = multiInBuf.Get<T>();
+                    int64_t gmOffset = rowIdx * rLen * a0Len + rIdx * a0Len;
+                    int64_t a0LenAlign = (a0Len + (32 / sizeof(T)) - 1) / (32 / sizeof(T)) * (32 / sizeof(T));
+                    if (a0LenAlign < (32 / sizeof(T))) a0LenAlign = (32 / sizeof(T));
+                    DataCopyExtParams cp;
+                    cp.blockCount = 1;
+                    cp.blockLen = a0LenAlign * sizeof(T);
+                    cp.srcStride = 0;
+                    cp.dstStride = 0;
+                    cp.rsv = 0;
+                    DataCopyPadExtParams<T> pp{true, 0, 0, static_cast<T>(0)};
+                    DataCopyPad(xLocal, inputGM[gmOffset], cp, pp);
+                    PipeBarrier<PIPE_ALL>();
+
+                    if constexpr (isFloatInput) {
+                        Mul(xLocal, xLocal, xLocal, a0Len);
+                        PipeBarrier<PIPE_V>();
+                        Add(accLocal, accLocal, xLocal.template ReinterpretCast<float>(), a0Len);
+                        PipeBarrier<PIPE_V>();
+                    } else {
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, a0Len);
+                        PipeBarrier<PIPE_V>();
+                        Mul(xFp32, xFp32, xFp32, a0Len);
+                        PipeBarrier<PIPE_V>();
+                        Add(accLocal, accLocal, xFp32, a0Len);
+                        PipeBarrier<PIPE_V>();
+                    }
+                } else {
+                    // Read a0Len padded elements from workspace
+                    int64_t wsReadBase = tilingData_->layerWorkspaceOffset[layerIdx]
+                                        + (rowIdx * rLen + rIdx) * a0Len * PAD;
+                    LocalTensor<float> tmpRead = multiOutBuf.Get<float>();
+                    for (int64_t ei = 0; ei < a0Len; ei++) {
+                        DataCopyExtParams cp;
+                        cp.blockCount = 1;
+                        cp.blockLen = 32;
+                        cp.srcStride = 0;
+                        cp.dstStride = 0;
+                        cp.rsv = 0;
+                        DataCopyPadExtParams<float> pp{false, 0, 0, 0.0f};
+                        DataCopyPad(tmpRead, workspaceGM[wsReadBase + ei * PAD], cp, pp);
+                        PipeBarrier<PIPE_ALL>();
+                        float val = tmpRead.GetValue(0);
+                        accLocal.SetValue(ei, accLocal.GetValue(ei) + val);
+                    }
+                    PipeBarrier<PIPE_V>();
+                }
+            }
+
+            // Write result
+            if (isLastLayer) {
+                LocalTensor<T> yLocal = multiInBuf.Get<T>();
+                if constexpr (!isFloatInput) {
+                    Cast(yLocal, accLocal, RoundMode::CAST_RINT, a0Len);
+                    PipeBarrier<PIPE_V>();
+                }
+                int64_t resultGmOffset = rowIdx * a0Len;
+                DataCopyExtParams copyParamsOut;
+                copyParamsOut.blockCount = 1;
+                copyParamsOut.blockLen = a0Len * sizeof(T);
+                copyParamsOut.srcStride = 0;
+                copyParamsOut.dstStride = 0;
+                copyParamsOut.rsv = 0;
+                if constexpr (isFloatInput) {
+                    DataCopyPad(resultGM[resultGmOffset], accLocal.template ReinterpretCast<T>(), copyParamsOut);
+                } else {
+                    DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
+                }
+                PipeBarrier<PIPE_ALL>();
             } else {
-                MultiAxisAraRowSplit(layerIdx, rowIdx, tmpLocal);
+                // Write padded a0Len elements to workspace
+                int64_t wsOutBase = tilingData_->layerWorkspaceOffset[layerIdx + 1]
+                                   + rowIdx * a0Len * PAD;
+                LocalTensor<float> wsOut = multiOutBuf.Get<float>();
+                for (int64_t ei = 0; ei < a0Len; ei++) {
+                    wsOut.SetValue(0, accLocal.GetValue(ei));
+                    PipeBarrier<PIPE_V>();
+                    DataCopyExtParams cp;
+                    cp.blockCount = 1;
+                    cp.blockLen = 32;
+                    cp.srcStride = 0;
+                    cp.dstStride = 0;
+                    cp.rsv = 0;
+                    DataCopyPad(workspaceGM[wsOutBase + ei * PAD], wsOut, cp);
+                    PipeBarrier<PIPE_ALL>();
+                }
             }
         }
     }
@@ -1163,11 +860,9 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
 template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
 {
-    // Process layers from innermost (last in sorted axis) to outermost (first)
-    // tilingData layers are ordered: layer[0] = innermost reduce axis, layer[N-1] = outermost
-    // (because host sorts ascending and reverses for processing)
     for (int32_t li = 0; li < numLayers_; li++) {
         ProcessMultiAxisLayer(li);
+        PipeBarrier<PIPE_ALL>();
     }
 }
 

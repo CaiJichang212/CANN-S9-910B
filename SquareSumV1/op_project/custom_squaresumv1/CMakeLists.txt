@@ -12,7 +12,7 @@ set(ARCH32_COMPUTE_UNITS ascend910b ascend910_93)
 if(NOT DEFINED ASCEND_COMPUTE_UNIT OR ASCEND_COMPUTE_UNIT STREQUAL "")
     set(ASCEND_COMPUTE_UNIT ${ARCH32_COMPUTE_UNITS})
 endif()
-set(package_name squaresumv1_custom)
+set(package_name customize)
 
 npu_op_package(${package_name}
     TYPE RUN

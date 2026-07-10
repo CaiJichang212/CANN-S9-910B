@@ -1,3 +1,5 @@
+import ctypes
+ctypes.CDLL("libopapi.so", mode=ctypes.RTLD_GLOBAL)  # 提供 l0op::Contiguous 等全局符号（开发环境适配）
 import torch
 import torch_npu
 from torch_npu.testing.testcase import TestCase, run_tests
@@ -11,7 +13,28 @@ case_data = {
         'input':np.random.uniform(-10, 10, [123, 31]).astype(np.float16),
         'axis': -1,
         'keep_dims': True
-    }
+    },
+    # 性能采集用例（各 TilingKey 代表 shape）
+    'case4': {  # AR_COLSPLIT 大R分载
+        'input':np.random.uniform(-2, 2, [4, 50000]).astype(np.float16),
+        'axis': -1, 'keep_dims': False
+    },
+    'case5': {  # ARA_FULLLOAD 非尾轴
+        'input':np.random.uniform(-2, 2, [64, 3, 1000]).astype(np.float16),
+        'axis': 1, 'keep_dims': False
+    },
+    'case6': {  # 大 shape 尾轴
+        'input':np.random.uniform(-2, 2, [100, 10000]).astype(np.float16),
+        'axis': -1, 'keep_dims': False
+    },
+    'case7': {  # MULTI_AXIS 不相邻多值
+        'input':np.random.uniform(-2, 2, [64, 3, 1000]).astype(np.float16),
+        'axis': (0, 2), 'keep_dims': False
+    },
+    'case8': {  # fp32 尾轴
+        'input':np.random.uniform(-2, 2, [100, 10000]).astype(np.float32),
+        'axis': -1, 'keep_dims': False
+    },
 }
 
 def ensure_tuple(variable):

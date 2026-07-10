@@ -585,38 +585,23 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             inputShape, normalizedAxis, ubSize,
             typeSize, fp32ElementsPerBlock, fp32ElementsPerRepeat);
 
-        // Compute workspace offsets
-        // Layer 0 reads from input (offset 0 in workspace not needed)
-        // Layer k reads from workspace at layer (k-1)'s output offset
-        // Layer k writes to workspace at its own output offset
-        // Output of last layer goes to result tensor (not workspace)
-
-        // Total workspace = size of all intermediate tensors
-        // Intermediate tensors are stored as float32 (for precision)
-        // Maximum intermediate = input size (layer 0 output < input, layer 1 output < layer 0 output, ...)
-        // We need workspace for all intermediate outputs
-        int64_t wsOffset = 0;
-        size_t totalWsSize = 0;
+        // Compute workspace offsets (in float32 element count, including padding)
+        // Each intermediate element is stored as a 32-byte (8 fp32) block for
+        // reliable 32B-aligned DataCopyPad transfers.
+        // Convention: layerWorkspaceOffset[k] = element offset where layer k reads from.
+        //   Layer 0: reads from inputGM, so layerWorkspaceOffset[0] is unused.
+        //   Layer k (k>0): reads from workspace[layerWorkspaceOffset[k]].
+        //   Layer k writes to layerWorkspaceOffset[k+1].
+        constexpr int64_t WS_PAD = 8; // 8 fp32 = 32 bytes per element
+        int64_t wsElemOffset = 0;
         for (size_t li = 0; li < layers.size(); li++) {
             if (li == 0) {
-                // Layer 0 reads from input GM, not workspace
-                layers[li].workspaceOffset = 0; // not used for reading
+                layers[li].workspaceOffset = 0; // unused (reads from inputGM)
             } else {
-                layers[li].workspaceOffset = layers[li - 1].workspaceOffset; // read from prev output
-            }
-
-            if (li < layers.size() - 1) {
-                // Intermediate output: written to workspace
-                // We'll write as float32 for precision (intermediate results)
-                // Allocate space for layer output in float32
-                int64_t outBytes = layers[li].outputElemCount * sizeof(float);
-                // Align to 32 bytes
-                outBytes = CeilAlign(outBytes, static_cast<int64_t>(32));
-                layers[li + 1].workspaceOffset = wsOffset; // next layer reads from here
-                wsOffset += outBytes;
+                layers[li].workspaceOffset = wsElemOffset;
+                wsElemOffset += layers[li - 1].outputElemCount * WS_PAD;
             }
         }
-        totalWsSize = static_cast<size_t>(wsOffset);
 
         // For layer 0: reads from input, writes intermediate to workspace[0..outputElemCount*4]
         // For layer k (k>0, k<N-1): reads from workspace, writes to workspace at next offset
@@ -633,9 +618,10 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             }
         }
 
-        int64_t usedCoreNum = std::min(coreNum, CeilDiv(firstLayerRows, static_cast<int64_t>(1)));
-        if (usedCoreNum < 1) usedCoreNum = 1;
-        int64_t rowsPerCore = CeilDiv(firstLayerRows, usedCoreNum);
+        // Force single core for MULTI_AXIS: each layer has different totalRows,
+        // and cross-core partitioning across layers is complex.
+        int64_t usedCoreNum = 1;
+        int64_t rowsPerCore = firstLayerRows;
 
         // Set TilingData
         SquareSumV1TilingData* tiling = context->GetTilingData<SquareSumV1TilingData>();
@@ -682,20 +668,11 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             tiling->layerMode[li] = lyr.subMode;
         }
 
-        // Recompute workspace offsets properly:
-        // The kernel needs two workspace regions: one for layer-0 intermediate output,
-        // and one for layer-1 intermediate output (ping-pong), etc.
-        // For simplicity: allocate workspace = max(input_size * 4, intermediate sizes)
-        // Since each layer shrinks the data, the largest intermediate is layer 0's output.
-        // But we need workspace for BOTH reading input of next layer and writing output.
-        // For safety, allocate workspace = inputElemCount * sizeof(float) * 2 (ping-pong)
-        int64_t totalInputElems = 1;
-        for (int64_t i = 0; i < rank; i++) {
-            totalInputElems *= inputShape.GetDim(i);
-        }
-        // Workspace = 2 * totalInputElems * sizeof(float) for ping-pong buffers
-        size_t wsSize = static_cast<size_t>(totalInputElems) * sizeof(float) * 2;
-        // Add some alignment padding
+        // Workspace = sum of all intermediate output sizes, in bytes (stored as float32)
+        // wsElemOffset now holds the total element count needed
+        size_t wsSize = static_cast<size_t>(wsElemOffset) * sizeof(float);
+        // Ensure at least one page and 4K alignment
+        if (wsSize == 0) wsSize = 4096;
         wsSize = (wsSize + 4095) & ~static_cast<size_t>(4095);
 
         context->SetBlockDim(static_cast<int32_t>(usedCoreNum));
