@@ -91,3 +91,4 @@
 - **2026-07-10 1.3‖1.4**：方案设计（architect, design）与测试设计（tester, test-design）并行完成。DESIGN.md 定义 TilingKey 5 分支（AR_FULLLOAD/AR_COLSPLIT/ARA_FULLLOAD/ARA_ROWSPLIT/MULTI_AXIS），统一 fp32 域平方+累加（Mul 不支持 bf16、ReduceSum Pattern A2 仅 float），UB 预算逐模板验证 ≤184KB。TEST.md + L0(126)/L1(518)/L2(6) 用例。
 - **2026-07-10 1.3R**：方案评审 ✅通过（9 条款 7 通过，0 HIGH，2 MED 实现细节）。
 - **2026-07-10 1.4R**：首次 ❌失败（axis 越界/重复/output shape 错误，有效率<40%）→ 修复约束定义重跑 → ✅通过（有效率 100%）。剩 2 MED（维度值超限、L0 缺 rank=0）不阻塞，B 阶段过滤。CP2 假设批准（设计测试均通过评审），tag `design-approved`。
+- **2026-07-10 阶段二启动前**：⚠️ **NPU driver 不可用**（device_count=0，runtime 507899 driver internal error，无进程占用，driver 用户态库缺失），详见 `issues/issue_20260710_npu-driver-unavailable_01.md`，需宿主机修复。**降级策略**：开发阶段用 CANN simulator 做功能精度验证；NPU 实跑（穿刺精度/汇合验收/msprof 性能）延后至 driver 修复后补做。编译工具链（ccec/msopgen/simulator）确认可用，kernel 开发不阻塞。
