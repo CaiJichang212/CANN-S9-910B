@@ -1,0 +1,48 @@
+[
+    {
+        "op": "Transpose",
+        "input_desc": [
+            {
+                "name": "x",
+                "param_type": "required",
+                "format": [
+                    "ND",
+                    "ND",
+                    "ND",
+                    "ND"
+                ],
+                "type": [
+                    "fp16",
+                    "fp32",
+                    "int32",
+                    "int8"
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "param_type": "required",
+                "format": [
+                    "ND",
+                    "ND",
+                    "ND",
+                    "ND"
+                ],
+                "type": [
+                    "fp16",
+                    "fp32",
+                    "int32",
+                    "int8"
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dims",
+                "param_type": "required",
+                "type": "list_int"
+            }
+        ]
+    }
+]
