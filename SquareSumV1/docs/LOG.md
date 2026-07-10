@@ -53,7 +53,7 @@
 | 1.4 | 测试设计 | ✅ | 2026-07-10 |
 | 1.4R | 测试设计评审 | ✅ | 2026-07-10 |
 | — | CP2 用户确认 | ⬜ | |
-| 2.迭代一 | 骨架搭建（A1-Main/A1-P/A2/B/汇合/验收） | ⬜ | |
+| 2.迭代一 | A1-Main✅骨架；A1-P/A2/B/汇合/验收进行中 | 🔄 | 2026-07-10 |
 | 2.迭代二 | 策略整合 | ⬜ | |
 | 2.迭代三 | 全量覆盖 | ⬜ | |
 | W | 白盒测试生成与汇合 | ⬜ | |
@@ -80,7 +80,7 @@
 | 测试设计 | `SquareSumV1/docs/TEST.md` | ✅ |
 | 测试评审 | `SquareSumV1/docs/TEST_REVIEW.md` | ✅ |
 | ST 用例 | `SquareSumV1/tests/st/testcases/` | ✅ |
-| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ⬜ |
+| 算子工程 | `SquareSumV1/op_project/custom_squaresumv1/` | ✅(AR_FULLLOAD) |
 
 ## 开发记录
 
@@ -92,3 +92,4 @@
 - **2026-07-10 1.3R**：方案评审 ✅通过（9 条款 7 通过，0 HIGH，2 MED 实现细节）。
 - **2026-07-10 1.4R**：首次 ❌失败（axis 越界/重复/output shape 错误，有效率<40%）→ 修复约束定义重跑 → ✅通过（有效率 100%）。剩 2 MED（维度值超限、L0 缺 rank=0）不阻塞，B 阶段过滤。CP2 假设批准（设计测试均通过评审），tag `design-approved`。
 - **2026-07-10 阶段二启动前**：⚠️ **NPU driver 不可用**（device_count=0，runtime 507899 driver internal error，无进程占用，driver 用户态库缺失），详见 `issues/issue_20260710_npu-driver-unavailable_01.md`，需宿主机修复。**降级策略**：开发阶段用 CANN simulator 做功能精度验证；NPU 实跑（穿刺精度/汇合验收/msprof 性能）延后至 driver 修复后补做。编译工具链（ccec/msopgen/simulator）确认可用，kernel 开发不阻塞。
+- **2026-07-10 2.迭代一 A1-Main**：主线骨架完成（developer）。创建完整算子工程（op_host/op_kernel/op_api/op_graph），实现 AR_FULLLOAD（Key=0）链路 DataCopyPad→Cast→Mul→ReduceSum→Cast→DataCopyPad，Double Buffer，动态 blockDim。编译通过，3 kernel binary（FP16/FP32/BF16），产物 custom_opp_{openEuler,ubuntu}_aarch64.run。simulator 精度全通过（fp16 [4,1000] axis=-1 keep_dims T/F，NaN/inf 传播正确）。解决 4 个 API 适配问题（gert::IntArray→RuntimeAttrs::GetListInt、DT_BFLOAT16→DT_BF16、kernel 函数名 snake_case、OpAttrDef API）。运行环境=simulator。
