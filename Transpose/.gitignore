@@ -1,0 +1,12 @@
+**/build_out/
+**/build/
+dist/
+*.egg-info/
+PROF_*/
+**/__pycache__/
+*.pyc
+
+# runtime / compile artifacts
+**/kernel_meta/
+**/extra-info/
+**/*_profiling_output_record
