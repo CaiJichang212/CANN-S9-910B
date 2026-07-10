@@ -1,181 +1,260 @@
-# Transpose 算子开发总结
+# Transpose 算子开发交接文档（给 Coding Agent）
 
-> 项目：`case_910b_Transpose`（分支 `dev-transpose-0707`，工作树 `/home/liyc/hw-S9/case_910b_Transpose`）
+> **本文档用于指导在新 910B 服务器（NPU 正常可用）上继续 Transpose 算子开发。**
+> 项目：`case_910b_Transpose`（分支 `dev-transpose-0707`）
+> 工作目录：`~/case_910b_Transpose/Transpose`
 > 目标平台：Ascend 910B（DAV_2201），CANN 8.5.0，20 AICore
-> 算子：Transpose（`torch.permute`），支持 fp16/fp32/int32/int8、2D~5D、非对齐 shape
-> 文档日期：2026-07-10
+> 最后更新：2026-07-10
 
 ---
 
-## 一、算子实现进度
+## 〇、给 Agent 的快速指令（先读这段）
 
-### 当前阶段：内核代码完成、可编译安装，**精度/性能上板验证受阻于设备卡死**
+**当前算子已开发到「代码完成、可编译、未经上板验证」阶段。** 之前因旧服务器 NPU 设备卡死（崩溃内核遗留 AICore hang），无法跑精度/性能测试。新服务器 NPU 正常，你的首要任务是：
 
-| 模块 | 状态 | 说明 |
+1. **搭好环境**（见第三节）→ **build + 装包** → **跑 `run_all.sh` 验证 12 个 case 的精度**。
+2. 根据精度结果**修 bug**（大概率有几处，详见第五节「待验证/高风险点」）。
+3. 精度全过后，**msprof 量性能对比内置 baseline**，优化慢路径（非 half 2D 转置、任意 permute）。
+4. 达标后**打包 zip 提交**。
+
+**绝对约束**：只能用 `dev-transpose-0707` 分支代码，禁止合并其他分支（Concat/Greater/IndexAdd/SquareSumV1）的算子实现。tiling 必须通用，**禁止针对已知 case 定制化**（否则 0 分）。
+
+---
+
+## 一、当前开发阶段
+
+### 已完成
+| 模块 | 状态 | 文件 |
 |------|------|------|
-| `op_host/transpose.cpp`（TilingFunc/InferShape/InferDataType/OpDef） | ✅ 完成 | 按 dims 重排输出 shape、dtype 跟输入、SoC=ascend910b、三路径模式选择 |
-| `op_host/transpose_tiling.h` | ✅ 完成 | 三路径统一 tiling 字段（uint32_t，数组用 set_） |
-| `op_kernel/transpose.cpp` | ✅ 完成（待上板验证） | 三路径搬运，half 走 vtranspose |
-| 构建（`build.sh`） | ✅ 通过 | 全 4 个 dtype 变体编译通过，`.run` 生成 |
-| 安装（custom op） | ✅ 完成 | `libcust_opapi.so` 安装到 `vendors/customize`，覆盖内置 `aclnnTranspose` |
-| pybind whl（`setup.py`） | ✅ 完成 | `dist/custom_ops-1.0-cp311-...whl` 已构建（需 `TORCH_DEVICE_BACKEND_AUTOLOAD=0`） |
-| 测试用例（`test_op.py`） | ✅ 完成 | 1 → 12 个 case（4 dtype × 2D~5D × 非对齐 × 边界 × 任意 permute） |
-| 精度上板验证 | ❌ 阻塞 | NPU 设备卡死，无法跑 |
-| 性能（msprof）对比基线 | ❌ 阻塞 | 同上 |
-| 打包（`zip_op.sh`） | ⬜ 待办 | 上板验证通过后做（需重新 build 确保一致） |
+| Host（TilingFunc/InferShape/InferDataType/OpDef） | ✅ 完成 | `op_host/transpose.cpp`、`op_host/transpose_tiling.h` |
+| Kernel（三路径搬运） | ✅ 完成（**待上板验证**） | `op_kernel/transpose.cpp` |
+| 构建 | ✅ 全 4 dtype 变体编译通过，`.run` 可生成 | `build.sh` |
+| 测试用例 | ✅ 12 个 case（1→12，覆盖 4 dtype/2D-5D/非对齐/边界/任意 permute） | `test_op.py` |
+| 批量自测脚本 | ✅ 新增 | `run_all.sh` |
+| SoC 配置 | ✅ `ascend910b`（CMakePresets + AddConfig） | — |
 
-### 三条搬运路径（内核）
-
-| mode | 路径 | 触发条件 | 实现 | 性能 |
-|------|------|---------|------|------|
-| 0 | **COPY 连续** | 输出末维源端连续（S==1，如 dims 末位 identity） | 连续 GM→UB→GM，UB 贴满 | 高效 |
-| 0 | **COPY 步长兜底** | 任意 permute 且 S>1（如 case11 `(1,2,0)`） | 逐元素 `GetValue` 步长读 + 连续写 | 正确，偏慢 |
-| 1 | **TRANSPOSE** | 末两维交换 + 前缀 identity（2D 转置） | 16×16 分块：紧凑读 → half 硬件 vtranspose / 其余逐元素 UB 转置 → 连续写 | half 高效；其余正确但慢 |
+### 未完成（你的任务）
+- ❌ **上板精度验证**（核心，之前设备卡死没跑成）
+- ❌ **修精度 bug**（有几处高风险点，详见第五节）
+- ❌ **性能对比基线 + 优化慢路径**
+- ❌ **打包提交**（`zip_op.sh`）
 
 ---
 
-## 二、遇到的问题与解决方案
+## 二、内核设计（必须读懂才能继续）
 
-### 问题 1：内核崩溃（case1 128×256 fp16 2D 转置）
+任意 permute 被归约为「**按输出行搬运**」：
+- `W` = 输出末维 = `inShape[dims[ndim-1]]`
+- `S` = 源步长 = `inStride[dims[ndim-1]]`（元素）
+- 外层输出维（0..ndim-2）每个组合对应输出一行，源基址由 `DecodeRow(row)` 混合基解码得到。
 
-- **现象**：上板即崩，`exception_info` dump 显示 UB 垃圾值（`0xa5a5a5a5` 填充模式），`vendors/customize` 为空（未成功跑完）。
-- **根因**：原内核在 `TransposeBlk16` 中**对全部 dtype 无条件调用 `Transpose(dst, src)`（vtranspose 指令）**。但查阅 `impl/basic_api/dav_c220/kernel_operator_vec_transpose_intf_impl.h`，该 API 的 `ASCENDC_ASSERT(SupportType<PrimT<T>, int16_t, uint16_t, half>())` 表明**仅 half/int16/uint16 支持**。release 构建下断言被编译掉（`#if ASCENDC_CPU_DEBUG`），fp32/int32/int8 会经 uint16 reinterpret 产出乱数据甚至越界崩溃。
-- **解决**：
-  1. 用 `if constexpr (sizeof(DTYPE_X) == sizeof(half))` 守卫 `Transpose()` 调用，非 half 走 `TransposeGeneric`（逐元素，dtype 无关）。
-  2. half 路径：host 固定 `tileM=tileN=16`，使 16×16 块天然紧凑（16 个 half = 32B = 1 dataBlock，dstStride=0），满足 vtranspose 的「连续 16×16」要求。
-  3. 修正 UB 侧 stride 单位（见问题 4）。
+### 三条路径（host 在 `TilingFunc` 里按 dims 选 mode）
 
-### 问题 2：环境缺失 torch/torch_npu
+| mode | 路径 | host 触发条件 | kernel 实现 | 性能 |
+|------|------|--------------|-------------|------|
+| 0 | **COPY 连续** (`ProcessCopy`→`ProcessCopyRow`→`CopyTileContiguous`) | `S==1`（dims 末位 identity，如 `(1,0,2)`、identity permute） | 连续 GM→UB→GM，UB 贴满 80KB | 高效 ✅ |
+| 0 | **COPY 步长兜底** (`CopyTileStrided`) | `S>1` 且非末两维交换（任意 permute，如 case11 `(1,2,0)`、case12 `(2,0,1)`） | 逐元素 `xGm.GetValue(步长S)`→`ub.SetValue`→连续写 | **正确但慢** ⚠️ |
+| 1 | **TRANSPOSE** (`ProcessTranspose`→`TransposeBlk`→`TransposeUB`) | 末两维相邻交换 + 前缀 identity（`dims=[0..,n-1,n-2]`，2D 转置，可带 batch） | 16×16 分块：紧凑读→**half 硬件 `Transpose()`(vtranspose)** / 其余 dtype 逐元素 `TransposeGeneric`→紧凑写 | half 高效 ✅；其余 **正确但慢** ⚠️ |
 
-- **现象**：`import torch` 报 `No module named 'torch'`，但之前能跑（环境被清过）。
-- **解决**：`pip3 install torch==2.5.1`(CPU, aarch64, cp311) + `torch_npu==2.5.1` + numpy/pybind11/expecttest。网络可用。
-
-### 问题 3：构建缺 Python 依赖
-
-- **现象**：`opc`（算子编译器）构建时报 `No module named 'decorator'/'scipy'/'attr'/'psutil'/'yaml'`，真实 ccec 错误被掩盖。
-- **解决**：逐个 `pip3 install decorator scipy attrs psutil pyyaml`。构建工具链依赖较隐蔽，**报错信息层层嵌套，需逐层装齐才能看到真正的 ccec 编译错误**。
-
-### 问题 4：DataCopyPad 的 stride 单位陷阱
-
-- **现象**：原内核 UB 侧 stride 直接用字节，但实际 UB 侧单位是 **32B dataBlock**。
-- **根因**：查 `DataCopyPad(ISASI).md` 与 `DataCopyPad2D` 样例确认：
-  - **GM 侧** `srcStride/dstStride` 单位 = **字节**；
-  - **UB 侧（VECIN/VECOUT）** `srcStride/dstStride` 单位 = **32B dataBlock（必须 32B 整倍）**；
-  - stride 语义 = 相邻块「前块尾到后块头」的 **GAP**（非总跨度）；
-  - `blockCount(uint16_t) ∈ [1, 4095]`（不是 65535！）。
-- **解决**：重写 stride 计算，UB 行间距用 `Align32(...)/32` 块数表达；逐元素兜底路径 dstStride=0（每元素占 1 block）。
-
-### 问题 5：`ProcessTranspose` 丢失 batch 循环
-
-- **现象**：重写时漏掉前缀 batch 维遍历，3D+ 输入（如 `case5 (12,64,97)`）输出错误。
-- **解决**：`totalTiles = transBatch_ * nTiles * mTiles`，按平铺索引 `tb` 解出 `(b, ti, tj)`，`matBase = b * transM * transN`。
-
-### 问题 6：S>1 任意 permute 回退缺失
-
-- **现象**：host 对非末两维交换的 permute（如 `(1,2,0)`）设 mode=0 但 S>1，原 kernel 按连续读 → 错误。
-- **解决**：COPY 路径按 `S_==1` / `S_>1` 分流：S>1 走 `CopyTileStrided`（逐元素 `xGm.GetValue(步长S)` → `ub.SetValue` → 连续写），正确兜底任意 permute。
-
-### 问题 7：ccec 不支持 `std::max`
-
-- **现象**：`error: no member named 'max' in namespace 'std'`。
-- **解决**：kernel 内禁用 `<algorithm>`，用三元运算符替代 `std::max`。
-
-### 问题 8：whl 构建触发设备初始化失败
-
-- **现象**：`setup.py` import torch_npu 触发 runtime 初始化，设备不可用时 whl 构建失败。
-- **解决**：`export TORCH_DEVICE_BACKEND_AUTOLOAD=0` 跳过 backend 自动加载，whl 可离线构建。
-
-### 问题 9：陈旧构建产物导致 param json 与 op store 不一致
-
-- **现象**：`invalid input nums[1], which should be equal to input nums[2] in op store`。
-- **解决**：`rm -rf build_out` 全新构建。
+### 关键设计决策
+- **half 走 vtranspose**：host 固定 `tileM=tileN=16`。因 16 个 half=32B=1 dataBlock，GM→UB 读时 `dstStride=0` 天然紧凑成连续 16×16，满足 `Transpose(dst,src)` 的输入要求。用 `if constexpr (sizeof(DTYPE_X)==sizeof(half))` 守卫，非 half 不实例化该调用。
+- **其余 dtype 走 `TransposeGeneric`**：逐元素 `GetValue`/`SetValue`，dtype 无关、可证明正确，但慢。这是**已知性能债**，精度过后必须优化（见第六节）。
+- **非 half 的 tile 更大**：host 给 fp32/int32/int8 用 16 倍数大 tile（贴满 64KB），摊薄逐元素开销。
 
 ---
 
-## 三、反复出现的问题
+## 三、环境搭建（新服务器首次必做）
 
-### 🔴 反复问题 1：NPU 设备卡死（最大阻塞）
-
-- **现象**：`npu-smi` 报 `dcmi model initialized failed, device is used. ret=-8020`；`aclrtGetDeviceCount` 返回 `507899`（`drvRet=87`）。无进程占用设备（`ps`/`/proc/fd` 查无），但驱动拒绝访问。
-- **成因**：崩溃内核遗留 AICore hang，驱动状态不健康，**不会自愈**。
-- **现状**：自动模式拦截 `npu-smi set -t device-reset`，需人工重置设备或重启容器/主机。
-- **教训**：**kernel 崩溃会污染设备状态长达数小时**，开发期频繁崩溃成本极高 → 应先用 CPU_DEBUG/仿真验证再上板，减少崩溃次数。
-
-### 🔴 反复问题 2：构建依赖链隐蔽
-
-- `opc` 报错层层嵌套（decorator → scipy → attrs → psutil → yaml），每次只暴露一层。
-- **教训**：新环境首次构建前，应一次性装齐构建依赖，避免反复试错。
-
-### 🟡 反复问题 3：错误信息被日志噪声淹没
-
-- ccec 真实错误被大量 `platform_info`/`deprecated` WARNING 淹没，需 `grep -iE "error:|\.cpp:[0-9]+"` 精确过滤。
-
----
-
-## 四、开发过程梳理（时间线）
-
-1. **现状盘点**：读 CLAUDE.md / AGENTS.md → 发现内核已写一半但 case1 崩溃、custom op 未安装、环境缺 torch。
-2. **根因定位**：读 `Transpose` API 实现（dav_c220）→ 确认 vtranspose dtype 限制；读 `DataCopyPad` 文档 → 确认 stride 单位约定。
-3. **参考对照**：查阅内置 `aclnnTranspose`（`transpose.cpp` + `v35/transpose_*.h`）的 tensor_move/n_last 等成熟路径，确认「输出驱动逐行搬运」是正确通用范式。
-4. **内核重写**：三路径（COPY 连续 / COPY 步长兜底 / TRANSPOSE），half 用 vtranspose + `if constexpr` 守卫，其余逐元素保正确。
-5. **Host tiling 调整**：half 固定 16×16 tile；其余 16 倍数大 tile；三路径统一 tiling 字段。
-6. **构建排障**：装 Python 依赖、清陈旧产物、修 `std::max`、设 `TORCH_DEVICE_BACKEND_AUTOLOAD=0`。
-7. **逻辑验证**：手推 case1 / case11 / case6 的地址与 stride、越界、混合基解码（**无法上板，仅逻辑层面**）。
-8. **测试扩展**：test_op.py 1→12 case，新增 `run_all.sh`。
-9. **阻塞**：设备卡死，上板验证停滞。
-
----
-
-## 五、开发建议
-
-### 架构与设计
-
-1. **通用正确路径与硬件加速路径分离**：先写 dtype 无关、可证明正确的通用兜底（如逐元素），再用 `if constexpr` 按 dtype/对齐条件叠加硬件加速分支（vtranspose）。避免「一开始就全走硬件 API」导致 dtype 不兼容崩溃。
-2. **优先参考内置 op 实现**：CANN 内置 `aclnnTranspose`（`opp/built-in/.../transpose/v35/*.h`）的多路径（tensor_move/n_last/cut_one_axis/gather）是经过验证的范式，新算子应先读懂内置再动笔，避免重复踩坑。
-3. **归约为「输出驱动逐行搬运」**：任意 permute 都可归约为「按输出行搬运」，源基址由外层维 stride 加权得到（`DecodeRow`）。这一范式统一、可证明正确，是通用 permute 的稳健基线。
-
-### API 使用
-
-4. **精确掌握 DataCopyPad 的 stride 单位**：GM=字节、UB=32B dataBlock；语义是 GAP（块尾到下块头）；`blockCount≤4095`。写代码前先查 `DataCopyPad(ISASI).md` + `DataCopyPad2D` 样例对照，**不要凭直觉写 stride**。
-5. **硬件指令 dtype 限制用 `if constexpr` 守卫**：vtranspose 仅 half/int16/uint16、`Transpose-39` 仅 A3、ND2ND_B16 有尺寸约束。用编译期 `sizeof`/`IsSameType` 分支，确保非支持 dtype 不实例化该调用。
-6. **UB 行布局用 32B 对齐**：`Align32(rowBytes)`，行间距用块数（`/32`）表达，避免 stride 非 32B 整倍。
-7. **kernel 内禁用 `<algorithm>`/`std::max`**：ccec 内核编译环境精简，用三元运算符。
-
-### 验证策略
-
-8. **先 CPU_DEBUG/仿真验证再上板**：设备一旦被崩溃内核污染需数小时人工恢复，成本极高。应先用 CPU_DEBUG 模式跑通精度，确认无崩溃再上板。
-9. **增量验证**：先跑 S==1 连续路径（最简单）→ 再 2D 转置（half vtranspose）→ 再非 half 转置 → 再任意 permute。每步独立验证，缩小问题范围。
-10. **测试用例覆盖矩阵**：4 dtype × {2D,3D,4D,5D} × {对齐,非对齐} × {末两维交换,任意 permute,identity} × 边界(1×1)。int8/int32 必须严格零误差。
-
-### 环境与工具链
-
-11. **新环境首构建前一次装齐依赖**：`pip3 install decorator scipy attrs psutil pyyaml numpy pybind11 expecttest`，避免 `opc` 层层报错。
-12. **whl 离线构建**：`export TORCH_DEVICE_BACKEND_AUTOLOAD=0` 绕过 torch_npu 设备初始化，设备不可用时仍能构建 pybind whl。
-13. **构建错误过滤**：`grep -iE "error:|\.cpp:[0-9]+:[0-9]+|Kernel Compilation"` 过滤噪声，定位真实 ccec 错误。
-
-### 待优化（设备恢复后）
-
-14. **非 half 2D 转置性能**：当前逐元素 UB 转置慢，需用 UB→UB strided `DataCopy(DataCopyParams)` 做 8×8(fp32/int32)/32×32(int8) 块转置，或参考内置 `scatter_vnchwconv`。
-15. **多核负载均衡**：mode=1 的 `blockDim` 当前由 `numRows`（COPY 几何）推算，应改用 `totalTiles` 推算以更好均衡。
-
----
-
-## 六、当前交付物状态
-
-```
-op_kernel/transpose.cpp   364 行  ✅ 编译通过
-op_host/transpose.cpp     252 行  ✅
-op_host/transpose_tiling.h          ✅
-test_op.py                12 case  ✅
-run_all.sh                         ✅ 批量精度自测
-build_out/custom_opp_openEuler_aarch64.run  ✅ 已安装
-dist/custom_ops-1.0-cp311-...whl           ✅
-```
-
-**设备恢复后立即可执行的验证流程**：
+### 3.1 Python 依赖（构建链 + 运行）
 ```bash
-cd /home/liyc/hw-S9/case_910b_Transpose/Transpose
-export TORCH_DEVICE_BACKEND_AUTOLOAD=0
-bash run_all.sh     # 批量验证 12 case 精度
-bash run.sh 1       # case1 精度 + 性能(msprof 对比基线)
+pip3 install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+pip3 install torch_npu==2.5.1
+pip3 install numpy==1.24.0 pybind11==2.13.1 expecttest pyyaml decorator scipy attrs psutil
 ```
+> **坑**：`opc`（算子编译器）依赖 decorator/scipy/attrs/psutil/pyyaml，缺哪个就报哪个，层层嵌套。一次装齐。
+> **坑**：whl 构建（`setup.py` import torch_npu）会触发设备初始化，若设备异常设 `export TORCH_DEVICE_BACKEND_AUTOLOAD=0` 绕过。
+
+### 3.2 确认设备正常
+```bash
+npu-smi info                      # 应正常显示 20 AICore，无 "device is used"
+python3 -c "import torch,torch_npu; print(torch.npu.is_available(), torch.npu.device_count())"
+```
+> 若报 `drvRet=87 / device is used (-8020)`，是设备被崩溃内核污染，需 `npu-smi set -t device-reset -i 0` 或重启。
+
+---
+
+## 四、标准构建/测试流程
+
+```bash
+cd ~/case_910b_Transpose/Transpose
+
+# 1) 构建内核（产出 .run）—— 改了 op_kernel/op_host 后必做
+bash build.sh
+# 产出 build_out/custom_opp_openEuler_aarch64.run
+
+# 2) 安装自定义算子（覆盖内置 aclnnTranspose）
+bash build_out/custom_opp_openEuler_aarch64.run
+
+# 3) 构建 pybind whl（改了 extension/custom_op.cpp 才需重做）
+export TORCH_DEVICE_BACKEND_AUTOLOAD=0
+python3 setup.py build bdist_wheel
+pip3 install dist/custom_ops*.whl --force-reinstall
+
+# 4) 批量精度验证（12 个 case）
+export TORCH_DEVICE_BACKEND_AUTOLOAD=0
+bash run_all.sh
+
+# 5) 单 case 精度+性能（msprof）
+bash run.sh 1      # caseN：1=重新装whl；之后可 bash run.sh <N>
+```
+
+### 性能度量规则（`get_time.py`）
+- 解析 `PROF_*/prof_device_*/summary/op_summary*.csv` 的 `Task Duration(us)`
+- **跳过 `Op Name` 含 `aclnnMul` 的行**（占位 warmup 噪声）
+- 取 `time_use_list[10:30]` 中位数（`test_op.py` 内 `round=30` 次循环）
+- `run.sh` 的 `time_base=9999999999999`（本地只判非 0，**真实基线由评分系统判定**）
+
+### 量内置基线对比
+从 `LD_LIBRARY_PATH` 去掉 `vendors/customize/op_api/lib/`，回退 `libopapi.so`，同条件 msprof。
+
+---
+
+## 五、待验证 / 高风险点（上板后优先排查）
+
+> 这些是**逻辑层面已手推验证、但未经上板实测**的点，按崩溃/错误概率排序。上板后若某 case 崩溃或出错，**优先查这里**。
+
+### 🔴 高风险 1：half vtranspose 路径（case1/5/9，主路径）
+- `Transpose(dst, src)` 在 `TransposeBlk` 里被调用。源 `src` 从 `srcQue(VECIN)` DeQue，目的 `dstUB` 从 `dstQue(VECOUT)` AllocTensor。
+- **风险点**：vtranspose 对 UB 布局/对齐有隐含要求。当前依赖「16 half=32B=1block，dstStride=0 天然紧凑」。若 vtranspose 仍崩，检查：
+  - `srcQue`/`dstQue` 的 `InitBuffer` 大小是否足够（当前 `ubElems=max(srcBytes,dstBytes)/dtypeSize`，half 时 = 256 元素=512B/buffer）。
+  - 是否需要显式 `SetFlag/WaitFlag` 同步（当前靠 TQue 的 EnQue/DeQue 自动同步 MTE2→V→MTE3）。
+  - 尾块（mh<16 或 nw<16）时 vtranspose 读到 UB 未初始化区（垃圾值），但输出只写有效区——逻辑上安全，**但需实测确认不崩**。
+
+### 🟡 中风险 2：非 half 2D 转置逐元素路径（case2/3/4/6/7）
+- `TransposeGeneric` 用 `GetValue`/`SetValue` 逐元素，从 `src(VECIN)` 读、写 `dstUB(VECOUT)`。
+- **风险点**：LocalTensor 的 `GetValue`/`SetValue` 在 S pipe，与 EnQue/DeQue 的跨 pipe 同步可能需显式 event。若结果错乱或崩溃，考虑加 `SetFlag<HardEvent::V_S>`/`WaitFlag` 或改用 UB→UB `DataCopy(DataCopyParams)`。
+
+### 🟡 中风险 3：任意 permute 步长兜底（case11/12）
+- `CopyTileStrided` 用 `xGm.GetValue()`（GM 直接读，AICPU 往返）逐元素。慢但应正确。
+- **风险点**：`GetValue` 对 int8/fp32 的类型转换；`blockCount≤4095` 的 tile 切分（已 clamp 到 4095）。
+
+### 🟢 低风险 4：COPY 连续路径（case8 identity、S==1 的 permute）
+- `CopyTileContiguous` 是标准 DataCopyPad 连续搬运，最稳。
+
+### 关键 API 约束速查（踩过的坑，别再踩）
+| 约束 | 说明 |
+|------|------|
+| **`Transpose()` 仅 half/int16/uint16** | 见 `impl/basic_api/dav_c220/kernel_operator_vec_transpose_intf_impl.h` 的 `SupportType` assert。release 构建断言被编译掉（`#if ASCENDC_CPU_DEBUG`），非 half 不报错但产出乱数据。已用 `if constexpr` 守卫。 |
+| **DataCopyPad stride 单位** | GM 侧=**字节**；UB 侧(VECIN/VECOUT)=**32B dataBlock（必须 32B 整倍）**。语义=相邻块 GAP（前块尾到后块头）。 |
+| **blockCount(uint16_t) ∈ [1,4095]** | 不是 65535！大 tile 要切分。 |
+| **ccec 无 `<algorithm>`** | 禁用 `std::max/std::min`，用三元运算符（host 侧 `op_host` 可用 std）。 |
+| **DataCopyExtParams 用成员赋值** | 花括号 `{1,n,0,0,0}` 触发 narrowing。`p.blockCount=...; p.blockLen=...; ...` |
+| **DataCopyPad 参数数** | GM→UB 需 4 参（含 `DataCopyPadExtParams<T>`）；UB→GM 只需 3 参。 |
+| **tiling 字段全 uint32_t** | host 用 `set_xxx(arr)/get_xxx()`，kernel 用 `GET_TILING_DATA(t,tiling)`，不 include host 头。 |
+| **910B 无 NDDMA** | 只能 `DataCopy`+`DataCopyParams`/`DataCopyPad` stride 搬运，无高维 DMA。 |
+
+---
+
+## 六、待优化（精度过后）
+
+### 6.1 非 half 2D 转置性能（case2/3/4/6/7）
+当前 `TransposeGeneric` 逐元素，慢。优化方向：
+- **UB→UB `DataCopy(DataCopyParams)` 块转置**：fp32/int32 按 8 元素=1 block 做 8×8 块转置；int8 按 32 元素=1 block。
+- 或参考内置 `aclnnTranspose` 的 `v35/transpose_*.h`（`tensor_move`/`n_last`/`cut_one_axis` 路径），位于 `/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe/impl/ops_legacy/ascendc/transpose/`。
+- 或用 `scatter_vnchwconv` 指令（内置 Transpose/TransDataTo5HD 底层用它）。
+
+### 6.2 任意 permute 步长性能（case11/12）
+`CopyTileStrided` 逐元素 `GetValue` 慢。可改用 `DataCopyPad` blockCount=curLen, blockLen=dtypeSize, srcStride=(S-1)*dtypeSize 一次 strided 读多元素（注意 UB dstStride 单位是 32B block，布局会稀疏，需配套写出）。
+
+### 6.3 多核负载均衡
+mode=1 的 `blockDim` 当前由 `numRows`（COPY 几何）推算，应改用 `totalTiles` 推算更好均衡。见 `op_host/transpose.cpp:118`。
+
+### 6.4 TILE/双缓冲
+- COPY 路径 `copyTileLen` 贴满 80KB（已做）。
+- TRANSPOSE 路径 half 固定 16×16（小 buffer），可考虑更大 tile（如 16×256）循环 16×16 子块，提升 GM 读复用。
+
+---
+
+## 七、上下文信息（Agent 必须知道的）
+
+### 7.1 关键路径
+| 用途 | 路径 |
+|------|------|
+| 算子工程 | `~/case_910b_Transpose/Transpose` |
+| 项目指南（赛题/规格/约束/打包） | `~/case_910b_Transpose/CLAUDE.md`（**必读**） |
+| 经验教训（Greater 沉淀，通用） | `~/AscendC算子开发经验教训.md` |
+| 优化建议 | `~/S9挑战赛910B软硬件深度协同优化建议.md` |
+| 评分规则 | `~/评分规则.md` |
+| 打包脚本 | `~/zip_op.sh` |
+| Ascend C 官方仓 | `/home/liyc/asc-devkit`（`impl/basic_api/dav_c220/` 为 910B 实现基准） |
+| DataCopyPad 文档 | `/home/liyc/asc-devkit/docs/api/context/DataCopyPad(ISASI).md` |
+| DataCopy 结构体 | `/home/liyc/asc-devkit/include/basic_api/kernel_struct_data_copy.h` |
+| vtranspose 实现 | `/usr/local/Ascend/cann-8.5.0/aarch64-linux/asc/impl/basic_api/dav_c220/kernel_operator_vec_transpose_impl.h` |
+| 内置 transpose 参考 | `/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe/impl/ops_legacy/ascendc/transpose/` |
+| CANN 工具 | `/usr/local/Ascend/cann-8.5.0`（`bin/msopgen`、`tools/msprof`） |
+| AddCustom 样例 | `~/samples/operator/ascendc/0_introduction/1_add_frameworklaunch` |
+
+### 7.2 调用与覆盖机制
+- 测试通过 `EXEC_NPU_CMD(aclnnTranspose, input, dims, result)` 调用。
+- `pytorch_npu_helper.hpp` 的 `GetOpApiFuncAddr` **先解析 `libcust_opapi.so`（自定义），再 `libopapi.so`（内置）**。
+- `run.sh` 把 `vendors/customize/op_api/lib/` 前置 `LD_LIBRARY_PATH` → 自定义 kernel 安装后**自动覆盖内置 aclnnTranspose**，无需改 `custom_op.cpp`。
+
+### 7.3 赛题规格
+- dtype：fp16/fp32/int32/int8（**不含 bfloat16**）
+- shape：最多 5D，N/N2∈[1,10000]，N3/N4/N5∈[1,1000]，**可能非 32 整倍数**
+- 精度阈值：fp16 千分之一、fp32 万分之一、int8/int32 零误差
+
+### 7.4 测试用例清单（test_op.py）
+| case | dtype | shape | dims | 路径 |
+|------|-------|-------|------|------|
+| 1 | fp16 | (128,256) | (1,0) | TRANSPOSE-vtranspose |
+| 2 | fp32 | (37,53) | (1,0) | TRANSPOSE-generic |
+| 3 | int8 | (100,33) | (1,0) | TRANSPOSE-generic |
+| 4 | int32 | (256,512) | (1,0) | TRANSPOSE-generic |
+| 5 | fp16 | (12,64,97) | (0,2,1) | TRANSPOSE-vtranspose+batch |
+| 6 | fp32 | (3,5,37,53) | (0,1,3,2) | TRANSPOSE-generic+batch |
+| 7 | int8 | (2,3,4,17,9) | (0,1,2,4,3) | TRANSPOSE-generic+batch |
+| 8 | fp16 | (64,128) | (0,1) | COPY(identity) |
+| 9 | fp16 | (33,100) | (1,0) | TRANSPOSE-vtranspose |
+| 10 | fp16 | (1,1) | (1,0) | TRANSPOSE(边界) |
+| 11 | fp16 | (7,11,13) | (1,2,0) | COPY-strided(任意permute) |
+| 12 | fp32 | (2,19,23) | (2,0,1) | COPY-strided(任意permute) |
+
+---
+
+## 八、已解决的关键问题（历史记录，避免重犯）
+
+1. **崩溃根因**：原内核对所有 dtype 调 `Transpose()`(vtranspose)，仅 half 支持 → 用 `if constexpr` 守卫。
+2. **stride 单位错**：UB 侧错把字节当 32B block → 按 `DataCopyPad2D` 样例重写。
+3. **batch 循环丢失**：`ProcessTranspose` 漏前缀 batch 维 → `totalTiles=transBatch*nTiles*mTiles`，按平铺索引解 `(b,ti,tj)`，`matBase=b*transM*transN`。
+4. **S>1 任意 permute 兜底缺失**：host 设 mode=0 但 kernel 按连续读 → COPY 路径按 `S_==1/S_>1` 分流。
+5. **`std::max` 不可用**：ccec 无 `<algorithm>` → 三元运算符。
+6. **构建依赖链**：decorator/scipy/attrs/psutil/pyyaml 逐个补齐。
+7. **whl 构建设备初始化**：`TORCH_DEVICE_BACKEND_AUTOLOAD=0` 绕过。
+
+---
+
+## 九、验收检查清单（提交前过一遍）
+
+- [ ] `run_all.sh` 12 case 精度全过
+- [ ] msprof 量 AICore 时间 ≤ 内置 baseline（各 case）
+- [ ] 分支 = `dev-transpose-0707`，无其他分支代码混入
+- [ ] SoC = `ascend910b`，dtype 跟输入，InferShape 按 dims 重排
+- [ ] tiling 字段全 uint32_t，kernel 用 `GET_TILING_DATA`
+- [ ] tiling 通用，无针对已知 case 定制化
+- [ ] TILE 按 dtype 贴满 UB（精算 buffer，不超 184KB）
+- [ ] blockDim ≤ 20 自适应
+- [ ] 打包前重新 `bash build.sh`，`.run` 与源码一致
+- [ ] `zip_op.sh` 打包，目录无无关文件
+
+---
+
+## 十、建议执行顺序
+
+1. 搭环境（第三节）→ 确认 `npu-smi` + torch_npu 正常
+2. `bash build.sh && bash build_out/custom_opp_*.run` → 装自定义算子
+3. 构建 whl + `bash run_all.sh` → 看哪些 case 过/不过
+4. **修精度 bug**：按第五节高风险点排查（half vtranspose > 非 half 逐元素 > 步长兜底）
+5. 精度全过 → msprof 量性能 + 对比内置 baseline
+6. 优化慢路径（第六节：非 half 转置 > 任意 permute > 多核均衡）
+7. 达标 → `bash build.sh`（确保一致）→ `zip_op.sh` 打包提交
