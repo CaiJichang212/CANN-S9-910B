@@ -1,0 +1,15 @@
+*zip*
+# build artifacts
+**/build_out/
+**/build/
+build/
+dist/
+*.egg-info/
+**/__pycache__/
+PROF_*/
+*.pyc
+
+# runtime / compile artifacts
+**/kernel_meta/
+**/extra-info/
+**/*_profiling_output_record
