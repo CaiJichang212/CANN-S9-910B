@@ -54,7 +54,7 @@
 | 1.4R | 测试设计评审 | ✅ | 2026-07-10 |
 | — | CP2 用户确认 | ⬜ | |
 | 2.迭代一 | ✅（汇合验收通过，sim+Mock 路径） | 2026-07-10 |
-| 2.迭代二 | A1-Main/第二波✅；汇合验收进行中 | 🔄 | 2026-07-10 |
+| 2.迭代二 | ✅（汇合验收通过，sim+Mock，Key=3 已触发验证） | 2026-07-10 |
 | 2.迭代三 | 全量覆盖 | ⬜ | |
 | W | 白盒测试生成与汇合 | ⬜ | |
 | C | PyTorch ST 开发 | ⬜ | |
@@ -100,3 +100,4 @@
 - **2026-07-10 2.迭代一 汇合验收**：✅通过（编译+UT 25/25+simulator 10/10+ST Mock 117/117=100%）。NPU 不可用，验收降级为 simulator+Mock 综合（tester NPU C++ 测试延后）。tag `iter1-passed`。
 - **2026-07-10 2.迭代二 A1-Main**：4 TilingKey 全实现并编译通过。tiling 扩展 axis 位置判定（最内层→AR/非尾轴→ARA）+ 全载/分载阈值（ARA 二分搜索）。Kernel：AR_COLSPLIT(分chunk fp32累加器跨chunk+=)、ARA_FULLLOAD(Pattern::Reduce::RA 全载)、ARA_ROWSPLIT(R分chunk+Duplicate/Add合并)。simulator 6 用例全通过（Key0回归2 + Key1/2/3 各分支）。修复 Pattern 模板参数(AscendC::Pattern::Reduce::RA)+二分搜索初值 bug。
 - **2026-07-10 2.迭代二 第二波**：A1-P/A2/B 并行完成。A1-P：probe6-12（7个）全 PASS，覆盖 Key0/1/2+全dtype；**发现 Key=3 端到端未触发**（tiling 优先 Key=2，设计正确，UT#39/#40 已验证 Key=3 逻辑）；UB 紧极限 98%+。A2：新增30→总55全通过，迭代一25无回归。B：L0 117+L1采样120+L1全量462 Mock 全通过，覆盖 4 TilingKey+空张量+多值axis+全dtype。
+- **2026-07-10 2.迭代二 汇合验收**：✅通过（UT 55/55 + sim 18/18 + ST Mock 237/237，迭代一无回归；Key=3 经构造 [4,10000,100] 成功触发验证；6 TilingMode 全覆盖）。tag `iter2-passed`。剩余风险：probe7/11/12 UB 98%+，NPU 上板需关注碎片。
