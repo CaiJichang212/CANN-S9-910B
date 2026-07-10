@@ -104,6 +104,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/bits/cpp_type_traits.h \
   /usr/include/c++/12/bits/cxxabi_forced.h \
   /usr/include/c++/12/bits/cxxabi_init_exception.h \
+  /usr/include/c++/12/bits/erase_if.h \
   /usr/include/c++/12/bits/exception.h \
   /usr/include/c++/12/bits/exception_defines.h \
   /usr/include/c++/12/bits/exception_ptr.h \
@@ -123,6 +124,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/bits/move.h \
   /usr/include/c++/12/bits/nested_exception.h \
   /usr/include/c++/12/bits/new_allocator.h \
+  /usr/include/c++/12/bits/node_handle.h \
   /usr/include/c++/12/bits/ostream.tcc \
   /usr/include/c++/12/bits/ostream_insert.h \
   /usr/include/c++/12/bits/postypes.h \
@@ -142,8 +144,11 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/bits/stl_iterator.h \
   /usr/include/c++/12/bits/stl_iterator_base_funcs.h \
   /usr/include/c++/12/bits/stl_iterator_base_types.h \
+  /usr/include/c++/12/bits/stl_map.h \
+  /usr/include/c++/12/bits/stl_multimap.h \
   /usr/include/c++/12/bits/stl_pair.h \
   /usr/include/c++/12/bits/stl_tempbuf.h \
+  /usr/include/c++/12/bits/stl_tree.h \
   /usr/include/c++/12/bits/stl_uninitialized.h \
   /usr/include/c++/12/bits/stl_vector.h \
   /usr/include/c++/12/bits/streambuf.tcc \
@@ -151,6 +156,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/bits/string_view.tcc \
   /usr/include/c++/12/bits/stringfwd.h \
   /usr/include/c++/12/bits/uniform_int_dist.h \
+  /usr/include/c++/12/bits/uses_allocator.h \
   /usr/include/c++/12/bits/utility.h \
   /usr/include/c++/12/bits/vector.tcc \
   /usr/include/c++/12/cctype \
@@ -166,6 +172,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/debug/assertions.h \
   /usr/include/c++/12/debug/debug.h \
   /usr/include/c++/12/exception \
+  /usr/include/c++/12/ext/aligned_buffer.h \
   /usr/include/c++/12/ext/alloc_traits.h \
   /usr/include/c++/12/ext/atomicity.h \
   /usr/include/c++/12/ext/numeric_traits.h \
@@ -178,6 +185,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/iostream \
   /usr/include/c++/12/istream \
   /usr/include/c++/12/limits \
+  /usr/include/c++/12/map \
   /usr/include/c++/12/new \
   /usr/include/c++/12/ostream \
   /usr/include/c++/12/pstl/execution_defs.h \
@@ -201,6 +209,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/tr1/poly_laguerre.tcc \
   /usr/include/c++/12/tr1/riemann_zeta.tcc \
   /usr/include/c++/12/tr1/special_function_util.h \
+  /usr/include/c++/12/tuple \
   /usr/include/c++/12/type_traits \
   /usr/include/c++/12/typeinfo \
   /usr/include/c++/12/vector \
@@ -284,6 +293,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 
 /usr/include/c++/12/new:
 
+/usr/include/c++/12/map:
+
 /usr/include/c++/12/limits:
 
 /usr/include/sched.h:
@@ -322,8 +333,6 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 
 /usr/include/c++/12/cstdio:
 
-/usr/include/c++/12/cstdint:
-
 /usr/include/features-time64.h:
 
 /usr/include/c++/12/string_view:
@@ -348,9 +357,15 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 
 /usr/include/c++/12/bits/stl_tempbuf.h:
 
+/usr/include/c++/12/bits/stl_multimap.h:
+
+/usr/include/c++/12/bits/stl_map.h:
+
 /usr/include/c++/12/bits/stl_iterator_base_types.h:
 
 /usr/include/sys/cdefs.h:
+
+/usr/include/c++/12/bits/uses_allocator.h:
 
 /usr/include/c++/12/bits/stl_iterator_base_funcs.h:
 
@@ -381,6 +396,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/time.h:
 
 /usr/include/c++/12/bits/range_access.h:
+
+/usr/include/c++/12/bits/ptr_traits.h:
 
 /usr/include/bits/types/cookie_io_functions_t.h:
 
@@ -425,8 +442,6 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/bits/mathcalls-helper-functions.h:
 
 /usr/include/bits/types/time_t.h:
-
-/usr/include/c++/12/bits/ptr_traits.h:
 
 /usr/include/c++/12/tr1/beta_function.tcc:
 
@@ -486,9 +501,15 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 
 /usr/include/alloca.h:
 
+/usr/include/c++/12/ext/aligned_buffer.h:
+
 /usr/include/bits/math-vector.h:
 
 /usr/include/asm-generic/errno-base.h:
+
+/usr/include/c++/12/cstdint:
+
+/usr/include/c++/12/bits/node_handle.h:
 
 /usr/include/bits/locale.h:
 
@@ -507,6 +528,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/c++/12/bits/stl_algobase.h:
 
 /usr/include/bits/types/__locale_t.h:
+
+/usr/include/c++/12/bits/erase_if.h:
 
 /usr/include/bits/types/FILE.h:
 
@@ -555,6 +578,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/bits/pthreadtypes-arch.h:
 
 /usr/include/c++/12/ios:
+
+/usr/include/c++/12/bits/stl_tree.h:
 
 /usr/include/bits/struct_rwlock.h:
 
@@ -689,6 +714,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/stdc-predef.h:
 
 /usr/include/c++/12/bits/move.h:
+
+/usr/include/c++/12/tuple:
 
 /usr/include/c++/12/bits/locale_facets.h:
 

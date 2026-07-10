@@ -161,4 +161,11 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: \
  /usr/include/c++/12/bits/codecvt.h \
  /usr/include/c++/12/aarch64-openEuler-linux/bits/basic_file.h \
  /usr/include/c++/12/aarch64-openEuler-linux/bits/c++io.h \
- /usr/include/c++/12/bits/fstream.tcc
+ /usr/include/c++/12/bits/fstream.tcc /usr/include/c++/12/map \
+ /usr/include/c++/12/bits/stl_tree.h \
+ /usr/include/c++/12/ext/aligned_buffer.h \
+ /usr/include/c++/12/bits/node_handle.h \
+ /usr/include/c++/12/bits/stl_map.h /usr/include/c++/12/tuple \
+ /usr/include/c++/12/bits/uses_allocator.h \
+ /usr/include/c++/12/bits/stl_multimap.h \
+ /usr/include/c++/12/bits/erase_if.h

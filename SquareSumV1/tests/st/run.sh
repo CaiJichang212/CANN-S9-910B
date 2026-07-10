@@ -19,6 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USE_MOCK=""
 BUILD_DIR=""
 CASE_FILE="testcases/aclnnSquareSumV1_l0_test_cases.csv"
+EXTRA_CASE_FILE=""
 
 # ============================================================================
 # 帮助信息
@@ -30,11 +31,16 @@ show_help() {
     echo "  --mock          使用 Mock 模式 (CPU golden 验证, 无需 NPU)"
     echo "  --real          使用 Real 模式 (NPU 执行, 默认)"
     echo "  --case <file>   执行指定的测试用例 CSV 文件"
+    echo "  --l1            同时运行 L0 + L1 sample 用例"
+    echo "  --l1-full       同时运行 L0 + L1 全部用例"
     echo "  --help          显示帮助信息"
     echo ""
     echo "Examples:"
     echo "  # Mock 模式 (无 NPU 环境)"
     echo "  $0 --mock"
+    echo ""
+    echo "  # Mock 模式 + L1 sample"
+    echo "  $0 --mock --l1"
     echo ""
     echo "  # Real 模式 (需要 NPU)"
     echo "  $0 --real"
@@ -51,6 +57,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --real)
             USE_MOCK=""
+            shift
+            ;;
+        --l1)
+            EXTRA_CASE_FILE="testcases/aclnnSquareSumV1_l1_sample_test_cases.csv"
+            shift
+            ;;
+        --l1-full)
+            EXTRA_CASE_FILE="testcases/aclnnSquareSumV1_l1_test_cases.csv"
             shift
             ;;
         --case)
@@ -201,7 +215,19 @@ echo "执行测试"
 echo "========================================"
 
 cd "${SCRIPT_DIR}"
-"${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}"
+
+# 检查附加用例文件是否存在
+EXTRA_ARG=""
+if [ -n "$EXTRA_CASE_FILE" ]; then
+    if [ -f "${SCRIPT_DIR}/${EXTRA_CASE_FILE}" ]; then
+        EXTRA_ARG="${EXTRA_CASE_FILE}"
+        echo "附加用例: ${EXTRA_CASE_FILE}"
+    else
+        echo "警告: 附加用例文件不存在: ${SCRIPT_DIR}/${EXTRA_CASE_FILE}"
+    fi
+fi
+
+"${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}" ${EXTRA_ARG}
 
 TEST_RESULT=$?
 

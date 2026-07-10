@@ -672,4 +672,658 @@ TEST_F(SquareSumV1TilingTest, tiling_blockdim_single_core)
     EXPECT_EQ(td->tailRows, 1);
 }
 
+// =============================================================================
+// ===================== Iteration 2: A2 UT Extension ==========================
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Group A: Axis Position Determination (AR vs ARA routing)
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 26. Axis position: 3D non-tail reduce (axis=1) → ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_3d_nontail)
+{
+    // shape=[4, 100, 64], axis=[1] → non-tail reduce
+    // totalRows=4, rLength=100, a0Length=64
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 4);
+    EXPECT_EQ(td->rLength, 100);
+    EXPECT_EQ(td->a0Length, 64);
+    // ARA_FULLLOAD (Key=2): R=100, A0=64, fp32 fits in UB
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 27. Axis position: 4D non-tail reduce (axis=2) → ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_4d_nontail)
+{
+    // shape=[2, 3, 100, 64], axis=[2] → non-tail reduce
+    // totalRows = 2*3 = 6, rLength=100, a0Length=64
+    auto r = RunTiling({2, 3, 100, 64}, ge::DT_FLOAT, {2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 6);
+    EXPECT_EQ(td->rLength, 100);
+    EXPECT_EQ(td->a0Length, 64);
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 28. Axis position: 5D non-tail reduce (axis=3) → ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_5d_nontail)
+{
+    // shape=[2, 3, 4, 5, 100], axis=[3] → non-tail reduce
+    // totalRows = 2*3*4 = 24, rLength=5, a0Length=100
+    auto r = RunTiling({2, 3, 4, 5, 100}, ge::DT_FLOAT, {3});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 24);
+    EXPECT_EQ(td->rLength, 5);
+    EXPECT_EQ(td->a0Length, 100);
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 29. Axis position: axis=0 on 2D → ARA mode (non-tail)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_first_axis_2d)
+{
+    // shape=[100, 64], axis=[0] → non-tail reduce
+    // totalRows=1, rLength=100, a0Length=64
+    auto r = RunTiling({100, 64}, ge::DT_FLOAT, {0});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 1);
+    EXPECT_EQ(td->rLength, 100);
+    EXPECT_EQ(td->a0Length, 64);
+    EXPECT_EQ(td->tilingMode, 2u);
+    // Single core since totalRows=1
+    EXPECT_EQ(td->usedCoreNum, 1);
+}
+
+// =============================================================================
+// 30. Axis position: negative non-tail axis → ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_negative_nontail)
+{
+    // shape=[4, 100, 64], axis=-2 → normalized [1] → non-tail reduce
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {-2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 4);
+    EXPECT_EQ(td->rLength, 100);
+    EXPECT_EQ(td->a0Length, 64);
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 31. Axis position: multi-axis non-tail → ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_axis_position_multi_axis_nontail)
+{
+    // shape=[2, 100, 50, 64], axis=[1, 2] → non-tail contiguous reduce
+    // totalRows=2, rLength=100*50=5000, a0Length=64
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT16, {1, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 2);
+    EXPECT_EQ(td->rLength, 5000);
+    EXPECT_EQ(td->a0Length, 64);
+    // R=5000 with A0=64 in fp16: too large for full load
+    // tileA0 binary search fails → Key=3 (ARA_ROWSPLIT)
+    EXPECT_EQ(td->tilingMode, 3u);
+}
+
+// -----------------------------------------------------------------------------
+// Group B: AR Full Load vs Column Split (tilingMode 0 vs 1)
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 32. AR_FULLLOAD: tail reduce, R within UB threshold → mode=0
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ar_fullload_mode0)
+{
+    // shape=[4, 4096], axis=-1, fp32 → R=4096 fits in UB
+    auto r = RunTiling({4, 4096}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 0u);  // AR_FULLLOAD
+    EXPECT_EQ(td->rLength, 4096);
+    // chunkCols and numChunks should be 0 for full-load
+    EXPECT_EQ(td->chunkCols, 0);
+    EXPECT_EQ(td->numChunks, 0);
+}
+
+// =============================================================================
+// 33. AR_COLSPLIT: tail reduce, R exceeds UB threshold → mode=1
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_mode1_fp32)
+{
+    // shape=[4, 25000], axis=-1, fp32 → R=25000 exceeds UB
+    // ubNeededFullLoad = 2*25000*4 + tmpBuf + 64 = 201632 > 196608
+    auto r = RunTiling({4, 25000}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 1u);  // AR_COLSPLIT
+    EXPECT_EQ(td->rLength, 25000);
+    // chunkCols = min(maxCols, 255*64) aligned to 8
+    // For fp32: maxCols = (UB - chunkTmpBuf - 64) / 4
+    // chunkTmpBuf = 1024, maxCols = (196608 - 1024 - 64) / 4 = 48880
+    // chunkCols = min(48880, 16320) = 16320, aligned to 8 = 16320
+    EXPECT_EQ(td->chunkCols, 16320);
+    EXPECT_EQ(td->numChunks, 2);  // ceil(25000 / 16320) = 2
+}
+
+// =============================================================================
+// 34. AR_COLSPLIT: fp16 large R → mode=1
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_mode1_fp16)
+{
+    // shape=[4, 30000], axis=-1, fp16 → R=30000 exceeds UB
+    // ubNeeded = 2*30000*2 + 30000*4 + tmpBuf + 64 = 241952 > 196608
+    auto r = RunTiling({4, 30000}, ge::DT_FLOAT16, {-1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 1u);
+    EXPECT_EQ(td->rLength, 30000);
+    // fp16: maxCols = (UB - 1024 - 64) / (2+4) = 195520/6 = 32586
+    // chunkCols = min(32586, 16320) = 16320, aligned to 8 = 16320
+    EXPECT_EQ(td->chunkCols, 16320);
+    EXPECT_EQ(td->numChunks, 2);
+}
+
+// =============================================================================
+// 35. AR_COLSPLIT: verify chunkCols capped at 255*64
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_chunkcap)
+{
+    // shape=[4, 50000], axis=-1, fp32 → R=50000
+    // maxCols would be 48880, but capped at 255*64=16320
+    auto r = RunTiling({4, 50000}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 1u);
+    EXPECT_EQ(td->chunkCols, 16320);  // capped at 255*64
+    // ceil(50000 / 16320) = 4
+    EXPECT_EQ(td->numChunks, 4);
+}
+
+// -----------------------------------------------------------------------------
+// Group C: ARA Full Load vs Row Split (tilingMode 2 vs 3, binary search)
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 36. ARA_FULLLOAD: non-tail reduce, [R, A0] fits in UB → mode=2, single tile
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_fullload_mode2_single_tile)
+{
+    // shape=[4, 100, 64], axis=[1], fp32 → R=100, A0=64 fits
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 2u);
+    EXPECT_EQ(td->a0Length, 64);
+    EXPECT_EQ(td->numA0Tiles, 1);
+    // rChunkSize/numRChunks should be 0 for ARA_FULLLOAD
+    EXPECT_EQ(td->rChunkSize, 0);
+    EXPECT_EQ(td->numRChunks, 0);
+}
+
+// =============================================================================
+// 37. ARA_FULLLOAD: A0 tile split via binary search → mode=2, multi-tile
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_fullload_mode2_multi_a0_tile)
+{
+    // shape=[4, 100, 1024], axis=[1], fp32 → R=100, A0=1024
+    // R*A0=100*1024 too large for full load, but tileA0 binary search finds fit
+    auto r = RunTiling({4, 100, 1024}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 2u);
+    EXPECT_EQ(td->a0Length, 1024);
+    // a0LengthAlign = CeilAlign(1024, 8) = 1024
+    EXPECT_EQ(td->a0LengthAlign, 1024);
+    // Binary search finds max tileA0Align that fits with R=100 in UB
+    // Result: tileA0Align=472, tileA0Len=472, numA0Tiles=ceil(1024/472)=3
+    EXPECT_GT(td->tileA0Align, 0);
+    EXPECT_GE(td->numA0Tiles, 2);
+    // rChunkSize/numRChunks = 0 for ARA_FULLLOAD
+    EXPECT_EQ(td->rChunkSize, 0);
+    EXPECT_EQ(td->numRChunks, 0);
+}
+
+// =============================================================================
+// 38. ARA_FULLLOAD: fp16 with A0 tile split → mode=2
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_fullload_fp16_a0_tile)
+{
+    // shape=[4, 1000, 64], axis=[1], fp16 → R=1000, A0=64
+    // R*A0 = 1000*64 too large, but tileA0=32 fits
+    auto r = RunTiling({4, 1000, 64}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 2u);
+    EXPECT_EQ(td->rLength, 1000);
+    EXPECT_EQ(td->a0Length, 64);
+    // tileA0Align found by binary search: 32
+    EXPECT_GT(td->tileA0Align, 0);
+    EXPECT_GE(td->numA0Tiles, 1);
+    EXPECT_EQ(td->rChunkSize, 0);
+}
+
+// =============================================================================
+// 39. ARA_ROWSPLIT: non-tail reduce, R too large even with min tileA0 → mode=3
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp32)
+{
+    // shape=[4, 7000, 64], axis=[1], fp32 → R=7000, A0=64
+    // Even tileA0=8 doesn't fit: 7000*8*4+overhead > UB → Key=3
+    auto r = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 3u);
+    EXPECT_EQ(td->rLength, 7000);
+    EXPECT_EQ(td->a0Length, 64);
+    // tileA0Align = min(64, CeilAlign(64,8)=64) = 64
+    EXPECT_EQ(td->tileA0Align, 64);
+    EXPECT_EQ(td->tileA0Len, 64);
+    EXPECT_EQ(td->numA0Tiles, 1);
+    // rChunkSize found by binary search: 765
+    EXPECT_GT(td->rChunkSize, 0);
+    EXPECT_GT(td->numRChunks, 1);
+    // ceil(7000 / 765) = 10
+    EXPECT_EQ(td->numRChunks, 10);
+}
+
+// =============================================================================
+// 40. ARA_ROWSPLIT: fp16 with large R → mode=3
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
+{
+    // shape=[4, 5000, 64], axis=[1], fp16 → R=5000, A0=64
+    // tileA0 binary search fails → Key=3
+    auto r = RunTiling({4, 5000, 64}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 3u);
+    EXPECT_EQ(td->rLength, 5000);
+    EXPECT_EQ(td->a0Length, 64);
+    EXPECT_EQ(td->tileA0Align, 64);
+    // rChunkSize found by binary search: 510
+    EXPECT_GT(td->rChunkSize, 0);
+    EXPECT_GT(td->numRChunks, 1);
+    // ceil(5000 / 510) = 10
+    EXPECT_EQ(td->numRChunks, 10);
+}
+
+// =============================================================================
+// 41. ARA_ROWSPLIT: verify rChunkSize UB constraint
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
+{
+    // shape=[4, 7000, 64], axis=[1], fp32
+    // rChunkSize should be the max that fits in UB: 765
+    auto r = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    ASSERT_EQ(td->tilingMode, 3u);
+    int64_t rChunk = td->rChunkSize;
+    int64_t tileA0 = td->tileA0Align;
+
+    // Verify rChunkSize * tileA0 fits in UB
+    uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * sizeof(float)
+                       + tileA0 * sizeof(float) * 2 + std::max(tileA0 * sizeof(float), 32UL);
+    EXPECT_LE(ubAtChunk, 196608u);
+
+    // Verify (rChunkSize+1) * tileA0 would exceed UB
+    uint64_t ubAtChunkPlus1 = static_cast<uint64_t>(rChunk + 1) * tileA0 * sizeof(float)
+                            + tileA0 * sizeof(float) * 2 + std::max(tileA0 * sizeof(float), 32UL);
+    EXPECT_GT(ubAtChunkPlus1, 196608u);
+}
+
+// -----------------------------------------------------------------------------
+// Group D: Multi-dtype Mapping Regression (TilingKey encoding)
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 42. dtype mapping regression: ARA mode fp16 TilingKey
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_key_ara_fp16)
+{
+    // shape=[4, 100, 64], axis=[1], fp16 → ARA mode
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+
+    EXPECT_EQ(r.info.tilingKey, 1);  // fp16 encoding
+}
+
+// =============================================================================
+// 43. dtype mapping regression: ARA mode fp32 TilingKey
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_key_ara_fp32)
+{
+    // shape=[4, 100, 64], axis=[1], fp32 → ARA mode
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    EXPECT_EQ(r.info.tilingKey, 0);  // fp32 encoding
+}
+
+// =============================================================================
+// 44. dtype mapping regression: ARA mode bf16 TilingKey
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_key_ara_bf16)
+{
+    // shape=[4, 100, 64], axis=[1], bf16 → ARA mode
+    auto r = RunTiling({4, 100, 64}, ge::DT_BF16, {1});
+    ASSERT_TRUE(r.success);
+
+    EXPECT_EQ(r.info.tilingKey, 27);  // bf16 encoding
+}
+
+// =============================================================================
+// 45. dtype mapping: all dtypes in AR_COLSPLIT mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_key_ar_colsplit_all_dtypes)
+{
+    struct DtypeCase {
+        std::string name;
+        ge::DataType dtype;
+        int64_t expectedKey;
+    };
+
+    DtypeCase cases[] = {
+        {"fp16", ge::DT_FLOAT16, 1},
+        {"fp32", ge::DT_FLOAT, 0},
+        {"bf16", ge::DT_BF16, 27},
+    };
+
+    for (const auto& c : cases) {
+        // shape=[4, 30000], axis=-1 → AR_COLSPLIT
+        auto r = RunTiling({4, 30000}, c.dtype, {-1});
+        ASSERT_TRUE(r.success) << "Failed for dtype: " << c.name;
+
+        auto* td = AsTilingData(r.info);
+        ASSERT_NE(td, nullptr);
+        EXPECT_EQ(td->tilingMode, 1u) << "Expected AR_COLSPLIT for dtype: " << c.name;
+        EXPECT_EQ(r.info.tilingKey, c.expectedKey)
+            << "TilingKey mismatch for dtype: " << c.name;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Group E: Edge Cases and Boundaries
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 46. ARA edge: R=1 degenerate with non-tail reduce
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_edge_r_length_one)
+{
+    // shape=[4, 1, 64], axis=[1] → R=1, A0=64
+    auto r = RunTiling({4, 1, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 4);
+    EXPECT_EQ(td->rLength, 1);
+    EXPECT_EQ(td->a0Length, 64);
+    // R=1 fits trivially → ARA_FULLLOAD
+    EXPECT_EQ(td->tilingMode, 2u);
+    EXPECT_EQ(td->numA0Tiles, 1);
+}
+
+// =============================================================================
+// 47. ARA edge: A0=1 degenerate
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_edge_a0_length_one)
+{
+    // shape=[4, 100, 1], axis=[1] → R=100, A0=1
+    auto r = RunTiling({4, 100, 1}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 4);
+    EXPECT_EQ(td->rLength, 100);
+    // a0Length=1 gets special handling; a0LengthAlign = CeilAlign(1, 8) = 8
+    EXPECT_EQ(td->a0Length, 1);
+    // Should be ARA_FULLLOAD (tiny data)
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 48. ARA edge: non-aligned A0
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_nonaligned_a0)
+{
+    // shape=[4, 100, 15], axis=[1], fp32 → R=100, A0=15
+    auto r = RunTiling({4, 100, 15}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->rLength, 100);
+    EXPECT_EQ(td->a0Length, 15);
+    // a0LengthAlign = CeilAlign(15, 8) = 16
+    EXPECT_EQ(td->a0LengthAlign, 16);
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 49. 5D max dimension boundary with ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_5d_ara_max_dims)
+{
+    // shape=[200, 3, 1000, 5, 100], axis=[2] → non-tail reduce
+    // totalRows = 200*3 = 600, rLength=1000, a0Length=5*100=500
+    auto r = RunTiling({200, 3, 1000, 5, 100}, ge::DT_FLOAT16, {2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 600);
+    EXPECT_EQ(td->rLength, 1000);
+    EXPECT_EQ(td->a0Length, 500);
+    // R=1000, A0=500(fp16) → likely needs split
+    EXPECT_GE(td->tilingMode, 2u);  // ARA_FULLLOAD or ARA_ROWSPLIT
+    // Multi-core: min(20, 600) = 20
+    EXPECT_EQ(td->usedCoreNum, 20);
+}
+
+// =============================================================================
+// 50. blockDim upper limit with ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_blockdim_capped)
+{
+    // shape=[100, 100, 64], axis=[1], fp32 → totalRows=100
+    // usedCoreNum = min(20, 100) = 20
+    auto r = RunTiling({100, 100, 64}, ge::DT_FLOAT, {1}, false, 20);
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 100);
+    EXPECT_EQ(td->usedCoreNum, 20);
+    EXPECT_EQ(r.info.blockNum, 20u);
+    // rowsPerCore = ceil(100/20) = 5
+    EXPECT_EQ(td->rowsPerCore, 5);
+    // tailRows = 100 - 5*19 = 100-95 = 5
+    EXPECT_EQ(td->tailRows, 5);
+}
+
+// =============================================================================
+// 51. blockDim single core with ARA mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_blockdim_single_core)
+{
+    // shape=[1, 100, 64], axis=[1], fp32 → totalRows=1
+    auto r = RunTiling({1, 100, 64}, ge::DT_FLOAT, {1}, false, 20);
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 1);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(r.info.blockNum, 1u);
+}
+
+// =============================================================================
+// 52. AR_COLSPLIT edge: R just above UB threshold
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_boundary)
+{
+    // fp32: ubNeededFullLoad(24000) = 2*24000*4 + 1504 + 64 = 193568 ≤ 196608 → AR_FULLLOAD
+    // fp32: ubNeededFullLoad(25000) = 2*25000*4 + 1568 + 64 = 201632 > 196608 → AR_COLSPLIT
+    auto rFull = RunTiling({2, 24000}, ge::DT_FLOAT, {-1});
+    auto rSplit = RunTiling({2, 25000}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(rFull.success);
+    ASSERT_TRUE(rSplit.success);
+
+    auto* tdFull = AsTilingData(rFull.info);
+    auto* tdSplit = AsTilingData(rSplit.info);
+    ASSERT_NE(tdFull, nullptr);
+    ASSERT_NE(tdSplit, nullptr);
+
+    EXPECT_EQ(tdFull->tilingMode, 0u);   // Just within UB
+    EXPECT_EQ(tdSplit->tilingMode, 1u);  // Just exceeds UB
+}
+
+// =============================================================================
+// 53. ARA_ROWSPLIT: verify rChunkSize boundary correctness for fp16
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
+{
+    // shape=[4, 5000, 64], axis=[1], fp16 → rChunkSize=510
+    auto r = RunTiling({4, 5000, 64}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    ASSERT_EQ(td->tilingMode, 3u);
+    int64_t rChunk = td->rChunkSize;
+    int64_t tileA0 = td->tileA0Align;
+    uint32_t ts = 2;  // fp16 typeSize
+
+    // Verify rChunkSize fits in UB (fp16: input + fp32 compute buffer)
+    uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * ts   // input buffer
+                       + static_cast<uint64_t>(rChunk) * tileA0 * 4UL  // fp32 compute buffer
+                       + tileA0 * 4UL                                    // acc buffer
+                       + tileA0 * ts                                     // output buffer
+                       + std::max(tileA0 * 4UL, 32UL);                   // tmp buffer
+    EXPECT_LE(ubAtChunk, 196608u);
+
+    // Verify rChunkSize+1 would exceed UB
+    uint64_t ubAtChunkPlus1 = static_cast<uint64_t>(rChunk + 1) * tileA0 * ts
+                            + static_cast<uint64_t>(rChunk + 1) * tileA0 * 4UL
+                            + tileA0 * 4UL + tileA0 * ts + std::max(tileA0 * 4UL, 32UL);
+    EXPECT_GT(ubAtChunkPlus1, 196608u);
+}
+
+// =============================================================================
+// 54. Coalesced shape: multi-dim non-reduce after reduce (A0 = product)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_coalesced_multi_dim_a0)
+{
+    // shape=[2, 50, 3, 4], axis=[1] → R=50, A0=3*4=12
+    auto r = RunTiling({2, 50, 3, 4}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->totalRows, 2);
+    EXPECT_EQ(td->rLength, 50);
+    EXPECT_EQ(td->a0Length, 12);
+    EXPECT_EQ(td->tilingMode, 2u);
+}
+
+// =============================================================================
+// 55. tilingMode field consistency: verify all 4 modes have distinct values
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_mode_distinct_values)
+{
+    // AR_FULLLOAD (mode=0): tail reduce, small R
+    auto r0 = RunTiling({4, 64}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r0.success);
+    EXPECT_EQ(AsTilingData(r0.info)->tilingMode, 0u);
+
+    // AR_COLSPLIT (mode=1): tail reduce, large R
+    auto r1 = RunTiling({4, 30000}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r1.success);
+    EXPECT_EQ(AsTilingData(r1.info)->tilingMode, 1u);
+
+    // ARA_FULLLOAD (mode=2): non-tail reduce, small [R,A0]
+    auto r2 = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r2.success);
+    EXPECT_EQ(AsTilingData(r2.info)->tilingMode, 2u);
+
+    // ARA_ROWSPLIT (mode=3): non-tail reduce, large R
+    auto r3 = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r3.success);
+    EXPECT_EQ(AsTilingData(r3.info)->tilingMode, 3u);
+}
+
 } // namespace SquareSumV1UT

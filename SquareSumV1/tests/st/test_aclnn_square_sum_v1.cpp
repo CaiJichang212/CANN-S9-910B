@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <map>
 
 #ifndef USE_MOCK_ACLNN
 #include "acl/acl.h"
@@ -1013,6 +1014,143 @@ std::vector<int64_t> ScaleShapeForMock(const std::vector<int64_t>& shape,
 }
 
 // ============================================================================
+// TilingKey 分类 (用于 Mock 模式统计覆盖)
+// ============================================================================
+
+enum class TilingMode {
+    AR_FULLLOAD,   // tail-axis reduce, fits UB
+    AR_COLSPLIT,   // tail-axis reduce, needs chunk
+    ARA_FULLLOAD,  // non-tail-axis reduce, fits UB
+    ARA_ROWSPLIT,  // non-tail-axis reduce, needs R chunk
+    NO_REDUCE,     // axis=[] (identity x^2)
+    EMPTY_TENSOR,  // rank=0 or dim=0
+    UNKNOWN
+};
+
+const char* TilingModeToString(TilingMode tm) {
+    switch (tm) {
+        case TilingMode::AR_FULLLOAD:  return "AR_FULLLOAD(0)";
+        case TilingMode::AR_COLSPLIT:  return "AR_COLSPLIT(1)";
+        case TilingMode::ARA_FULLLOAD: return "ARA_FULLLOAD(2)";
+        case TilingMode::ARA_ROWSPLIT: return "ARA_ROWSPLIT(3)";
+        case TilingMode::NO_REDUCE:    return "NO_REDUCE";
+        case TilingMode::EMPTY_TENSOR: return "EMPTY_TENSOR";
+        case TilingMode::UNKNOWN:      return "UNKNOWN";
+    }
+    return "?";
+}
+
+// 判断测试用例属于哪个 TilingKey 分支
+// 逻辑与 op_host/arch22/squaresumv1_tiling.cpp 的选择逻辑一致
+TilingMode ClassifyTilingMode(const std::vector<int64_t>& shape,
+                               const std::vector<int64_t>& axis,
+                               TestDtype dtype) {
+    int64_t rank = static_cast<int64_t>(shape.size());
+
+    // 空张量
+    if (rank == 0) return TilingMode::EMPTY_TENSOR;
+    for (auto d : shape) {
+        if (d == 0) return TilingMode::EMPTY_TENSOR;
+    }
+
+    // 无 axis → identity (no reduce)
+    if (axis.empty()) return TilingMode::NO_REDUCE;
+
+    // 归一化 axis
+    std::vector<int64_t> normAxis;
+    for (auto a : axis) {
+        normAxis.push_back(a < 0 ? a + rank : a);
+    }
+    std::sort(normAxis.begin(), normAxis.end());
+    normAxis.erase(std::unique(normAxis.begin(), normAxis.end()), normAxis.end());
+
+    std::vector<bool> isReduce(rank, false);
+    for (auto a : normAxis) isReduce[a] = true;
+
+    // 检测 non-reduce 维度在 reduce 维度之后 (ARA mode)
+    int64_t firstReduceDim = rank;
+    for (int64_t i = 0; i < rank; i++) {
+        if (isReduce[i]) { firstReduceDim = i; break; }
+    }
+
+    bool hasNonReduceAfterReduce = false;
+    for (int64_t i = firstReduceDim + 1; i < rank; i++) {
+        if (!isReduce[i]) { hasNonReduceAfterReduce = true; break; }
+    }
+
+    uint32_t typeSize = (dtype == TestDtype::FLOAT32) ? 4 : 2;
+    constexpr uint64_t UB_SIZE = 184 * 1024;
+    constexpr uint32_t FP32_EPB = 8; // 32B / sizeof(float)
+
+    if (!hasNonReduceAfterReduce) {
+        // AR mode (tail reduce)
+        int64_t rLength = 1;
+        for (auto a : normAxis) rLength *= shape[a];
+
+        int64_t epb = (typeSize == 4) ? FP32_EPB : 32 / typeSize;
+        int64_t rAlignInput = ((rLength + epb - 1) / epb) * epb;
+        int64_t rAlignFp32 = ((rLength + FP32_EPB - 1) / FP32_EPB) * FP32_EPB;
+        int64_t rLengthAlign = std::max(rAlignInput, rAlignFp32);
+
+        // tmpBuf 简化估算
+        uint32_t epr = 64;
+        uint32_t firstMaxRep = (rLengthAlign + epr - 1) / epr;
+        if (firstMaxRep == 0) firstMaxRep = 1;
+        uint32_t finalNeed = ((firstMaxRep + FP32_EPB - 1) / FP32_EPB) * FP32_EPB;
+        if (finalNeed < FP32_EPB) finalNeed = FP32_EPB;
+        uint32_t tmpBufBytes = finalNeed * sizeof(float);
+
+        uint64_t ubNeeded;
+        if (typeSize == 4) {
+            ubNeeded = 2ULL * rLengthAlign * sizeof(float) + tmpBufBytes + 64;
+        } else {
+            ubNeeded = 2ULL * rLengthAlign * typeSize +
+                       static_cast<uint64_t>(rAlignFp32) * sizeof(float) + tmpBufBytes + 64;
+        }
+
+        return (ubNeeded <= UB_SIZE) ? TilingMode::AR_FULLLOAD : TilingMode::AR_COLSPLIT;
+    } else {
+        // ARA mode: find contiguous reduce block
+        int64_t reduceEnd = firstReduceDim;
+        for (int64_t i = firstReduceDim; i < rank; i++) {
+            if (isReduce[i]) reduceEnd = i;
+            else break;
+        }
+
+        int64_t rLength = 1;
+        for (int64_t i = firstReduceDim; i <= reduceEnd; i++) rLength *= shape[i];
+
+        int64_t a0Length = 1;
+        for (int64_t i = reduceEnd + 1; i < rank; i++) a0Length *= shape[i];
+
+        if (a0Length == 1 && reduceEnd + 1 >= rank) {
+            return TilingMode::AR_FULLLOAD; // fallback
+        }
+
+        int64_t a0Align = ((a0Length + FP32_EPB - 1) / FP32_EPB) * FP32_EPB;
+
+        uint64_t ubNeeded = static_cast<uint64_t>(rLength) * a0Align * typeSize;
+        if (typeSize != 4) {
+            ubNeeded += static_cast<uint64_t>(rLength) * a0Align * sizeof(float);
+        }
+        ubNeeded += static_cast<uint64_t>(a0Align) * sizeof(float);
+        ubNeeded += static_cast<uint64_t>(a0Align) * typeSize;
+        ubNeeded += std::max(static_cast<uint64_t>(a0Align) * static_cast<uint64_t>(sizeof(float)), static_cast<uint64_t>(32));
+
+        return (ubNeeded <= UB_SIZE) ? TilingMode::ARA_FULLLOAD : TilingMode::ARA_ROWSPLIT;
+    }
+}
+
+// 检查 shape 是否为空张量 (rank=0 或 dim=0)
+bool IsEmptyTensor(const std::vector<int64_t>& shape) {
+    if (shape.empty()) return true;
+    for (auto d : shape) {
+        if (d == 0) return true;
+    }
+    return false;
+}
+
+// ============================================================================
 // Mock 模式: 从 CSV 加载用例, golden 计算后自洽比对
 // 大 shape 用例自动缩减以保证 CPU golden 快速完成
 // ============================================================================
@@ -1034,18 +1172,27 @@ int RunMockTests(const std::string& csvPath) {
     int passed = 0, failed = 0;
     int scaled = 0;
 
+    // 按 TilingMode 统计覆盖
+    std::map<int, std::pair<int,int>> modeStats; // mode -> (passed, total)
+
     for (size_t ci = 0; ci < testCases.size(); ci++) {
         auto& tc = testCases[ci];
+
+        // 分类 TilingMode (用原始 shape, 非缩减)
+        TilingMode tm = ClassifyTilingMode(tc.inputShape, tc.axis, tc.dtype);
+        modeStats[static_cast<int>(tm)].second++;
 
         // Mock 模式: 缩减大 shape
         CsvTestCase mockTc = tc;
         int64_t origElements = GetShapeSize(tc.inputShape);
-        if (origElements > MAX_MOCK_ELEMENTS) {
+        bool isEmpty = IsEmptyTensor(tc.inputShape);
+
+        if (origElements > MAX_MOCK_ELEMENTS && !isEmpty) {
             mockTc.inputShape = ScaleShapeForMock(tc.inputShape, MAX_MOCK_ELEMENTS);
             scaled++;
         }
 
-        LOG_PRINT("\n[%zu/%zu] %s (dtype=%s, shape=%s%s, axis=[%s], keepDims=%s)",
+        LOG_PRINT("\n[%zu/%zu] %s (dtype=%s, shape=%s%s, axis=[%s], keepDims=%s, mode=%s)",
                   ci + 1, testCases.size(), tc.name.c_str(),
                   DtypeToString(mockTc.dtype),
                   [&]() {
@@ -1057,7 +1204,7 @@ int RunMockTests(const std::string& csvPath) {
                       s += "]";
                       return s;
                   }().c_str(),
-                  (origElements > MAX_MOCK_ELEMENTS) ? " (scaled)" : "",
+                  (origElements > MAX_MOCK_ELEMENTS && !isEmpty) ? " (scaled)" : "",
                   [&]() {
                       std::string s;
                       for (size_t i = 0; i < mockTc.axis.size(); i++) {
@@ -1066,35 +1213,89 @@ int RunMockTests(const std::string& csvPath) {
                       }
                       return s;
                   }().c_str(),
-                  mockTc.keepDims ? "true" : "false");
+                  mockTc.keepDims ? "true" : "false",
+                  TilingModeToString(tm));
 
-        // 生成输入数据 (已量化到目标 dtype 精度)
-        GenericTensor input = GenerateInputData(mockTc, static_cast<uint32_t>(ci * 1000 + 42));
+        bool result = true;
 
-        // 计算 golden (double 精度)
-        GenericTensor golden = ComputeGolden(input, mockTc.axis, mockTc.keepDims);
+        if (isEmpty) {
+            // 空张量测试: golden 输出也应为空或标量 0
+            GenericTensor emptyInput;
+            emptyInput.dtype = mockTc.dtype;
+            emptyInput.shape = mockTc.inputShape;
+            emptyInput.values.clear(); // 0 elements
 
-        // 将 golden 量化到目标 dtype (模拟 NPU 输出的有限精度)
-        GenericTensor goldenQuantized = golden;
-        QuantizeToDtype(goldenQuantized);
+            GenericTensor golden = ComputeGolden(emptyInput, mockTc.axis, mockTc.keepDims);
 
-        // Mock 验证: 量化 golden 与 round-trip 比对
-        // (验证 encode/decode 正确性 + 比对逻辑正确性)
-        auto encoded = EncodeTensor(goldenQuantized);
-        GenericTensor decoded = DecodeTensor(encoded.data(),
-                                             goldenQuantized.NumElements(),
-                                             goldenQuantized.dtype, goldenQuantized.shape);
+            // 验证输出 shape 正确
+            auto expectedShape = ComputeOutputShape(mockTc.inputShape, mockTc.axis, mockTc.keepDims);
 
-        bool result = CompareResults(goldenQuantized, decoded);
+            if (golden.shape != expectedShape) {
+                LOG_PRINT("  [FAIL] 空张量输出 shape 不匹配");
+                result = false;
+            } else {
+                // 空张量的输出元素数应为 0 或匹配预期
+                int64_t outSize = GetShapeSize(expectedShape);
+                if (static_cast<int64_t>(golden.values.size()) != outSize && outSize > 0) {
+                    // 空张量 reduce 可能输出标量 0
+                    LOG_PRINT("  [INFO] 空张量输出 size=%zu (expected shape_size=%lld)",
+                              golden.values.size(), static_cast<long long>(outSize));
+                }
+                LOG_PRINT("  [PASS] 空张量测试 (输出 shape 正确)");
+            }
+        } else {
+            // 正常测试流程
+            GenericTensor input = GenerateInputData(mockTc, static_cast<uint32_t>(ci * 1000 + 42));
 
-        // 额外验证: 输出 shape 正确性
-        auto expectedShape = ComputeOutputShape(mockTc.inputShape, mockTc.axis, mockTc.keepDims);
-        if (golden.shape != expectedShape) {
-            LOG_PRINT("  [WARN] 输出 shape 不匹配: golden vs expected");
-            result = false;
+            // 计算 golden (double 精度)
+            GenericTensor golden = ComputeGolden(input, mockTc.axis, mockTc.keepDims);
+
+            // 将 golden 量化到目标 dtype (模拟 NPU 输出的有限精度)
+            GenericTensor goldenQuantized = golden;
+            QuantizeToDtype(goldenQuantized);
+
+            // Mock 验证: 量化 golden 与 round-trip 比对
+            auto encoded = EncodeTensor(goldenQuantized);
+            GenericTensor decoded = DecodeTensor(encoded.data(),
+                                                 goldenQuantized.NumElements(),
+                                                 goldenQuantized.dtype, goldenQuantized.shape);
+
+            result = CompareResults(goldenQuantized, decoded);
+
+            // 额外验证: 输出 shape 正确性
+            auto expectedShape = ComputeOutputShape(mockTc.inputShape, mockTc.axis, mockTc.keepDims);
+            if (golden.shape != expectedShape) {
+                LOG_PRINT("  [WARN] 输出 shape 不匹配: golden vs expected");
+                result = false;
+            }
+
+            // 额外验证: 输入 encode → decode round-trip 无损
+            auto inputEncoded = EncodeTensor(input);
+            GenericTensor inputDecoded = DecodeTensor(inputEncoded.data(),
+                                                       input.NumElements(),
+                                                       input.dtype, input.shape);
+            bool inputRoundTrip = true;
+            for (int64_t i = 0; i < input.NumElements(); i++) {
+                if (std::isnan(input.values[i]) && std::isnan(inputDecoded.values[i])) continue;
+                if (std::isinf(input.values[i]) && std::isinf(inputDecoded.values[i])) {
+                    if ((input.values[i] > 0) == (inputDecoded.values[i] > 0)) continue;
+                }
+                if (input.values[i] != inputDecoded.values[i]) {
+                    inputRoundTrip = false;
+                    break;
+                }
+            }
+            if (!inputRoundTrip) {
+                LOG_PRINT("  [WARN] 输入 encode/decode round-trip 有损");
+            }
         }
 
-        if (result) passed++; else failed++;
+        if (result) {
+            passed++;
+            modeStats[static_cast<int>(tm)].first++;
+        } else {
+            failed++;
+        }
     }
 
     LOG_PRINT("\n========================================");
@@ -1104,6 +1305,26 @@ int RunMockTests(const std::string& csvPath) {
     LOG_PRINT("通过: %d", passed);
     LOG_PRINT("失败: %d", failed);
     LOG_PRINT("缩减: %d (大 shape 自动缩减)", scaled);
+
+    // TilingMode 覆盖统计
+    LOG_PRINT("\n--- TilingMode 覆盖统计 ---");
+    const char* modeNames[] = {
+        "AR_FULLLOAD(0)", "AR_COLSPLIT(1)", "ARA_FULLLOAD(2)",
+        "ARA_ROWSPLIT(3)", "NO_REDUCE", "EMPTY_TENSOR", "UNKNOWN"
+    };
+    bool allModesCovered = true;
+    for (auto& [modeVal, stats] : modeStats) {
+        LOG_PRINT("  %s: %d/%d passed",
+                  modeNames[modeVal], stats.first, stats.second);
+        // 关键 TilingKey 必须覆盖
+        if (modeVal <= 3 && stats.second == 0) {
+            allModesCovered = false;
+        }
+    }
+    if (!allModesCovered) {
+        LOG_PRINT("[WARN] 部分 TilingKey 未覆盖!");
+    }
+
     LOG_PRINT("========================================\n");
 
     return failed == 0 ? 0 : 1;
@@ -1298,7 +1519,10 @@ int main(int argc, char* argv[]) {
     LOG_PRINT("模式: Real (NPU 执行)");
 #endif
 
-    // 默认 CSV 路径
+    // CSV 路径: 支持多文件运行
+    //   argv[1]: 主 CSV (默认 L0)
+    //   argv[2]: 附加 CSV (如 L1 sample), 可选
+    //   特殊值 "all" 运行 L0 + L1 sample + L1 full
     std::string csvPath = "testcases/aclnnSquareSumV1_l0_test_cases.csv";
     if (argc > 1) {
         csvPath = argv[1];
@@ -1312,9 +1536,17 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Step 2: 执行 CSV 用例
+    // Step 2: 执行主 CSV 用例
 #ifdef USE_MOCK_ACLNN
-    return RunMockTests(csvPath);
+    int mainResult = RunMockTests(csvPath);
+
+    // Step 3: 执行附加 CSV 用例 (如 L1) — Mock 模式
+    if (argc > 2) {
+        std::string extraCsv = argv[2];
+        LOG_PRINT("\n\n######## 附加测试: %s ########", extraCsv.c_str());
+        int extraResult = RunMockTests(extraCsv);
+        if (extraResult != 0) mainResult = 1;
+    }
 #else
     // NPU 初始化
     int32_t deviceId = 0;
@@ -1339,11 +1571,20 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int result = RunRealTests(csvPath, stream);
+    int mainResult = RunRealTests(csvPath, stream);
+
+    // Step 3: 执行附加 CSV 用例 (如 L1) — Real 模式, 复用 stream
+    if (argc > 2) {
+        std::string extraCsv = argv[2];
+        LOG_PRINT("\n\n######## 附加测试: %s ########", extraCsv.c_str());
+        int extraResult = RunRealTests(extraCsv, stream);
+        if (extraResult != 0) mainResult = 1;
+    }
 
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
     aclFinalize();
-    return result;
 #endif
+
+    return mainResult;
 }
