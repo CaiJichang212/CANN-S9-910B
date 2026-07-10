@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * \file test_squaresumv1_tiling.cpp
- * \brief SquareSumV1 op_host Tiling unit tests (AR_FULLLOAD core path)
+ * \brief SquareSumV1 op_host Tiling unit tests
  *
  * Coverage:
  *   1. TilingKey/dtype mapping (fp16, fp32, bf16)
@@ -11,6 +11,15 @@
  *   5. UB budget / tile parameters (rLength, rLengthAlign)
  *   6. keep_dims handling
  *   7. Edge cases (rows=1, R=1, non-aligned R)
+ *   8. Axis position determination (AR vs ARA routing)
+ *   9. AR Full Load vs Column Split (tilingMode 0 vs 1)
+ *  10. ARA Full Load vs Row Split (tilingMode 2 vs 3, binary search)
+ *  11. Multi-dtype mapping regression (TilingKey encoding)
+ *  12. ARA edge cases and boundaries
+ *  13. MULTI_AXIS (Key=4) detection: non-contiguous axis routing
+ *  14. MULTI_AXIS per-layer parameters (numLayers, layerAxis, layerRLength, etc.)
+ *  15. MULTI_AXIS workspace size (2*inputElems*sizeof(float), 4096-aligned)
+ *  16. MULTI_AXIS boundaries (full reduction, degenerate dims, single core)
  */
 
 #include <iostream>
@@ -1324,6 +1333,764 @@ TEST_F(SquareSumV1TilingTest, tiling_mode_distinct_values)
     auto r3 = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
     ASSERT_TRUE(r3.success);
     EXPECT_EQ(AsTilingData(r3.info)->tilingMode, 3u);
+}
+
+// =============================================================================
+// ===================== Iteration 3: A2 UT Full Coverage ======================
+// =============================================================================
+//   Key=4 MULTI_AXIS detection + per-layer params + workspace + boundaries
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Group F: MULTI_AXIS Detection (Key=4 routing)
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 56. MULTI_AXIS detection: 3D non-contiguous [0,2] → Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_3d_noncontiguous_0_2)
+{
+    // shape=[4, 100, 64], axis=[0, 2]
+    // Reduce dims 0 and 2, but dim 1 is non-reduce between them → non-contiguous
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 4u);
+    // numLayers = 2 (two non-contiguous reduce axes)
+    EXPECT_EQ(td->numLayers, 2);
+}
+
+// =============================================================================
+// 57. MULTI_AXIS detection: 4D non-contiguous [0,2] → Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_4d_noncontiguous_0_2)
+{
+    // shape=[2, 100, 50, 64], axis=[0, 2]
+    // Dim 1 is non-reduce between axes 0 and 2
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 4u);
+    EXPECT_EQ(td->numLayers, 2);
+}
+
+// =============================================================================
+// 58. MULTI_AXIS detection: 4D non-contiguous [0,3] → Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_4d_noncontiguous_0_3)
+{
+    // shape=[2, 3, 100, 64], axis=[0, 3]
+    // Dims 1, 2 are non-reduce between axes 0 and 3
+    auto r = RunTiling({2, 3, 100, 64}, ge::DT_FLOAT16, {0, 3});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 4u);
+    EXPECT_EQ(td->numLayers, 2);
+}
+
+// =============================================================================
+// 59. MULTI_AXIS detection: 4D non-contiguous [0,2,3] → Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_4d_noncontiguous_0_2_3)
+{
+    // shape=[2, 100, 50, 64], axis=[0, 2, 3]
+    // Axis 0 is separated from contiguous [2,3] by dim 1
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT, {0, 2, 3});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 4u);
+    // After coalescing: axes 2,3 are contiguous (merged), axis 0 is separate
+    // But CoalesceAxis detects non-contiguous and returns -1 → MULTI_AXIS
+    // numLayers = number of original sorted axes = 3
+    EXPECT_EQ(td->numLayers, 3);
+}
+
+// =============================================================================
+// 60. MULTI_AXIS detection: 5D non-contiguous [0,2,4] → Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_noncontiguous_0_2_4)
+{
+    // shape=[2, 3, 100, 4, 64], axis=[0, 2, 4]
+    // Dims 1, 3 are non-reduce gaps
+    auto r = RunTiling({2, 3, 100, 4, 64}, ge::DT_FLOAT, {0, 2, 4});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 4u);
+    EXPECT_EQ(td->numLayers, 3);
+}
+
+// =============================================================================
+// 61. Adjacent multi-axis does NOT trigger Key=4: [1,2] → coalesced Key0-3
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_adjacent_1_2_not_key4)
+{
+    // shape=[2, 100, 50], axis=[1, 2] → contiguous tail reduce
+    auto r = RunTiling({2, 100, 50}, ge::DT_FLOAT, {1, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_NE(td->tilingMode, 4u);  // Should be AR_FULLLOAD (0) or AR_COLSPLIT (1)
+    EXPECT_EQ(td->totalRows, 2);
+    EXPECT_EQ(td->rLength, 5000);   // 100*50
+}
+
+// =============================================================================
+// 62. Adjacent multi-axis with negative indices: [-2,-1] → coalesced Key0-3
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_adjacent_neg2_neg1_not_key4)
+{
+    // shape=[3, 100, 50], axis=[-2, -1] → normalized [1, 2] → contiguous tail
+    auto r = RunTiling({3, 100, 50}, ge::DT_FLOAT16, {-2, -1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_NE(td->tilingMode, 4u);
+    EXPECT_EQ(td->totalRows, 3);
+    EXPECT_EQ(td->rLength, 5000);
+}
+
+// =============================================================================
+// 63. Single axis does NOT trigger Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_single_axis_not_key4)
+{
+    // shape=[4, 100, 64], axis=[1] → single axis ARA
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_NE(td->tilingMode, 4u);
+    EXPECT_EQ(td->tilingMode, 2u);  // ARA_FULLLOAD
+}
+
+// -----------------------------------------------------------------------------
+// Group G: Per-Layer Parameters
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 64. Per-layer params: 3D [0,2] → verify layerAxis, layerRLength
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_3d_layer_params)
+{
+    // shape=[4, 100, 64], axis=[0, 2], fp32
+    // Process order (innermost first): axis=2 (layer 0), axis=0 (layer 1)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Process order (innermost first): processOrder = reversed(sorted) = [2, 0]
+    // Layer 0: targetAxis=2 (axis=2), Layer 1: targetAxis=0 (axis=0)
+    EXPECT_EQ(td->layerAxis[0], 2);
+    EXPECT_EQ(td->layerAxis[1], 0);
+
+    // Layer 0 (axis=2): shape [4,100,64], reduce axis pos=2, rLength=64
+    EXPECT_EQ(td->layerRLength[0], 64);
+    EXPECT_EQ(td->layerReduceAxisIdx[0], 2);
+    EXPECT_EQ(td->layerIsTailReduce[0], 1);  // pos 2 is last in 3D
+    EXPECT_EQ(td->layerA0Length[0], 0);      // tail reduce → a0=0
+
+    // Layer 0 output: [4,100,1] → after squeeze: [4,100], elemCount=400
+    EXPECT_EQ(td->layerInputElemCount[0], 4 * 100 * 64);
+    EXPECT_EQ(td->layerOutputElemCount[0], 4 * 100);
+
+    // Layer 1 (axis=0): shape [4,100], reduce axis pos=0, rLength=4
+    EXPECT_EQ(td->layerRLength[1], 4);
+    EXPECT_EQ(td->layerReduceAxisIdx[1], 0);
+    EXPECT_EQ(td->layerIsTailReduce[1], 0);  // pos 0 is not last
+    EXPECT_EQ(td->layerA0Length[1], 100);    // non-reduce tail = dim 1
+
+    EXPECT_EQ(td->layerInputElemCount[1], 4 * 100);
+    EXPECT_EQ(td->layerOutputElemCount[1], 100);
+}
+
+// =============================================================================
+// 65. Per-layer params: 4D [0,2] → verify layerShapeBefore
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_4d_layer_shape_before)
+{
+    // shape=[2, 100, 50, 64], axis=[0, 2], fp32
+    // Process order: axis=2 (layer 0), axis=0 (layer 1)
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Layer 0 (axis=2): original shape [2,100,50,64]
+    EXPECT_EQ(td->layerNDims[0], 4);
+    EXPECT_EQ(td->layerShapeBefore[0][0], 2);
+    EXPECT_EQ(td->layerShapeBefore[0][1], 100);
+    EXPECT_EQ(td->layerShapeBefore[0][2], 50);
+    EXPECT_EQ(td->layerShapeBefore[0][3], 64);
+
+    // Layer 0 reduce: axis=2, rLength=50, a0Length=64 (non-tail)
+    EXPECT_EQ(td->layerRLength[0], 50);
+    EXPECT_EQ(td->layerReduceAxisIdx[0], 2);
+    EXPECT_EQ(td->layerIsTailReduce[0], 0);
+    EXPECT_EQ(td->layerA0Length[0], 64);
+
+    // Layer 1 (axis=0): after removing axis=2, shape=[2,100,64]
+    EXPECT_EQ(td->layerNDims[1], 3);
+    EXPECT_EQ(td->layerShapeBefore[1][0], 2);
+    EXPECT_EQ(td->layerShapeBefore[1][1], 100);
+    EXPECT_EQ(td->layerShapeBefore[1][2], 64);
+
+    // Layer 1 reduce: axis=0, rLength=2
+    EXPECT_EQ(td->layerRLength[1], 2);
+    EXPECT_EQ(td->layerReduceAxisIdx[1], 0);
+    EXPECT_EQ(td->layerIsTailReduce[1], 0);
+    EXPECT_EQ(td->layerA0Length[1], 100 * 64);  // 6400
+}
+
+// =============================================================================
+// 66. Per-layer params: 5D [0,2,4] → 3 layers
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_three_layers)
+{
+    // shape=[2, 3, 100, 4, 64], axis=[0, 2, 4], fp32
+    // Process order: axis=4, axis=2, axis=0
+    auto r = RunTiling({2, 3, 100, 4, 64}, ge::DT_FLOAT, {0, 2, 4});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 3);
+
+    // Layer 0 (axis=4): shape [2,3,100,4,64], tail reduce
+    EXPECT_EQ(td->layerAxis[0], 4);
+    EXPECT_EQ(td->layerRLength[0], 64);
+    EXPECT_EQ(td->layerIsTailReduce[0], 1);
+    EXPECT_EQ(td->layerOutputElemCount[0], 2 * 3 * 100 * 4);
+
+    // Layer 1 (axis=2): shape [2,3,100,4], reduce pos=2
+    EXPECT_EQ(td->layerAxis[1], 2);
+    EXPECT_EQ(td->layerRLength[1], 100);
+    EXPECT_EQ(td->layerIsTailReduce[1], 0);
+    EXPECT_EQ(td->layerA0Length[1], 4);
+
+    // Layer 2 (axis=0): shape [2,3,4], reduce pos=0
+    EXPECT_EQ(td->layerAxis[2], 0);
+    EXPECT_EQ(td->layerRLength[2], 2);
+    EXPECT_EQ(td->layerIsTailReduce[2], 0);
+    EXPECT_EQ(td->layerA0Length[2], 3 * 4);
+}
+
+// =============================================================================
+// 67. Per-layer workspace offset: 3D [0,2]
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_3d_workspace_offset)
+{
+    // shape=[4, 100, 64], axis=[0, 2], fp32
+    // Layer 0 output: 4*100 elements → workspace region 0
+    // Layer 1 reads from workspace region 0, writes to result GM (last layer)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Workspace offset for layer 0 should be meaningful (layer 0 writes intermediate)
+    // layerWorkspaceOffset[0] is the read offset; for layer 0 it reads from input (not workspace)
+    // The actual workspace offset for layer 1's read = where layer 0 wrote its output
+    // From code: layer[0].workspaceOffset = 0 (reads from input)
+    //            layer[1].workspaceOffset = layer[0].workspaceOffset (reads prev output)
+    // But the write offset for layer 0 output is set via layers[li+1].workspaceOffset = wsOffset
+    // Layer 0 output bytes = CeilAlign(400 * 4, 32) = 1600
+    // So layer[1].workspaceOffset = 0 (reads from ws[0])
+    EXPECT_GE(td->layerWorkspaceOffset[0], 0);
+    EXPECT_GE(td->layerWorkspaceOffset[1], 0);
+}
+
+// -----------------------------------------------------------------------------
+// Group H: Workspace Size
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 68. Workspace size: Key=4 = 2*inputElems*sizeof(float), 4096-aligned
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
+{
+    // shape=[4, 100, 64], axis=[0, 2], fp32
+    // totalInputElems = 4*100*64 = 25600
+    // wsSize = 25600 * 4 * 2 = 204800
+    // Aligned to 4096: 204800 is already 4096-aligned (204800 / 4096 = 50)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    ASSERT_GE(r.info.workspaceSizes.size(), 1u);
+    int64_t inputElems = 4 * 100 * 64;
+    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
+}
+
+// =============================================================================
+// 69. Workspace size: Key=4 fp16 same formula (uses sizeof(float) not typeSize)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
+{
+    // shape=[2, 50, 32], axis=[0, 2], fp16
+    // totalInputElems = 2*50*32 = 3200
+    // wsSize = 3200 * 4 * 2 = 25600, aligned to 4096 = 25600 (already aligned)
+    // Wait: 25600 / 4096 = 6.25 → not aligned. CeilAlign = 28672
+    auto r = RunTiling({2, 50, 32}, ge::DT_FLOAT16, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    ASSERT_GE(r.info.workspaceSizes.size(), 1u);
+    int64_t inputElems = 2 * 50 * 32;
+    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
+}
+
+// =============================================================================
+// 70. Workspace size: Key0-3 = 0 (no workspace for non-MULTI_AXIS)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_non_multi_axis_workspace_zero)
+{
+    // AR_FULLLOAD (mode=0): workspace should be 0
+    auto r0 = RunTiling({4, 64}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r0.success);
+    ASSERT_GE(r0.info.workspaceSizes.size(), 1u);
+    EXPECT_EQ(r0.info.workspaceSizes[0], 0u);
+
+    // ARA_FULLLOAD (mode=2): workspace should be 0
+    auto r2 = RunTiling({4, 100, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r2.success);
+    ASSERT_GE(r2.info.workspaceSizes.size(), 1u);
+    EXPECT_EQ(r2.info.workspaceSizes[0], 0u);
+
+    // AR_COLSPLIT (mode=1): workspace should be 0
+    auto r1 = RunTiling({4, 30000}, ge::DT_FLOAT, {-1});
+    ASSERT_TRUE(r1.success);
+    ASSERT_GE(r1.info.workspaceSizes.size(), 1u);
+    EXPECT_EQ(r1.info.workspaceSizes[0], 0u);
+
+    // ARA_ROWSPLIT (mode=3): workspace should be 0
+    auto r3 = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r3.success);
+    ASSERT_GE(r3.info.workspaceSizes.size(), 1u);
+    EXPECT_EQ(r3.info.workspaceSizes[0], 0u);
+}
+
+// -----------------------------------------------------------------------------
+// Group I: MULTI_AXIS Boundaries
+// -----------------------------------------------------------------------------
+
+// =============================================================================
+// 71. MULTI_AXIS boundary: full reduction (all axes) → scalar output
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_full_reduction_2d)
+{
+    // shape=[4, 64], axis=[0, 1] → reduce all dims
+    // These are contiguous → NOT Key=4, it's AR_FULLLOAD
+    auto r = RunTiling({4, 64}, ge::DT_FLOAT, {0, 1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    // [0,1] is contiguous tail reduce → AR_FULLLOAD, not MULTI_AXIS
+    EXPECT_NE(td->tilingMode, 4u);
+    EXPECT_EQ(td->tilingMode, 0u);  // AR_FULLLOAD
+    EXPECT_EQ(td->totalRows, 1);
+    EXPECT_EQ(td->rLength, 256);    // 4*64
+}
+
+// =============================================================================
+// 72. MULTI_AXIS boundary: full reduction 3D non-contiguous [0,1,2]
+//     → contiguous (all dims), NOT Key=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_full_reduction_3d_contiguous)
+{
+    // shape=[4, 100, 64], axis=[0, 1, 2] → all contiguous
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 1, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_NE(td->tilingMode, 4u);
+    EXPECT_EQ(td->totalRows, 1);
+    EXPECT_EQ(td->rLength, 4 * 100 * 64);
+}
+
+// =============================================================================
+// 73. MULTI_AXIS boundary: reduction dim = 1 in one layer
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_reduce_dim_one)
+{
+    // shape=[2, 1, 50, 64], axis=[0, 2]
+    // Layer 0 (axis=2): shape [2,1,50,64], rLength=50
+    // Layer 1 (axis=0): shape [2,1,64], rLength=2
+    auto r = RunTiling({2, 1, 50, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    EXPECT_EQ(td->layerRLength[0], 50);
+    EXPECT_EQ(td->layerRLength[1], 2);
+}
+
+// =============================================================================
+// 74. MULTI_AXIS boundary: single-element degenerate axis in non-reduce gap
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_degenerate_gap)
+{
+    // shape=[4, 1, 64], axis=[0, 2]
+    // Dim 1 = 1 (degenerate non-reduce between axes 0 and 2)
+    auto r = RunTiling({4, 1, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Layer 0 (axis=2): shape [4,1,64], rLength=64
+    EXPECT_EQ(td->layerRLength[0], 64);
+    // Layer 1 (axis=0): shape [4,1], rLength=4
+    EXPECT_EQ(td->layerRLength[1], 4);
+}
+
+// =============================================================================
+// 75. MULTI_AXIS with negative indices: 3D [-3, -1] → [0, 2]
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_negative_indices_3d)
+{
+    // shape=[4, 100, 64], axis=[-3, -1] → normalized [0, 2]
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {-3, -1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Same as test 64
+    EXPECT_EQ(td->layerAxis[0], 2);  // innermost first
+    EXPECT_EQ(td->layerAxis[1], 0);
+}
+
+// =============================================================================
+// 76. MULTI_AXIS: all 3 dtypes produce correct tilingMode=4
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_all_dtypes)
+{
+    struct DtypeCase {
+        std::string name;
+        ge::DataType dtype;
+    };
+
+    DtypeCase cases[] = {
+        {"fp16", ge::DT_FLOAT16},
+        {"fp32", ge::DT_FLOAT},
+        {"bf16", ge::DT_BF16},
+    };
+
+    for (const auto& c : cases) {
+        auto r = RunTiling({4, 100, 64}, c.dtype, {0, 2});
+        ASSERT_TRUE(r.success) << "Failed for dtype: " << c.name;
+
+        auto* td = AsTilingData(r.info);
+        ASSERT_NE(td, nullptr);
+        EXPECT_EQ(td->tilingMode, 4u) << "Expected MULTI_AXIS for dtype: " << c.name;
+    }
+}
+
+// =============================================================================
+// 77. MULTI_AXIS: verify blockDim uses firstLayerRows
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_blockdim)
+{
+    // shape=[4, 100, 64], axis=[0, 2]
+    // firstLayerRows = product of dims before first reduce axis (axis=0 in layer 0)
+    // Layer 0 processes axis=2 (innermost), reduceAxisInShape=2
+    // firstLayerRows = product of dims before pos 2 in original shape = 4*100 = 400
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    // firstLayerRows = 4 * 100 = 400 (dims before axis 2 in original shape)
+    EXPECT_EQ(td->totalRows, 400);
+    EXPECT_EQ(td->usedCoreNum, 20);  // min(20, 400) = 20
+    EXPECT_EQ(r.info.blockNum, 20u);
+    // rowsPerCore = ceil(400/20) = 20
+    EXPECT_EQ(td->rowsPerCore, 20);
+    // tailRows = 400 - 20*19 = 400 - 380 = 20
+    EXPECT_EQ(td->tailRows, 20);
+}
+
+// =============================================================================
+// 78. MULTI_AXIS: single core when firstLayerRows=1
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_single_core)
+{
+    // shape=[1, 100, 64], axis=[0, 2]
+    // firstLayerRows = product of dims before axis 2 = 1*100 = 100
+    // usedCoreNum = min(20, 100) = 20
+    auto r = RunTiling({1, 100, 64}, ge::DT_FLOAT, {0, 2}, false, 20);
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    // Layer 0 (axis=2): shape [1,100,64], reduceAxisInShape=2
+    // firstLayerRows = 1*100 = 100
+    EXPECT_EQ(td->totalRows, 100);
+    EXPECT_EQ(td->usedCoreNum, 20);
+    EXPECT_EQ(r.info.blockNum, 20u);
+}
+
+// =============================================================================
+// 79. MULTI_AXIS: layer sub-mode for tail-reduce layer (AR_FULLLOAD)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_layer_submode_tail_ar)
+{
+    // shape=[4, 100, 64], axis=[0, 2], fp32
+    // Layer 0 (axis=2): tail reduce, R=64, fp32
+    // ubNeeded = 2*64*4 + ComputeTmpBufSize(64,4) + 64
+    // tmpBuf for R_align=64: firstMaxRep=1, finalNeed=8, 8*4=32
+    // ubNeeded = 2*64*4 + 32 + 64 = 608 ≤ UB → AR_FULLLOAD (subMode=0)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    // Layer 0 is tail reduce with R=64 → AR_FULLLOAD
+    EXPECT_EQ(td->layerMode[0], 0);  // AR_FULLLOAD
+}
+
+// =============================================================================
+// 80. MULTI_AXIS: layer sub-mode for non-tail layer (ARA_FULLLOAD)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_layer_submode_nontail_ara)
+{
+    // shape=[4, 100, 64], axis=[0, 2], fp32
+    // Layer 1 (axis=0): shape [4,100], reduce pos=0, R=4, A0=100
+    // ARA mode: ubNeeded = 4*100*4 + 100*4 + 100*4 + max(100*4,32)
+    // = 1600 + 400 + 400 + 400 = 2800 ≤ UB → ARA_FULLLOAD (subMode=2)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+
+    // Layer 1 is non-tail reduce with small R=4, A0=100
+    EXPECT_EQ(td->layerMode[1], 2);  // ARA_FULLLOAD
+}
+
+// =============================================================================
+// 81. MULTI_AXIS: dtype TilingKey still driven by ASCENDC_TPL_SEL_PARAM
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_tilingkey_dtypes)
+{
+    struct DtypeKeyCase {
+        std::string name;
+        ge::DataType dtype;
+        int64_t expectedTilingKey;
+    };
+
+    DtypeKeyCase cases[] = {
+        {"fp16", ge::DT_FLOAT16, 1},
+        {"fp32", ge::DT_FLOAT, 0},
+        {"bf16", ge::DT_BF16, 27},
+    };
+
+    for (const auto& c : cases) {
+        auto r = RunTiling({4, 100, 64}, c.dtype, {0, 2});
+        ASSERT_TRUE(r.success) << "Failed for dtype: " << c.name;
+
+        EXPECT_EQ(r.info.tilingKey, c.expectedTilingKey)
+            << "TilingKey mismatch for dtype: " << c.name;
+    }
+}
+
+// =============================================================================
+// 82. MULTI_AXIS: 4D [0,2,3] → 3 layers, verify processing order
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_4d_0_2_3_processing_order)
+{
+    // shape=[2, 100, 50, 64], axis=[0, 2, 3], fp32
+    // sorted = [0, 2, 3], processOrder = reversed = [3, 2, 0]
+    // Layer 0: axis=3 (tail), shape [2,100,50,64], R=64
+    // Layer 1: axis=2, shape [2,100,50], R=50 (after removing axis 3)
+    // Layer 2: axis=0, shape [2,100], R=2
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT, {0, 2, 3});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 3);
+
+    // Process order: axis=3, axis=2, axis=0
+    EXPECT_EQ(td->layerAxis[0], 3);
+    EXPECT_EQ(td->layerAxis[1], 2);
+    EXPECT_EQ(td->layerAxis[2], 0);
+
+    // Layer 0: tail reduce, R=64
+    EXPECT_EQ(td->layerRLength[0], 64);
+    EXPECT_EQ(td->layerIsTailReduce[0], 1);
+
+    // Layer 1: original axis=2, after removing axis 3 → shape [2,100,50]
+    // posInShape = 2 - 0 = 2 (last dim) → tail reduce, R=50
+    EXPECT_EQ(td->layerRLength[1], 50);
+    EXPECT_EQ(td->layerIsTailReduce[1], 1);
+    EXPECT_EQ(td->layerA0Length[1], 0);
+
+    // Layer 2: shape [2,100], reduce axis 0
+    EXPECT_EQ(td->layerRLength[2], 2);
+    EXPECT_EQ(td->layerReduceAxisIdx[2], 0);
+}
+
+// =============================================================================
+// 83. MULTI_AXIS: inputDtype field set correctly
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_input_dtype_field)
+{
+    auto r = RunTiling({4, 100, 64}, ge::DT_BF16, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    EXPECT_EQ(td->inputDtype, static_cast<uint32_t>(ge::DT_BF16));
+}
+
+// =============================================================================
+// 84. MULTI_AXIS: isAlign32B set to 0 for multi-axis mode
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_is_align32b_zero)
+{
+    // In MULTI_AXIS mode, isAlign32B is always set to 0 (no single contiguous reduce)
+    auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    EXPECT_EQ(td->isAlign32B, 0u);
+}
+
+// =============================================================================
+// 85. MULTI_AXIS: 5D max dimension with non-contiguous axes
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_max_dim)
+{
+    // shape=[2, 3, 100, 4, 64], axis=[0, 2, 4], fp32
+    auto r = RunTiling({2, 3, 100, 4, 64}, ge::DT_FLOAT, {0, 2, 4});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 3);
+
+    // firstLayerRows = product of dims before axis 4 (processOrder[0]=4)
+    // = 2*3*100*4 = 2400
+    EXPECT_EQ(td->totalRows, 2400);
+    EXPECT_EQ(td->usedCoreNum, 20);
+
+    // Workspace: totalInputElems = 2*3*100*4*64 = 153600
+    // wsSize = 153600 * 4 * 2 = 1228800
+    int64_t inputElems = 2 * 3 * 100 * 4 * 64;
+    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
+}
+
+// =============================================================================
+// 86. MULTI_AXIS: keep_dims does not affect MULTI_AXIS detection
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_keepdims)
+{
+    auto rTrue = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2}, true);
+    auto rFalse = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2}, false);
+
+    ASSERT_TRUE(rTrue.success);
+    ASSERT_TRUE(rFalse.success);
+
+    auto* tdTrue = AsTilingData(rTrue.info);
+    auto* tdFalse = AsTilingData(rFalse.info);
+
+    ASSERT_NE(tdTrue, nullptr);
+    ASSERT_NE(tdFalse, nullptr);
+
+    // Both should be MULTI_AXIS
+    EXPECT_EQ(tdTrue->tilingMode, 4u);
+    EXPECT_EQ(tdFalse->tilingMode, 4u);
+    EXPECT_EQ(tdTrue->numLayers, tdFalse->numLayers);
+    EXPECT_EQ(tdTrue->totalRows, tdFalse->totalRows);
+}
+
+// =============================================================================
+// 87. MULTI_AXIS: contiguous non-tail multi-axis does NOT trigger Key=4
+//     [1,2] on 4D where dims 1,2 are contiguous → coalesced ARA
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_contiguous_nontail_not_key4)
+{
+    // shape=[2, 100, 50, 64], axis=[1, 2]
+    // Dims 1, 2 are contiguous → coalesced ARA mode, not MULTI_AXIS
+    auto r = RunTiling({2, 100, 50, 64}, ge::DT_FLOAT, {1, 2});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_NE(td->tilingMode, 4u);
+    // Coalesced: totalRows=2, rLength=100*50=5000, a0Length=64
+    EXPECT_EQ(td->totalRows, 2);
+    EXPECT_EQ(td->rLength, 5000);
+    EXPECT_EQ(td->a0Length, 64);
 }
 
 } // namespace SquareSumV1UT

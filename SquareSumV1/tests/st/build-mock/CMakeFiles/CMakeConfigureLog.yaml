@@ -61,8 +61,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4"
-      binary: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4"
+      source: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3"
+      binary: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3"
     cmakeVariables:
       CMAKE_C_FLAGS: ""
       CMAKE_C_FLAGS_DEBUG: "-g"
@@ -71,13 +71,13 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4'
+        Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_99b8a/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_99b8a.dir/build.make CMakeFiles/cmTC_99b8a.dir/build
-        gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4'
-        Building C object CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o
-        /usr/bin/cc   -v -o CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4f86c/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_4f86c.dir/build.make CMakeFiles/cmTC_4f86c.dir/build
+        gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3'
+        Building C object CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -o CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
         Using built-in specs.
         COLLECT_GCC=/usr/bin/cc
         GCC_AI4C_ONNX_FDATA=/usr/libexec/gcc/aarch64-openEuler-linux/12/../../onnx.fdata
@@ -86,8 +86,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib
         gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/'
-         /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_99b8a.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /tmp/ccIH1qhK.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/'
+         /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_4f86c.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /tmp/cck5928d.s
         GNU C17 (GCC) version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (aarch64-openEuler-linux)
         	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2), GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version none
         GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
@@ -103,15 +103,15 @@ events:
         	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2), GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version none
         GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
         Compiler executable checksum: b443031e15f95ca9740241b89b13968c
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/'
-         as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o /tmp/ccIH1qhK.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/'
+         as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o /tmp/cck5928d.s
         GNU assembler version 2.41 (aarch64-openEuler-linux) using BFD version (GNU Binutils) 2.41
         COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/
         LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.'
-        Linking C executable cmTC_99b8a
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_99b8a.dir/link.txt --verbose=1
-        /usr/bin/cc  -v CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -o cmTC_99b8a 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_4f86c
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4f86c.dir/link.txt --verbose=1
+        /usr/bin/cc  -v CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -o cmTC_4f86c 
         Using built-in specs.
         COLLECT_GCC=/usr/bin/cc
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper
@@ -123,10 +123,10 @@ events:
         gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) 
         COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/
         LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_99b8a' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_99b8a.'
-         /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/ccoFLXts.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_99b8a /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_99b8a' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_99b8a.'
-        gmake[1]: Leaving directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4'
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4f86c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_4f86c.'
+         /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/ccvJRVwy.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_4f86c /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4f86c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_4f86c.'
+        gmake[1]: Leaving directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3'
         
       exitCode: 0
   -
@@ -158,13 +158,13 @@ events:
     message: |
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4']
+        ignore line: [Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_99b8a/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_99b8a.dir/build.make CMakeFiles/cmTC_99b8a.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-coDRM4']
-        ignore line: [Building C object CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o]
-        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4f86c/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_4f86c.dir/build.make CMakeFiles/cmTC_4f86c.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-UlIDw3']
+        ignore line: [Building C object CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/cc]
         ignore line: [GCC_AI4C_ONNX_FDATA=/usr/libexec/gcc/aarch64-openEuler-linux/12/../../onnx.fdata]
@@ -173,8 +173,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib]
         ignore line: [gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/']
-        ignore line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_99b8a.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /tmp/ccIH1qhK.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/']
+        ignore line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_4f86c.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mlittle-endian -mabi=lp64 -version -o /tmp/cck5928d.s]
         ignore line: [GNU C17 (GCC) version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (aarch64-openEuler-linux)]
         ignore line: [	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2)  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version none]
         ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
@@ -190,15 +190,15 @@ events:
         ignore line: [	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2)  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version none]
         ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
         ignore line: [Compiler executable checksum: b443031e15f95ca9740241b89b13968c]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/']
-        ignore line: [ as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o /tmp/ccIH1qhK.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/']
+        ignore line: [ as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o /tmp/cck5928d.s]
         ignore line: [GNU assembler version 2.41 (aarch64-openEuler-linux) using BFD version (GNU Binutils) 2.41]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.']
-        ignore line: [Linking C executable cmTC_99b8a]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_99b8a.dir/link.txt --verbose=1]
-        ignore line: [/usr/bin/cc  -v CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -o cmTC_99b8a ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o' '-c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_4f86c]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4f86c.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc  -v CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -o cmTC_4f86c ]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/cc]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper]
@@ -210,13 +210,13 @@ events:
         ignore line: [gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) ]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_99b8a' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_99b8a.']
-        link line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/ccoFLXts.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_99b8a /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4f86c' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_4f86c.']
+        link line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/ccvJRVwy.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_4f86c /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o]
           arg [/usr/libexec/gcc/aarch64-openEuler-linux/12/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/ccoFLXts.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccvJRVwy.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -231,7 +231,7 @@ events:
           arg [-EL] ==> ignore
           arg [-maarch64linux] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_99b8a] ==> ignore
+          arg [cmTC_4f86c] ==> ignore
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o]
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o]
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o]
@@ -240,7 +240,7 @@ events:
           arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
           arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
           arg [-L/usr/lib/gcc/aarch64-openEuler-linux/12/../../..] ==> dir [/usr/lib/gcc/aarch64-openEuler-linux/12/../../..]
-          arg [CMakeFiles/cmTC_99b8a.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [CMakeFiles/cmTC_4f86c.dir/CMakeCCompilerABI.c.o] ==> ignore
           arg [-lgcc] ==> lib [gcc]
           arg [--push-state] ==> ignore
           arg [--as-needed] ==> ignore
@@ -277,8 +277,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG"
-      binary: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG"
+      source: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx"
+      binary: "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -287,13 +287,13 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG'
+        Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_210a8/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_210a8.dir/build.make CMakeFiles/cmTC_210a8.dir/build
-        gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG'
-        Building CXX object CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o
-        /usr/bin/c++   -v -o CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_998ec/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_998ec.dir/build.make CMakeFiles/cmTC_998ec.dir/build
+        gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx'
+        Building CXX object CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/c++   -v -o CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         GCC_AI4C_ONNX_FDATA=/usr/libexec/gcc/aarch64-openEuler-linux/12/../../onnx.fdata
@@ -302,8 +302,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib
         gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/'
-         /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_210a8.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mlittle-endian -mabi=lp64 -version -o /tmp/ccRs93tP.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/'
+         /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_998ec.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mlittle-endian -mabi=lp64 -version -o /tmp/ccIcfQoH.s
         GNU C++17 (GCC) version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (aarch64-openEuler-linux)
         	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2), GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version none
         GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
@@ -322,15 +322,15 @@ events:
         	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2), GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version none
         GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
         Compiler executable checksum: 384e008373e096f81c4862df7ad72238
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/'
-         as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccRs93tP.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/'
+         as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccIcfQoH.s
         GNU assembler version 2.41 (aarch64-openEuler-linux) using BFD version (GNU Binutils) 2.41
         COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/
         LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.'
-        Linking CXX executable cmTC_210a8
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_210a8.dir/link.txt --verbose=1
-        /usr/bin/c++  -v CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_210a8 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.'
+        Linking CXX executable cmTC_998ec
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_998ec.dir/link.txt --verbose=1
+        /usr/bin/c++  -v CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_998ec 
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper
@@ -342,10 +342,10 @@ events:
         gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) 
         COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/
         LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_210a8' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_210a8.'
-         /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/cc8EcqI6.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_210a8 /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_210a8' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_210a8.'
-        gmake[1]: Leaving directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG'
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_998ec' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_998ec.'
+         /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/cccCW0AY.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_998ec /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_998ec' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_998ec.'
+        gmake[1]: Leaving directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx'
         
       exitCode: 0
   -
@@ -383,13 +383,13 @@ events:
     message: |
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG']
+        ignore line: [Change Dir: '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_210a8/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_210a8.dir/build.make CMakeFiles/cmTC_210a8.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-PFwktG']
-        ignore line: [Building CXX object CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o]
-        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_998ec/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_998ec.dir/build.make CMakeFiles/cmTC_998ec.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/CMakeScratch/TryCompile-4TKGFx']
+        ignore line: [Building CXX object CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [GCC_AI4C_ONNX_FDATA=/usr/libexec/gcc/aarch64-openEuler-linux/12/../../onnx.fdata]
@@ -398,8 +398,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib]
         ignore line: [gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/']
-        ignore line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_210a8.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mlittle-endian -mabi=lp64 -version -o /tmp/ccRs93tP.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/']
+        ignore line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_998ec.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mlittle-endian -mabi=lp64 -version -o /tmp/ccIcfQoH.s]
         ignore line: [GNU C++17 (GCC) version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (aarch64-openEuler-linux)]
         ignore line: [	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2)  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version none]
         ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
@@ -418,15 +418,15 @@ events:
         ignore line: [	compiled by GNU C version 12.3.1 (openEuler 12.3.1-99.oe2403sp2)  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version none]
         ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
         ignore line: [Compiler executable checksum: 384e008373e096f81c4862df7ad72238]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/']
-        ignore line: [ as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccRs93tP.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/']
+        ignore line: [ as -v -EL -mabi=lp64 -o CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccIcfQoH.s]
         ignore line: [GNU assembler version 2.41 (aarch64-openEuler-linux) using BFD version (GNU Binutils) 2.41]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.']
-        ignore line: [Linking CXX executable cmTC_210a8]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_210a8.dir/link.txt --verbose=1]
-        ignore line: [/usr/bin/c++  -v CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_210a8 ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [Linking CXX executable cmTC_998ec]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_998ec.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/c++  -v CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_998ec ]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper]
@@ -438,13 +438,13 @@ events:
         ignore line: [gcc version 12.3.1 (openEuler 12.3.1-99.oe2403sp2) (GCC) ]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/12/:/usr/libexec/gcc/aarch64-openEuler-linux/:/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/aarch64-openEuler-linux/12/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib/gcc/aarch64-openEuler-linux/12/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_210a8' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_210a8.']
-        link line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/cc8EcqI6.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_210a8 /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_998ec' '-shared-libgcc' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'cmTC_998ec.']
+        link line: [ /usr/libexec/gcc/aarch64-openEuler-linux/12/collect2 -plugin /usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper -plugin-opt=-fresolution=/tmp/cccCW0AY.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -dynamic-linker /lib/ld-linux-aarch64.so.1 -X -EL -maarch64linux -o cmTC_998ec /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o /usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o -L/usr/lib/gcc/aarch64-openEuler-linux/12 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/aarch64-openEuler-linux/12/../../.. CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/aarch64-openEuler-linux/12/crtend.o /usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crtn.o]
           arg [/usr/libexec/gcc/aarch64-openEuler-linux/12/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/aarch64-openEuler-linux/12/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/aarch64-openEuler-linux/12/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/cc8EcqI6.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cccCW0AY.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -459,7 +459,7 @@ events:
           arg [-EL] ==> ignore
           arg [-maarch64linux] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_210a8] ==> ignore
+          arg [cmTC_998ec] ==> ignore
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crt1.o]
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/../../../../lib64/crti.o]
           arg [/usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o] ==> obj [/usr/lib/gcc/aarch64-openEuler-linux/12/crtbegin.o]
@@ -468,7 +468,7 @@ events:
           arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
           arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
           arg [-L/usr/lib/gcc/aarch64-openEuler-linux/12/../../..] ==> dir [/usr/lib/gcc/aarch64-openEuler-linux/12/../../..]
-          arg [CMakeFiles/cmTC_210a8.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_998ec.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
           arg [-lstdc++] ==> lib [stdc++]
           arg [-lm] ==> lib [m]
           arg [-lgcc_s] ==> lib [gcc_s]

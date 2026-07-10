@@ -5,6 +5,9 @@
 # 用法:
 #   bash run.sh --mock        # Mock 模式 (CPU golden, 无需 NPU)
 #   bash run.sh --real        # Real 模式 (NPU 执行, 默认)
+#   bash run.sh --mock --l2       # Mock + L2 异常用例
+#   bash run.sh --mock --boundary # Mock + 全边界 ST
+#   bash run.sh --mock --all      # Mock + L0 + L1 + L2 + 边界 (完整回归)
 #   bash run.sh --help        # 帮助信息
 #
 # CSV 用例文件默认: testcases/aclnnSquareSumV1_l0_test_cases.csv
@@ -20,6 +23,7 @@ USE_MOCK=""
 BUILD_DIR=""
 CASE_FILE="testcases/aclnnSquareSumV1_l0_test_cases.csv"
 EXTRA_CASE_FILE=""
+EXTRA_ARGS=""
 
 # ============================================================================
 # 帮助信息
@@ -33,6 +37,9 @@ show_help() {
     echo "  --case <file>   执行指定的测试用例 CSV 文件"
     echo "  --l1            同时运行 L0 + L1 sample 用例"
     echo "  --l1-full       同时运行 L0 + L1 全部用例"
+    echo "  --l2            运行 L2 异常用例 (参数校验逻辑测试)"
+    echo "  --boundary      运行全边界 ST (空tensor/标量/NaN/Inf/溢出等)"
+    echo "  --all           完整回归: L0 + L1 sample + L2 + 边界"
     echo "  --help          显示帮助信息"
     echo ""
     echo "Examples:"
@@ -41,6 +48,12 @@ show_help() {
     echo ""
     echo "  # Mock 模式 + L1 sample"
     echo "  $0 --mock --l1"
+    echo ""
+    echo "  # Mock 模式 + L2 异常 + 全边界"
+    echo "  $0 --mock --l2 --boundary"
+    echo ""
+    echo "  # Mock 模式完整回归"
+    echo "  $0 --mock --all"
     echo ""
     echo "  # Real 模式 (需要 NPU)"
     echo "  $0 --real"
@@ -65,6 +78,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --l1-full)
             EXTRA_CASE_FILE="testcases/aclnnSquareSumV1_l1_test_cases.csv"
+            shift
+            ;;
+        --l2)
+            EXTRA_ARGS="${EXTRA_ARGS} --l2"
+            shift
+            ;;
+        --boundary)
+            EXTRA_ARGS="${EXTRA_ARGS} --boundary"
+            shift
+            ;;
+        --all)
+            EXTRA_ARGS="${EXTRA_ARGS} --all"
             shift
             ;;
         --case)
@@ -227,7 +252,7 @@ if [ -n "$EXTRA_CASE_FILE" ]; then
     fi
 fi
 
-"${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}" ${EXTRA_ARG}
+"${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}" ${EXTRA_ARG} ${EXTRA_ARGS}
 
 TEST_RESULT=$?
 

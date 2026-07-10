@@ -146,7 +146,9 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/bits/stl_iterator_base_types.h \
   /usr/include/c++/12/bits/stl_map.h \
   /usr/include/c++/12/bits/stl_multimap.h \
+  /usr/include/c++/12/bits/stl_multiset.h \
   /usr/include/c++/12/bits/stl_pair.h \
+  /usr/include/c++/12/bits/stl_set.h \
   /usr/include/c++/12/bits/stl_tempbuf.h \
   /usr/include/c++/12/bits/stl_tree.h \
   /usr/include/c++/12/bits/stl_uninitialized.h \
@@ -191,6 +193,7 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
   /usr/include/c++/12/pstl/execution_defs.h \
   /usr/include/c++/12/pstl/glue_algorithm_defs.h \
   /usr/include/c++/12/pstl/pstl_config.h \
+  /usr/include/c++/12/set \
   /usr/include/c++/12/sstream \
   /usr/include/c++/12/stdexcept \
   /usr/include/c++/12/streambuf \
@@ -356,6 +359,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/c++/12/bits/stl_vector.h:
 
 /usr/include/c++/12/bits/stl_tempbuf.h:
+
+/usr/include/c++/12/bits/stl_set.h:
 
 /usr/include/c++/12/bits/stl_multimap.h:
 
@@ -553,6 +558,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 
 /usr/include/c++/12/bits/basic_ios.tcc:
 
+/usr/include/c++/12/set:
+
 /usr/include/bits/pthread_stack_min-dynamic.h:
 
 /usr/include/c++/12/tr1/riemann_zeta.tcc:
@@ -650,6 +657,8 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: /home/li
 /usr/include/c++/12/aarch64-openEuler-linux/bits/error_constants.h:
 
 /usr/include/c++/12/aarch64-openEuler-linux/bits/gthr-default.h:
+
+/usr/include/c++/12/bits/stl_multiset.h:
 
 /usr/include/bits/types/__FILE.h:
 

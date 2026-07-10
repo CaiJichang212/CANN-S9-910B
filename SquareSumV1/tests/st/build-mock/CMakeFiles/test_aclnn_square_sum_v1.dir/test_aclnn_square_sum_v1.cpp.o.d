@@ -168,4 +168,6 @@ CMakeFiles/test_aclnn_square_sum_v1.dir/test_aclnn_square_sum_v1.cpp.o: \
  /usr/include/c++/12/bits/stl_map.h /usr/include/c++/12/tuple \
  /usr/include/c++/12/bits/uses_allocator.h \
  /usr/include/c++/12/bits/stl_multimap.h \
- /usr/include/c++/12/bits/erase_if.h
+ /usr/include/c++/12/bits/erase_if.h /usr/include/c++/12/set \
+ /usr/include/c++/12/bits/stl_set.h \
+ /usr/include/c++/12/bits/stl_multiset.h
