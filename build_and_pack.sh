@@ -1,0 +1,51 @@
+#!/bin/bash
+# One-click build + package for IndexAdd operator
+# Usage: docker exec -it cann850 bash -c "cd /home/liyc/hw-S9/case_910b_IndexAdd && bash build_and_pack.sh"
+set -e
+
+# 算子注册名为 IndexAdd（生成 aclnnIndexAdd 覆盖 torch_npu 内置实现）
+OP_NAME="IndexAdd"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# 算子工程实际位于 <worktree>/op/CustomOp/（与 Greater 分支的 op_project/custom_greater 不同）
+OP_PROJECT="$SCRIPT_DIR/op/CustomOp"
+STAGING="${SCRIPT_DIR}/${OP_NAME}_zip"
+# 拼接日期时间戳后缀，便于区分不同版本：例如 IndexAdd_20260710_153000.zip
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
+
+if [ ! -d "$OP_PROJECT" ]; then
+  echo "ERROR: operator project not found at $OP_PROJECT" >&2
+  exit 1
+fi
+if [ ! -x "$OP_PROJECT/build.sh" ]; then
+  echo "ERROR: build.sh not found or not executable at $OP_PROJECT/build.sh" >&2
+  exit 1
+fi
+
+echo "===== [1/3] Building operator ====="
+cd "$OP_PROJECT"
+rm -rf build_out
+bash build.sh
+echo ""
+
+echo "===== [2/3] Preparing staging dir ====="
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+
+cp -r "$OP_PROJECT/op_host" "$STAGING/"
+cp -r "$OP_PROJECT/op_kernel" "$STAGING/"
+# 兼容 custom_opp_<vendor>_*.run 与 custom_opp_*.run 两种命名
+cp "$OP_PROJECT/build_out/custom_opp_"*.run "$STAGING/"
+
+echo "Staging contents:"
+ls -la "$STAGING/"
+echo ""
+
+echo "===== [3/3] Creating zip ====="
+rm -f "${SCRIPT_DIR}/${OP_NAME}"_*.zip
+cd "$SCRIPT_DIR"
+zip -r "${OP_NAME}_${TIMESTAMP}.zip" "${OP_NAME}_zip"
+
+echo ""
+echo "===== Done ====="
+ls -lh "$ZIP_FILE"
