@@ -1,9 +1,12 @@
+*zip*
+# build artifacts
 **/build_out/
 **/build/
+build/
 dist/
 *.egg-info/
-PROF_*/
 **/__pycache__/
+PROF_*/
 *.pyc
 
 # runtime / compile artifacts
