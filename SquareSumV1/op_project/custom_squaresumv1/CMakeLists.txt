@@ -6,6 +6,13 @@ cmake_minimum_required(VERSION 3.16.0)
 project(squaresumv1_op_prj)
 find_package(ASC REQUIRED)
 
+# 强制启用 C++17：CANN 8.5 的 ACLNN 头文件 (op_dfx.h / op_arg_def.h / op_cache_container.h)
+# 依赖 std::string_view、std::apply、std::is_same_v、if constexpr、fold-expressions 等 C++17 特性。
+# GCC 12+ 默认 C++17，但 GCC 7.3 (Ascend 官方镜像) 默认 C++14，必须显式开启。
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Architecture configuration
 set(ARCH32_COMPUTE_UNITS ascend910b ascend910_93)
 
