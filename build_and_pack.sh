@@ -23,6 +23,11 @@ mkdir -p "$STAGING"
 
 cp -r "$OP_PROJECT/op_host" "$STAGING/"
 cp -r "$OP_PROJECT/op_kernel" "$STAGING/"
+cp -r "$SCRIPT_DIR/$OP_NAME/extension" "$STAGING/"
+cp -r "$SCRIPT_DIR/$OP_NAME/common" "$STAGING/"
+cp -r "$SCRIPT_DIR/$OP_NAME/verification" "$STAGING/"
+cp "$SCRIPT_DIR/$OP_NAME/setup.py" "$SCRIPT_DIR/$OP_NAME/acc_sweep.py" \
+   "$SCRIPT_DIR/$OP_NAME/prof_sum_eval.py" "$STAGING/"
 cp "$OP_PROJECT/build_out/custom_opp_"*.run "$STAGING/"
 
 echo "Staging contents:"
