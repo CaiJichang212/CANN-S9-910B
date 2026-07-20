@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_def.cpp
+ * \file square_sum_v1.cpp
  * \brief SquareSumV1 operator definition
  *
  * aclnnSquareSumV1(input, axis, keep_dims, result)

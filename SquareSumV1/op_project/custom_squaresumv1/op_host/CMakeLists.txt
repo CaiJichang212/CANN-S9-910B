@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------------------------------------------------
 
 set(host_ops_def_srcs
-    ${CMAKE_CURRENT_SOURCE_DIR}/squaresumv1_def.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/square_sum_v1.cpp
 )
 
 set(host_ops_infershape_srcs
