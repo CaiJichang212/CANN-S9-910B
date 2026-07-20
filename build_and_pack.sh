@@ -32,8 +32,12 @@ fi
 
 echo "===== [1/4] Building operator: $OP_NAME ====="
 cd "$OP_PROJECT"
-rm -rf build_out
-bash build.sh
+if [ "${SKIP_BUILD:-0}" = "1" ]; then
+    echo "[SKIP_BUILD=1] 跳过编译，复用已有 build_out/"
+else
+    rm -rf build_out
+    bash build.sh
+fi
 echo ""
 
 echo "===== [2/4] Preparing staging dir ====="
