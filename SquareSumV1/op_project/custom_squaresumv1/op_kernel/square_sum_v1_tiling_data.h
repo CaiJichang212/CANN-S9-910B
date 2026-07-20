@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_tiling_data.h
+ * \file square_sum_v1_tiling_data.h
  * \brief SquareSumV1 TilingData struct (arch22 / Ascend910B)
  *
  * TilingKey=0: AR_FULLLOAD  - tail axis (innermost) reduce, full load
@@ -10,8 +10,8 @@
  * TilingKey=4: MULTI_AXIS   - non-contiguous multi-axis, layer-by-layer reduce
  */
 
-#ifndef _SQUARESUMV1_TILING_DATA_H_
-#define _SQUARESUMV1_TILING_DATA_H_
+#ifndef _SQUARE_SUM_V1_TILING_DATA_H_
+#define _SQUARE_SUM_V1_TILING_DATA_H_
 
 #include <cstdint>
 
@@ -70,4 +70,4 @@ struct SquareSumV1TilingData {
     uint32_t isAlign32B;      // Whether rLength data is 32B aligned (0=no, 1=yes)
 };
 
-#endif // _SQUARESUMV1_TILING_DATA_H_
+#endif // _SQUARE_SUM_V1_TILING_DATA_H_

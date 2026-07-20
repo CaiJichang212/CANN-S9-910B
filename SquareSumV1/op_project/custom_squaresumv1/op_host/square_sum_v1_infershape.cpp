@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_infershape.cpp
+ * \file square_sum_v1_infershape.cpp
  * \brief SquareSumV1 shape inference
  *
  * Output shape is determined by axis + keep_dims.

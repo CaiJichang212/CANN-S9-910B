@@ -1,13 +1,13 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_arch22.cpp
+ * \file square_sum_v1.cpp
  * \brief SquareSumV1 kernel entry point (arch22 / Ascend910B)
  *
  * Template parameter:
  *   D_T_X: data type (half / float / bfloat16_t)
  */
 
-#include "arch22/squaresumv1.h"
+#include "square_sum_v1.h"
 
 template <typename D_T_X>
 __global__ __aicore__ void square_sum_v1(GM_ADDR input, GM_ADDR result, GM_ADDR workspace, GM_ADDR tiling)

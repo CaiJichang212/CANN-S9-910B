@@ -8,20 +8,12 @@ set(host_ops_def_srcs
 )
 
 set(host_ops_infershape_srcs
-    ${CMAKE_CURRENT_SOURCE_DIR}/squaresumv1_infershape.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/square_sum_v1_infershape.cpp
 )
 
-set(host_ops_tiling_srcs)
-
-if(ASCEND_COMPUTE_UNIT STREQUAL "ascend950")
-    list(APPEND host_ops_tiling_srcs
-        ${CMAKE_CURRENT_SOURCE_DIR}/arch35/squaresumv1_tiling.cpp
-    )
-else()
-    list(APPEND host_ops_tiling_srcs
-        ${CMAKE_CURRENT_SOURCE_DIR}/arch22/squaresumv1_tiling.cpp
-    )
-endif()
+set(host_ops_tiling_srcs
+    ${CMAKE_CURRENT_SOURCE_DIR}/square_sum_v1_tiling.cpp
+)
 
 set(host_ops_srcs
     ${host_ops_def_srcs}

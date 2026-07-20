@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_tiling.cpp
+ * \file square_sum_v1_tiling.cpp
  * \brief SquareSumV1 tiling implementation (arch22 / Ascend910B)
  *
  * Iteration 3: Multi-TilingKey integration + MULTI_AXIS
@@ -15,8 +15,8 @@
 #include "op_common/log/log.h"
 #include "op_common/op_host/util/math_util.h"
 #include "op_common/op_host/util/platform_util.h"
-#include "../../op_kernel/arch22/squaresumv1_tiling_data.h"
-#include "../../op_kernel/arch22/squaresumv1_tiling_key.h"
+#include "../op_kernel/square_sum_v1_tiling_data.h"
+#include "../op_kernel/square_sum_v1_tiling_key.h"
 
 #include <algorithm>
 #include <vector>

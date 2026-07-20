@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1.h
+ * \file square_sum_v1.h
  * \brief SquareSumV1 kernel class (arch22 / Ascend910B)
  *
  * Multi-TilingKey support:
@@ -20,13 +20,13 @@
  *   Last layer: -> Cast(float->T) -> resultGM
  */
 
-#ifndef SQUARESUMV1_H
-#define SQUARESUMV1_H
+#ifndef SQUARE_SUM_V1_H
+#define SQUARE_SUM_V1_H
 
 #include "kernel_operator.h"
 #include "kernel_tiling/kernel_tiling.h"
-#include "squaresumv1_tiling_data.h"
-#include "squaresumv1_tiling_key.h"
+#include "square_sum_v1_tiling_data.h"
+#include "square_sum_v1_tiling_key.h"
 
 namespace NsSquareSumV1 {
 
@@ -863,4 +863,4 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
 }
 
 } // namespace NsSquareSumV1
-#endif // SQUARESUMV1_H
+#endif // SQUARE_SUM_V1_H

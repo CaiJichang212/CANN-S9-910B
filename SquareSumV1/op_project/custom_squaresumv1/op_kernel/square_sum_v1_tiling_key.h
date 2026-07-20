@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2026 Huawei Technologies Co., Ltd.
- * \file squaresumv1_tiling_key.h
+ * \file square_sum_v1_tiling_key.h
  * \brief SquareSumV1 TilingKey definitions (arch22 / Ascend910B)
  *
  * TilingKey encoding:
@@ -9,8 +9,8 @@
  * For iteration 1, only half (float16) is supported.
  */
 
-#ifndef __SQUARESUMV1_TILING_KEY_H__
-#define __SQUARESUMV1_TILING_KEY_H__
+#ifndef __SQUARE_SUM_V1_TILING_KEY_H__
+#define __SQUARE_SUM_V1_TILING_KEY_H__
 
 #include "ascendc/host_api/tiling/template_argument.h"
 
@@ -30,4 +30,4 @@ ASCENDC_TPL_SEL(
     ),
 );
 
-#endif // __SQUARESUMV1_TILING_KEY_H__
+#endif // __SQUARE_SUM_V1_TILING_KEY_H__

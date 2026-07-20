@@ -3,19 +3,11 @@
 # op_kernel CMakeLists for SquareSumV1
 # ----------------------------------------------------------------------------------------------------------
 
-if(ASCEND_COMPUTE_UNIT STREQUAL "ascend950")
-    npu_op_kernel_sources(ascendc_kernels
-        OP_TYPE SquareSumV1
-        KERNEL_DIR .
-        KERNEL_FILE squaresumv1_arch35.cpp
-    )
-else()
-    npu_op_kernel_sources(ascendc_kernels
-        OP_TYPE SquareSumV1
-        KERNEL_DIR .
-        KERNEL_FILE squaresumv1_arch22.cpp
-    )
-endif()
+npu_op_kernel_sources(ascendc_kernels
+    OP_TYPE SquareSumV1
+    KERNEL_DIR .
+    KERNEL_FILE square_sum_v1.cpp
+)
 
 npu_op_kernel_library(ascendc_kernels
     SRC_BASE ${CMAKE_CURRENT_SOURCE_DIR}
