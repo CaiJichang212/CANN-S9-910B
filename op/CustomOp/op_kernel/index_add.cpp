@@ -1,47 +1,26 @@
 /**
  * Copyright (C) 2024. Huawei Technologies Co., Ltd. All rights reserved.
  *
- * IndexAdd 算子 kernel 侧实现。
- *
- * 语义：output = copy(self)，再对每个 i ∈ [0, M)：
- *   output[..., index[i], ...] += source[..., i, ...]
- *
- * 数据视图：[beforeDimSize, dimLen, afterDimSize]，afterDimSize 维内存连续。
- *
- * 两阶段（所有 dtype 统一）：
- *   阶段 1 bulk copy self→output：扁平字节均匀切给 usedCoreNum 核，每核写互不重叠的 32B
- *            区间。读入 VECIN，UB→UB 拷到 VECOUT 再 MTE3 写回（MTE3 须从 VECOUT 读）。
- *            完成后 SyncAll() 全核同步。
- *   阶段 2 scatter-add：按 (rowRange×afterSlice) 二维切分，各核输出区域互不重叠 → 无 WAW、
- *            无需原子。每核串行 RMW（读 output→加 source→写 output），重复 index 同核内自然累加。
- *
- * dtype 分派（template<InputT,ComputeT>）：
- *   fp32 / fp16 / int32 : InputT==ComputeT，直接 Add。
- *   int8  : InputT=int8, ComputeT=half。int8→half→Add→half→int8（half 精确表示 int8，无舍入损失）。
- *   bf16  : InputT=bfloat16_t, ComputeT=float。bf16→float→Add→float→bf16。逐次 RMW 舍入为 RNE，
- *           与 torch.bfloat16 原生 bf16 add（逐次 RNE）一致。
- *
- * Cast count 须 256B 对齐：DataCopyPad 读 n 真实元素，Cast 用 round_up(n,256) 对齐计数；
- *   padding 区读到 UB 残留垃圾但不写回（仅写真实 n 字节），故结果正确。
- *   上行转换（int8→half / bf16→float）只支持 CAST_NONE；下行转换用 CAST_RINT（RNE，与 torch 一致；
- *   CAST_ROUND 是 ties-away，会在精确 tie 处与 torch 差 1 ULP）。
+ * IndexAdd has two globally ordered phases:
+ *   1. split and copy self to output;
+ *   2. scatter source vectors.  Aligned vectors use native DMA atomic add in
+ *      parallel.  Any unaligned prefix/suffix is applied by core 0 after an
+ *      all-core barrier, preserving source order.  Layouts without a useful
+ *      aligned body use deterministic index ownership instead: every update
+ *      for index j belongs to core j % scatterCoreNum.
  */
 #include "kernel_operator.h"
 
 using namespace AscendC;
 
-constexpr uint32_t AICORE_NUM = 20;
-constexpr uint32_t COPY_TILE_BYTES = 16384;    // 阶段 1 单块字节数
-constexpr uint32_t MODE_ROW = 0;
-constexpr uint32_t MODE_AFTER = 1;
-constexpr uint32_t CAST_ALIGN_ELEMS = 256;    // Cast count 对齐粒度
+constexpr uint32_t COPY_TILE_BYTES = 16U * 1024U;
+constexpr uint32_t CAST_ALIGN_ELEMS = 256U;
+constexpr uint32_t MIN_ATOMIC_BODY_BYTES = 256U;
 
 template <typename InputT, typename ComputeT>
 class KernelIndexAdd {
 public:
     static constexpr bool kNeedCast = !IsSameType<InputT, ComputeT>::value;
-
-    __aicore__ inline KernelIndexAdd() {}
 
     template <typename TilingT>
     __aicore__ inline void Init(GM_ADDR self, GM_ADDR index, GM_ADDR source, GM_ADDR output,
@@ -53,91 +32,85 @@ public:
         indexLen_ = t.indexLen;
         dtypeSize_ = t.dtypeSize;
         usedCoreNum_ = t.usedCoreNum;
-        mode_ = t.mode;
-        scatterTileLen_ = t.scatterTileLen;
+        scatterCoreNum_ = t.scatterCoreNum;
+        atomicEnabled_ = t.atomicEnabled;
+        copyTileBytes_ = t.copyTileBytes;
+        atomicTileBytes_ = t.atomicTileBytes;
+        rmwTileLen_ = t.rmwTileLen;
 
         selfGm_.SetGlobalBuffer(reinterpret_cast<__gm__ InputT *>(self));
         indexGm_.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(index));
         sourceGm_.SetGlobalBuffer(reinterpret_cast<__gm__ InputT *>(source));
         outputGm_.SetGlobalBuffer(reinterpret_cast<__gm__ InputT *>(output));
         selfGmBytes_.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(self));
-        outGmBytes_.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(output));
+        outputGmBytes_.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(output));
 
-        // 阶段 1 bulk copy：VECIN 读 + VECOUT 写
-        pipe.InitBuffer(copyInTBuf_, COPY_TILE_BYTES);
-        pipe.InitBuffer(copyOutTBuf_, COPY_TILE_BYTES);
-
-        // index UB 缓冲（读一次，循环复用）
-        uint32_t indexBytes = ((indexLen_ * sizeof(int32_t)) + 31U) & ~31U;
-        pipe.InitBuffer(indexTBuf_, indexBytes);
-
-        // 阶段 2 scatter 缓冲
-        uint32_t scBytes = scatterTileLen_ * static_cast<uint32_t>(sizeof(InputT));
-        pipe.InitBuffer(srcTBuf_, scBytes);       // VECIN: source 读
-        pipe.InitBuffer(outInTBuf_, scBytes);     // VECIN: output 读 (RMW)
-        pipe.InitBuffer(outOutTBuf_, scBytes);    // VECOUT: output 写
+        // copyIn/copyOut are reused as the atomic source/bridge after phase 1.
+        pipe_.InitBuffer(copyInTBuf_, copyTileBytes_);
+        pipe_.InitBuffer(copyOutTBuf_, copyTileBytes_);
+        const uint32_t indexBytes = (indexLen_ * sizeof(int32_t) + 31U) & ~31U;
+        pipe_.InitBuffer(indexTBuf_, indexBytes);
+        pipe_.InitBuffer(rmwOutInTBuf_, atomicTileBytes_);
+        // Keep the Cast/Add working buffers separated by one 256B allocation
+        // to avoid the DAV_2201 UB bank-conflict pattern.
+        pipe_.InitBuffer(rmwPaddingTBuf_, 256U);
         if constexpr (kNeedCast) {
-            uint32_t ccBytes = scatterTileLen_ * static_cast<uint32_t>(sizeof(ComputeT));
-            pipe.InitBuffer(srcCompTBuf_, ccBytes);  // VECCALC: Cast src
-            pipe.InitBuffer(outCompTBuf_, ccBytes);  // VECCALC: Cast out + Add
+            const uint32_t computeBytes = rmwTileLen_ * sizeof(ComputeT);
+            pipe_.InitBuffer(srcCompTBuf_, computeBytes);
+            pipe_.InitBuffer(castPaddingTBuf_, 256U);
+            pipe_.InitBuffer(outCompTBuf_, computeBytes);
         }
     }
 
     __aicore__ inline void Process()
     {
-        uint32_t coreId = GetBlockIdx();
-        bool active = (coreId < usedCoreNum_) && (beforeDimSize_ != 0) && (dimLen_ != 0) &&
-                      (afterDimSize_ != 0) && (indexLen_ != 0);
-
-        if (active) {
-            Phase1Copy(coreId);
-        }
+        const uint32_t coreId = GetBlockIdx();
+        Phase1Copy(coreId);
         SyncAll();
         PipeBarrier<PIPE_ALL>();
 
-        if (!active) {
-            return;
-        }
         LoadIndex();
-        Phase2Scatter(coreId);
+        if (atomicEnabled_ != 0U) {
+            Phase2Atomic(coreId);
+            // Atomic MTE3 writes must all be visible before the one serial
+            // owner writes non-atomic tails.
+            SyncAll();
+            PipeBarrier<PIPE_ALL>();
+            if (coreId == 0U) {
+                Phase3SerialTails();
+            }
+        } else {
+            Phase2OwnedRmw(coreId);
+        }
     }
 
 private:
-    // ===== 阶段 1：bulk copy self→output（本核负责的扁平字节区间）=====
     __aicore__ inline void Phase1Copy(uint32_t coreId)
     {
-        uint64_t totalBytes = static_cast<uint64_t>(beforeDimSize_) * dimLen_ * afterDimSize_ * dtypeSize_;
-        if (totalBytes == 0) return;
-        uint64_t start = totalBytes * coreId / usedCoreNum_;
-        uint64_t end = totalBytes * (coreId + 1) / usedCoreNum_;
-        if (start >= end) return;
-        uint64_t total = end - start;
-
-        for (uint64_t off = 0; off < total; off += COPY_TILE_BYTES) {
-            uint64_t remain = total - off;
-            uint32_t chunk = (remain < COPY_TILE_BYTES) ? static_cast<uint32_t>(remain) : COPY_TILE_BYTES;
-
+        const uint64_t totalBytes = static_cast<uint64_t>(beforeDimSize_) * dimLen_ * afterDimSize_ * dtypeSize_;
+        const uint64_t start = totalBytes * coreId / usedCoreNum_;
+        const uint64_t end = totalBytes * (coreId + 1U) / usedCoreNum_;
+        for (uint64_t pos = start; pos < end; pos += copyTileBytes_) {
+            const uint64_t remaining = end - pos;
+            const uint32_t bytes = remaining < copyTileBytes_ ? static_cast<uint32_t>(remaining) : copyTileBytes_;
             DataCopyExtParams params;
             params.blockCount = 1;
-            params.blockLen = chunk;
+            params.blockLen = bytes;
             params.srcStride = 0;
             params.dstStride = 0;
             params.rsv = 0;
             DataCopyPadExtParams<uint8_t> pad{false, 0, 0, 0};
-
-            LocalTensor<uint8_t> inBuf = copyInTBuf_.Get<uint8_t>();
-            DataCopyPad(inBuf, selfGmBytes_[start + off], params, pad);
+            LocalTensor<uint8_t> in = copyInTBuf_.Get<uint8_t>();
+            LocalTensor<uint8_t> out = copyOutTBuf_.Get<uint8_t>();
+            DataCopyPad(in, selfGmBytes_[pos], params, pad);
             PipeBarrier<PIPE_ALL>();
-            LocalTensor<uint8_t> outBuf = copyOutTBuf_.Get<uint8_t>();
-            uint32_t alignedBytes = (chunk + 31U) & ~31U;
-            DataCopy(outBuf, inBuf, alignedBytes);
+            DataCopy(out, in, (bytes + 31U) & ~31U);
             PipeBarrier<PIPE_ALL>();
-            DataCopyPad(outGmBytes_[start + off], outBuf, params);
+            DataCopyPad(outputGmBytes_[pos], out, params);
             PipeBarrier<PIPE_ALL>();
         }
     }
 
-    // ===== 加载 index 到 UB =====
     __aicore__ inline void LoadIndex()
     {
         indexLocal_ = indexTBuf_.Get<int32_t>();
@@ -152,122 +125,165 @@ private:
         PipeBarrier<PIPE_ALL>();
     }
 
-    // ===== 阶段 2：scatter-add =====
-    __aicore__ inline void Phase2Scatter(uint32_t coreId)
+    __aicore__ inline bool ValidIndex(int32_t idx) const
     {
-        uint32_t rowStart, rowEnd, afterOff, afterCnt;
-        if (mode_ == MODE_ROW) {
-            rowStart = beforeDimSize_ * coreId / usedCoreNum_;
-            rowEnd = beforeDimSize_ * (coreId + 1) / usedCoreNum_;
-            afterOff = 0;
-            afterCnt = afterDimSize_;
-        } else {  // MODE_AFTER
-            rowStart = 0;
-            rowEnd = beforeDimSize_;
-            afterOff = afterDimSize_ * coreId / usedCoreNum_;
-            afterCnt = afterDimSize_ * (coreId + 1) / usedCoreNum_ - afterOff;
-        }
-        if (rowEnd <= rowStart || afterCnt == 0) return;
+        return idx >= 0 && static_cast<uint32_t>(idx) < dimLen_;
+    }
 
-        for (uint32_t row = rowStart; row < rowEnd; row++) {
-            uint64_t rowOutBase = static_cast<uint64_t>(row) * dimLen_ * afterDimSize_ + afterOff;
-            uint64_t rowSrcBase = static_cast<uint64_t>(row) * indexLen_ * afterDimSize_ + afterOff;
-            for (uint32_t i = 0; i < indexLen_; i++) {
-                int32_t idx = indexLocal_.GetValue(i);
-                if (idx < 0 || static_cast<uint32_t>(idx) >= dimLen_) {
-                    continue;
-                }
-                uint64_t outOff = rowOutBase + static_cast<uint64_t>(idx) * afterDimSize_;
-                uint64_t srcOff = rowSrcBase + static_cast<uint64_t>(i) * afterDimSize_;
-                ScatterRange(outputGm_[outOff], sourceGm_[srcOff], afterCnt);
+    __aicore__ inline void GetOffsets(uint32_t row, uint32_t i, int32_t idx,
+                                      uint64_t &outOff, uint64_t &srcOff) const
+    {
+        outOff = (static_cast<uint64_t>(row) * dimLen_ + static_cast<uint32_t>(idx)) * afterDimSize_;
+        srcOff = (static_cast<uint64_t>(row) * indexLen_ + i) * afterDimSize_;
+    }
+
+    // Return an atomic middle [middleOffset, middleOffset + middleCount).
+    // Tensors are 32B aligned at their base; offsets establish whether source
+    // and output can be aligned at the same logical element.  The host only
+    // enables this mode for full-vector alignment, but retaining this general
+    // calculation makes tail handling safe for future threshold tuning.
+    __aicore__ inline void GetAtomicRange(uint64_t outOff, uint64_t srcOff,
+                                          uint32_t &middleOffset, uint32_t &middleCount) const
+    {
+        const uint64_t vectorBytes = static_cast<uint64_t>(afterDimSize_) * sizeof(InputT);
+        const uint64_t outBytes = outOff * sizeof(InputT);
+        const uint64_t srcBytes = srcOff * sizeof(InputT);
+        middleOffset = 0;
+        middleCount = 0;
+        if ((outBytes & 31U) != (srcBytes & 31U)) return;
+        const uint32_t leadBytes = static_cast<uint32_t>((32U - (srcBytes & 31U)) & 31U);
+        if (leadBytes >= vectorBytes) return;
+        const uint64_t bodyBytes = (vectorBytes - leadBytes) & ~static_cast<uint64_t>(31U);
+        if (bodyBytes < MIN_ATOMIC_BODY_BYTES) return;
+        middleOffset = leadBytes / sizeof(InputT);
+        middleCount = static_cast<uint32_t>(bodyBytes / sizeof(InputT));
+    }
+
+    __aicore__ inline void Phase2Atomic(uint32_t coreId)
+    {
+        const uint64_t taskCount = static_cast<uint64_t>(beforeDimSize_) * indexLen_;
+        const uint64_t taskBegin = taskCount * coreId / scatterCoreNum_;
+        const uint64_t taskEnd = taskCount * (coreId + 1U) / scatterCoreNum_;
+        for (uint64_t task = taskBegin; task < taskEnd; ++task) {
+            const uint32_t row = static_cast<uint32_t>(task / indexLen_);
+            const uint32_t i = static_cast<uint32_t>(task - static_cast<uint64_t>(row) * indexLen_);
+            const int32_t idx = indexLocal_.GetValue(i);
+            if (!ValidIndex(idx)) continue;
+            uint64_t outOff, srcOff;
+            GetOffsets(row, i, idx, outOff, srcOff);
+            uint32_t middleOffset, middleCount;
+            GetAtomicRange(outOff, srcOff, middleOffset, middleCount);
+            AtomicAddRange(outOff + middleOffset, srcOff + middleOffset, middleCount);
+        }
+    }
+
+    __aicore__ inline void AtomicAddRange(uint64_t outOff, uint64_t srcOff, uint32_t count)
+    {
+        const uint32_t tileElems = atomicTileBytes_ / sizeof(InputT);
+        for (uint32_t offset = 0; offset < count; offset += tileElems) {
+            const uint32_t n = (count - offset) < tileElems ? (count - offset) : tileElems;
+            LocalTensor<InputT> src = copyInTBuf_.Get<InputT>();
+            LocalTensor<InputT> bridge = copyOutTBuf_.Get<InputT>();
+            DataCopy(src, sourceGm_[srcOff + offset], n);
+            PipeBarrier<PIPE_ALL>();
+            DataCopy(bridge, src, n);
+            PipeBarrier<PIPE_ALL>();
+            SetAtomicAdd<InputT>();
+            DataCopy(outputGm_[outOff + offset], bridge, n);
+            PipeBarrier<PIPE_ALL>();
+            SetAtomicNone();
+        }
+    }
+
+    __aicore__ inline void Phase3SerialTails()
+    {
+        for (uint32_t row = 0; row < beforeDimSize_; ++row) {
+            for (uint32_t i = 0; i < indexLen_; ++i) {
+                const int32_t idx = indexLocal_.GetValue(i);
+                if (!ValidIndex(idx)) continue;
+                uint64_t outOff, srcOff;
+                GetOffsets(row, i, idx, outOff, srcOff);
+                uint32_t middleOffset, middleCount;
+                GetAtomicRange(outOff, srcOff, middleOffset, middleCount);
+                if (middleOffset != 0U) ScatterRange(outOff, srcOff, middleOffset);
+                const uint32_t suffix = afterDimSize_ - middleOffset - middleCount;
+                if (suffix != 0U) ScatterRange(outOff + middleOffset + middleCount,
+                                                srcOff + middleOffset + middleCount, suffix);
             }
         }
     }
 
-    __aicore__ inline void ScatterRange(const GlobalTensor<InputT> &dstGm,
-                                        const GlobalTensor<InputT> &srcGm, uint32_t cnt)
+    __aicore__ inline void Phase2OwnedRmw(uint32_t coreId)
     {
-        for (uint32_t t0 = 0; t0 < cnt; t0 += scatterTileLen_) {
-            uint32_t n = cnt - t0;
-            if (n > scatterTileLen_) {
-                n = scatterTileLen_;
+        // All occurrences of a target index are handled by one core, so this
+        // path retains exact sequential RMW semantics even for repeated index.
+        for (uint32_t row = 0; row < beforeDimSize_; ++row) {
+            for (uint32_t i = 0; i < indexLen_; ++i) {
+                const int32_t idx = indexLocal_.GetValue(i);
+                if (!ValidIndex(idx) || (static_cast<uint32_t>(idx) % scatterCoreNum_) != coreId) continue;
+                uint64_t outOff, srcOff;
+                GetOffsets(row, i, idx, outOff, srcOff);
+                ScatterRange(outOff, srcOff, afterDimSize_);
             }
-            ScatterAddTile(dstGm[t0], srcGm[t0], n);
         }
     }
 
-    // 单段 n 元素的 RMW：output[outOff] += source[srcOff]
-    __aicore__ inline void ScatterAddTile(const GlobalTensor<InputT> &dstGm,
-                                          const GlobalTensor<InputT> &srcGm, uint32_t n)
+    __aicore__ inline void ScatterRange(uint64_t outOff, uint64_t srcOff, uint32_t count)
     {
-        LocalTensor<InputT> srcLocal = srcTBuf_.Get<InputT>();      // VECIN
-        LocalTensor<InputT> outInLocal = outInTBuf_.Get<InputT>();  // VECIN
-        LocalTensor<InputT> outOutLocal = outOutTBuf_.Get<InputT>(); // VECOUT
+        for (uint32_t offset = 0; offset < count; offset += rmwTileLen_) {
+            const uint32_t n = (count - offset) < rmwTileLen_ ? (count - offset) : rmwTileLen_;
+            ScatterAddTile(outOff + offset, srcOff + offset, n);
+        }
+    }
+
+    __aicore__ inline void ScatterAddTile(uint64_t outOff, uint64_t srcOff, uint32_t n)
+    {
+        LocalTensor<InputT> src = copyInTBuf_.Get<InputT>();
+        LocalTensor<InputT> outIn = rmwOutInTBuf_.Get<InputT>();
+        LocalTensor<InputT> out = copyOutTBuf_.Get<InputT>();
+        DataCopyExtParams params;
+        params.blockCount = 1;
+        params.blockLen = n * sizeof(InputT);
+        params.srcStride = 0;
+        params.dstStride = 0;
+        params.rsv = 0;
+        DataCopyPadExtParams<InputT> pad{false, 0, 0, 0};
+        DataCopyPad(src, sourceGm_[srcOff], params, pad);
+        DataCopyPad(outIn, outputGm_[outOff], params, pad);
+        PipeBarrier<PIPE_ALL>();
 
         if constexpr (kNeedCast) {
-            uint32_t paddedN = (n + CAST_ALIGN_ELEMS - 1) & ~(CAST_ALIGN_ELEMS - 1);
-            DataCopyExtParams params;
-            params.blockCount = 1;
-            params.blockLen = n * sizeof(InputT);
-            params.srcStride = 0;
-            params.dstStride = 0;
-            params.rsv = 0;
-            DataCopyPadExtParams<InputT> pad{false, 0, 0, 0};
-            DataCopyPad(srcLocal, srcGm, params, pad);
-            DataCopyPad(outInLocal, dstGm, params, pad);
-            PipeBarrier<PIPE_ALL>();
-
+            const uint32_t paddedN = (n + CAST_ALIGN_ELEMS - 1U) & ~(CAST_ALIGN_ELEMS - 1U);
             LocalTensor<ComputeT> srcComp = srcCompTBuf_.Get<ComputeT>();
             LocalTensor<ComputeT> outComp = outCompTBuf_.Get<ComputeT>();
-            // 上行 CAST_NONE（int8→half/bf16→float 唯一支持模式）；下行 CAST_RINT = RNE（与 torch 一致）。
-            Cast(srcComp, srcLocal, RoundMode::CAST_NONE, paddedN);
-            Cast(outComp, outInLocal, RoundMode::CAST_NONE, paddedN);
+            Cast(srcComp, src, RoundMode::CAST_NONE, paddedN);
+            Cast(outComp, outIn, RoundMode::CAST_NONE, paddedN);
             Add(outComp, outComp, srcComp, static_cast<int32_t>(paddedN));
-            Cast(outOutLocal, outComp, RoundMode::CAST_RINT, paddedN);
-            PipeBarrier<PIPE_ALL>();
-
-            DataCopyExtParams outParams;
-            outParams.blockCount = 1;
-            outParams.blockLen = n * sizeof(InputT);
-            outParams.srcStride = 0;
-            outParams.dstStride = 0;
-            outParams.rsv = 0;
-            DataCopyPad(dstGm, outOutLocal, outParams);
-            PipeBarrier<PIPE_ALL>();
+            Cast(out, outComp, RoundMode::CAST_RINT, paddedN);
         } else {
-            DataCopyExtParams params;
-            params.blockCount = 1;
-            params.blockLen = n * sizeof(InputT);
-            params.srcStride = 0;
-            params.dstStride = 0;
-            params.rsv = 0;
-            DataCopyPadExtParams<InputT> pad{false, 0, 0, 0};
-            DataCopyPad(srcLocal, srcGm, params, pad);
-            DataCopyPad(outInLocal, dstGm, params, pad);
-            PipeBarrier<PIPE_ALL>();
-            Add(outOutLocal, outInLocal, srcLocal, static_cast<int32_t>(n));
-            PipeBarrier<PIPE_ALL>();
-            DataCopyPad(dstGm, outOutLocal, params);
-            PipeBarrier<PIPE_ALL>();
+            Add(out, outIn, src, static_cast<int32_t>(n));
         }
+        PipeBarrier<PIPE_ALL>();
+        DataCopyPad(outputGm_[outOff], out, params);
+        PipeBarrier<PIPE_ALL>();
     }
 
 private:
-    TPipe pipe;
+    TPipe pipe_;
     GlobalTensor<InputT> selfGm_;
     GlobalTensor<int32_t> indexGm_;
     GlobalTensor<InputT> sourceGm_;
     GlobalTensor<InputT> outputGm_;
     GlobalTensor<uint8_t> selfGmBytes_;
-    GlobalTensor<uint8_t> outGmBytes_;
+    GlobalTensor<uint8_t> outputGmBytes_;
 
     TBuf<TPosition::VECIN> copyInTBuf_;
     TBuf<TPosition::VECOUT> copyOutTBuf_;
     TBuf<TPosition::VECIN> indexTBuf_;
-    TBuf<TPosition::VECIN> srcTBuf_;
-    TBuf<TPosition::VECIN> outInTBuf_;
-    TBuf<TPosition::VECOUT> outOutTBuf_;
+    TBuf<TPosition::VECIN> rmwOutInTBuf_;
+    TBuf<TPosition::VECCALC> rmwPaddingTBuf_;
     TBuf<TPosition::VECCALC> srcCompTBuf_;
+    TBuf<TPosition::VECCALC> castPaddingTBuf_;
     TBuf<TPosition::VECCALC> outCompTBuf_;
     LocalTensor<int32_t> indexLocal_;
 
@@ -277,39 +293,26 @@ private:
     uint32_t indexLen_;
     uint32_t dtypeSize_;
     uint32_t usedCoreNum_;
-    uint32_t mode_;
-    uint32_t scatterTileLen_;
+    uint32_t scatterCoreNum_;
+    uint32_t atomicEnabled_;
+    uint32_t copyTileBytes_;
+    uint32_t atomicTileBytes_;
+    uint32_t rmwTileLen_;
 };
 
 extern "C" __global__ __aicore__ void index_add(GM_ADDR self, GM_ADDR index, GM_ADDR source,
-                                                GM_ADDR output, GM_ADDR workspace, GM_ADDR tiling)
+                                                  GM_ADDR output, GM_ADDR workspace, GM_ADDR tiling)
 {
     GET_TILING_DATA(t, tiling);
-    constexpr uint32_t DTYPE_FLOAT = 0;
-    constexpr uint32_t DTYPE_BF16 = 1;
-    constexpr uint32_t DTYPE_HALF = 2;
-    constexpr uint32_t DTYPE_INT32 = 3;
-    constexpr uint32_t DTYPE_INT8 = 4;
-
-    if (t.dtype == DTYPE_FLOAT) {
-        KernelIndexAdd<float, float> op;
-        op.Init(self, index, source, output, t);
-        op.Process();
-    } else if (t.dtype == DTYPE_BF16) {
-        KernelIndexAdd<bfloat16_t, float> op;
-        op.Init(self, index, source, output, t);
-        op.Process();
-    } else if (t.dtype == DTYPE_HALF) {
-        KernelIndexAdd<half, half> op;
-        op.Init(self, index, source, output, t);
-        op.Process();
-    } else if (t.dtype == DTYPE_INT32) {
-        KernelIndexAdd<int32_t, int32_t> op;
-        op.Init(self, index, source, output, t);
-        op.Process();
-    } else if (t.dtype == DTYPE_INT8) {
-        KernelIndexAdd<int8_t, half> op;
-        op.Init(self, index, source, output, t);
-        op.Process();
+    if (t.dtype == 0U) {
+        KernelIndexAdd<float, float> op; op.Init(self, index, source, output, t); op.Process();
+    } else if (t.dtype == 1U) {
+        KernelIndexAdd<bfloat16_t, float> op; op.Init(self, index, source, output, t); op.Process();
+    } else if (t.dtype == 2U) {
+        KernelIndexAdd<half, half> op; op.Init(self, index, source, output, t); op.Process();
+    } else if (t.dtype == 3U) {
+        KernelIndexAdd<int32_t, int32_t> op; op.Init(self, index, source, output, t); op.Process();
+    } else if (t.dtype == 4U) {
+        KernelIndexAdd<int8_t, half> op; op.Init(self, index, source, output, t); op.Process();
     }
 }
