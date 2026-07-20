@@ -12,8 +12,12 @@ ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
 
 echo "===== [1/3] Building operator ====="
 cd "$OP_PROJECT"
-rm -rf build_out
-bash build.sh
+if [ "${SKIP_BUILD:-0}" = "1" ]; then
+    echo "[SKIP_BUILD=1] 跳过编译，复用已有 build_out/"
+else
+    rm -rf build_out
+    bash build.sh
+fi
 echo ""
 
 echo "===== [2/3] Preparing staging dir ====="
