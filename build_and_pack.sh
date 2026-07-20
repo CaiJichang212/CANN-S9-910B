@@ -17,8 +17,8 @@ if [ ! -d "$OP_PROJECT" ]; then
   echo "ERROR: operator project not found at $OP_PROJECT" >&2
   exit 1
 fi
-if [ ! -x "$OP_PROJECT/build.sh" ]; then
-  echo "ERROR: build.sh not found or not executable at $OP_PROJECT/build.sh" >&2
+if [ ! -f "$OP_PROJECT/build.sh" ]; then
+  echo "ERROR: build.sh not found at $OP_PROJECT/build.sh" >&2
   exit 1
 fi
 
