@@ -482,7 +482,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
                 Mul(xLocal, xLocal, xLocal, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
                 for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
-                    Add(accLocal, accLocal, xLocal.template ReinterpretCast<float>() + rIdx * alignedCols,
+                    Add(accLocal, accLocal,
+                        xLocal.template ReinterpretCast<float>()[static_cast<uint32_t>(rIdx * alignedCols)],
                         static_cast<int32_t>(alignedCols));
                     PipeBarrier<PIPE_V>();
                 }
@@ -494,7 +495,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
                 Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
                 for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
-                    Add(accLocal, accLocal, xFp32[rIdx * alignedCols], static_cast<int32_t>(alignedCols));
+                    Add(accLocal, accLocal, xFp32[static_cast<uint32_t>(rIdx * alignedCols)],
+                        static_cast<int32_t>(alignedCols));
                     PipeBarrier<PIPE_V>();
                 }
             }
