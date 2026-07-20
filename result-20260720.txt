@@ -1,0 +1,9 @@
+提交结果：性能数据=2747.956us
+Case1: Pass, Result: 40.0
+Case2: Pass, Result: 54.456
+Case3: Pass, Result: 74.772
+Case4: Pass, Result: 135.62
+Case5: Pass, Result: 2443.108
+prof_sum: 2747.956
+
+排行榜top1 性能数据=505.132us

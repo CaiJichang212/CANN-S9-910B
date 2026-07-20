@@ -10,7 +10,7 @@
  *
  * 并行/流水策略：
  *   - 按 beforeDim 行数切分给各核（每行内是一个连续的输出段）
- *   - 每行按输入依次拷贝；每个 chunk 内部按固定 TILE_BYTES 分批
+ *   - 每个输入段按固定 TILE_BYTES 批量搬运；使用绑定队列直接完成 GM→UB→GM
  *
  * DataCopyPad（CANN 8.5 Ascend C）：
  *   - DataCopyExtParams(blockCount, blockLen, srcStride, dstStride, rsv)
@@ -23,8 +23,10 @@
 using namespace AscendC;
 
 constexpr uint32_t MAX_INPUT_NUM = 256;  // 与 host 端 MAX_CONCAT_INPUT_NUM 保持一致（ACLNN 框架上限 256）
-// 单个 UB tile 字节数：贴满 UB（910B 192KB，可用 ~184KB），双队列 2+2 buffer 共 4×TILE ≤ 184KB。
-constexpr uint32_t TILE_BYTES = 32768;   // 32KB，4×32KB=128KB 充裕（原 8KB 太小）
+// 单个 UB tile 固定 64KiB。TQueBind 双缓冲共 128KiB，低于 910B 的可用 UB 预算。
+constexpr uint32_t TILE_BYTES = 64 * 1024;
+constexpr uint32_t DATA_BLOCK_BYTES = 32;
+constexpr uint32_t MAX_COPY_BLOCK_COUNT = 4095;
 
 class KernelConcat {
 public:
@@ -53,10 +55,9 @@ public:
 
         yGm_.SetGlobalBuffer((__gm__ uint8_t *)dst);
 
-        // 使用两个队列：VECIN 用于 GM->UB，VECOUT 用于 UB->GM
-        // 中间通过 EnQue/DeQue 完成 MTE2→VECTOR/MTE3 同步
-        pipe.InitBuffer(inQueue_,  2, TILE_BYTES);
-        pipe.InitBuffer(outQueue_, 2, TILE_BYTES);
+        // 同一 UB 双缓冲由绑定队列在 VECIN 和 VECOUT 间流转；EnQue/DeQue 建立
+        // MTE2→MTE3 同步，无需也不能再作 UB→UB 中转。
+        pipe.InitBuffer(copyQueue_, 2, TILE_BYTES);
     }
 
     __aicore__ inline void Process()
@@ -84,9 +85,9 @@ public:
 private:
     // 搬运输入 inputIdx 的 [startRow, startRow+numRows) 行。
     // 该输入内存布局连续 [beforeDim, catLen, afterDim]，各行无 gap。
-    // 多行合并路径：当每行字节数 32B 对齐时，用 DataCopyExtParams 一次搬多行，
-    //   把每输入每行的 Scalar 地址计算开销从 numRows 次降到 ~numRows/TileRows 次。
-    // 非对齐回退：逐行 + TILE 分批（保证任意 shape 正确）。
+    // 当一行不超过 TILE_BYTES 时，统一用 DataCopyPad 多行搬运；DataCopyPad 在 UB
+    // 中自动保留每行的 32B dummy 空间，并在写回 GM 时丢弃。超过 TILE_BYTES 的单行
+    // 段退化为精确字节块搬运，仍使用同一个绑定队列。
     //
     // stride 语义（910B, DataCopyPad）：
     //   - srcStride（UB 侧）单位 32B，是相邻块「尾→头」的 gap（不含 blockLen）。
@@ -96,14 +97,18 @@ private:
                                          uint32_t numRows, uint32_t catLen)
     {
         uint64_t rowBytes = static_cast<uint64_t>(catLen) * afterDimSize_ * dtypeSize_;
+        if (rowBytes == 0) {
+            return;
+        }
         uint64_t srcStart = static_cast<uint64_t>(startRow) * rowBytes;   // 源每行 rowBytes，连续
         uint64_t dstStart = static_cast<uint64_t>(startRow) * totalCatLen_ * afterDimSize_ * dtypeSize_
                           + static_cast<uint64_t>(inputCatOffset_[inputIdx]) * afterDimSize_ * dtypeSize_;
         // 目标行间 gap（字节，GM 侧 dstStride）：每写 rowBytes 后跳过其他输入占的 (totalCatLen-catLen)*afterDim*dtypeSize
         uint64_t dstGapBytes = static_cast<uint64_t>(totalCatLen_ - catLen) * afterDimSize_ * dtypeSize_;
 
-        // 多行快路径：每行 32B 对齐（GM→UB 与 UB→GM 多块 stride 路径要求 blockLen 32B 对齐）
-        bool canMultiRow = (rowBytes % 32 == 0) && (rowBytes <= TILE_BYTES);
+        // DataCopyExtParams 的 GM stride 字段为 uint32_t。极端 gap 超出表达范围时
+        // 逐行写回，避免截断；正常路径（包括全部非对齐行）均批量处理。
+        bool canMultiRow = rowBytes <= TILE_BYTES && dstGapBytes <= 0xFFFFFFFFULL;
         if (canMultiRow) {
             CopyInputMultiRow(inputIdx, srcStart, dstStart, numRows,
                               static_cast<uint32_t>(rowBytes), dstGapBytes);
@@ -119,43 +124,34 @@ private:
     __aicore__ inline void CopyInputMultiRow(uint32_t inputIdx, uint64_t srcStart, uint64_t dstStart,
                                              uint32_t numRows, uint32_t rowBytes, uint64_t dstGapBytes)
     {
-        // 一次最多搬的行数：受 TILE_BYTES / rowBytes 与 blockCount 上限(4095) 限制
-        uint32_t maxRowsByTile = TILE_BYTES / rowBytes;
-        if (maxRowsByTile == 0) maxRowsByTile = 1;
-        uint32_t maxRows = maxRowsByTile < 4095 ? maxRowsByTile : 4095;
-        // dstStride（GM 侧，字节）；srcStride（UB 侧，32B 单位）= 0（UB 内块紧挨）
-        uint32_t dstStride = static_cast<uint32_t>(dstGapBytes);
+        // 每行在 UB 中占 AlignUp(rowBytes, 32)，以保证每个 block 的 UB 起址对齐。
+        uint32_t alignedRowBytes = AlignUp32(rowBytes);
+        uint32_t maxRowsByTile = TILE_BYTES / alignedRowBytes;
+        uint32_t maxRows = maxRowsByTile < MAX_COPY_BLOCK_COUNT ? maxRowsByTile : MAX_COPY_BLOCK_COUNT;
 
         uint32_t remainingRows = numRows;
         uint64_t srcCur = srcStart;
         uint64_t dstCur = dstStart;
+        bool hasPending = false;
+        uint64_t pendingDst = 0;
+        uint32_t pendingRows = 0;
         while (remainingRows > 0) {
             uint32_t rows = (remainingRows > maxRows) ? maxRows : remainingRows;
-            uint32_t batchBytes = rowBytes * rows;
-            // GM -> UB：一次搬 rows 行（blockCount=rows, blockLen=rowBytes, srcStride=0 源连续）
-            LocalTensor<uint8_t> xLocal = inQueue_.AllocTensor<uint8_t>();
-            DataCopyExtParams copyInParams{static_cast<uint16_t>(rows), rowBytes, 0, 0, 0};
-            DataCopyPadExtParams<uint8_t> padIn{false, 0, 0, 0};
-            DataCopyPad(xLocal, inputGm_[inputIdx][srcCur], copyInParams, padIn);
-            inQueue_.EnQue(xLocal);
-
-            LocalTensor<uint8_t> xLocalDeq = inQueue_.DeQue<uint8_t>();
-            LocalTensor<uint8_t> yLocal = outQueue_.AllocTensor<uint8_t>();
-            // UB->UB：按 32B 对齐字节数连续拷贝（rowBytes 32B 对齐，故 UB 内多行数据连续紧挨）
-            uint32_t alignedBytes = (batchBytes + 31) & ~31u;
-            AscendC::DataCopy(yLocal, xLocalDeq, alignedBytes);
-            outQueue_.EnQue(yLocal);
-            inQueue_.FreeTensor(xLocalDeq);
-
-            // UB -> GM：多行写出，dstStride（字节）= 目标行间 gap
-            LocalTensor<uint8_t> yLocalDeq = outQueue_.DeQue<uint8_t>();
-            DataCopyExtParams copyOutParams{static_cast<uint16_t>(rows), rowBytes, 0, dstStride, 0};
-            DataCopyPad(yGm_[dstCur], yLocalDeq, copyOutParams);
-            outQueue_.FreeTensor(yLocalDeq);
+            SubmitCopyIn(inputIdx, srcCur, rows, rowBytes);
+            // 在 MTE2 填充下一批的同时，MTE3 写回前一批。
+            if (hasPending) {
+                CopyOutRows(pendingDst, pendingRows, rowBytes, static_cast<uint32_t>(dstGapBytes));
+            }
+            hasPending = true;
+            pendingDst = dstCur;
+            pendingRows = rows;
 
             srcCur += static_cast<uint64_t>(rows) * rowBytes;             // 源连续
             dstCur += static_cast<uint64_t>(rows) * (rowBytes + dstGapBytes);
             remainingRows -= rows;
+        }
+        if (hasPending) {
+            CopyOutRows(pendingDst, pendingRows, rowBytes, static_cast<uint32_t>(dstGapBytes));
         }
     }
 
@@ -164,40 +160,61 @@ private:
         uint64_t remaining = byteLen;
         uint64_t src = srcOff;
         uint64_t dst = dstOff;
+        bool hasPending = false;
+        uint64_t pendingDst = 0;
+        uint32_t pendingBytes = 0;
         while (remaining > 0) {
             uint32_t batchBytes = (remaining > TILE_BYTES) ? TILE_BYTES : static_cast<uint32_t>(remaining);
-            CopyBatch(inputIdx, src, dst, batchBytes);
+            SubmitCopyIn(inputIdx, src, 1, batchBytes);
+            if (hasPending) {
+                CopyOutRows(pendingDst, 1, pendingBytes, 0);
+            }
+            hasPending = true;
+            pendingDst = dst;
+            pendingBytes = batchBytes;
             src += batchBytes;
             dst += batchBytes;
             remaining -= batchBytes;
         }
+        if (hasPending) {
+            CopyOutRows(pendingDst, 1, pendingBytes, 0);
+        }
     }
 
-    __aicore__ inline void CopyBatch(uint32_t inputIdx, uint64_t srcOffsetBytes,
-                                     uint64_t dstOffsetBytes, uint32_t bytes)
+    __aicore__ inline void SubmitCopyIn(uint32_t inputIdx, uint64_t srcOffsetBytes,
+                                        uint32_t rows, uint32_t rowBytes)
     {
-        // GM -> UB (VECIN)
-        LocalTensor<uint8_t> xLocal = inQueue_.AllocTensor<uint8_t>();
-        DataCopyExtParams copyInParams{1, bytes, 0, 0, 0};
+        LocalTensor<uint8_t> local = copyQueue_.AllocTensor<uint8_t>();
+        DataCopyExtParams copyInParams;
+        copyInParams.blockCount = rows;
+        copyInParams.blockLen = rowBytes;
+        copyInParams.srcStride = 0;
+        copyInParams.dstStride = 0;
+        copyInParams.rsv = 0;
         DataCopyPadExtParams<uint8_t> padParams{false, 0, 0, 0};
-        DataCopyPad(xLocal, inputGm_[inputIdx][srcOffsetBytes], copyInParams, padParams);
-        inQueue_.EnQue(xLocal);
+        DataCopyPad(local, inputGm_[inputIdx][srcOffsetBytes], copyInParams, padParams);
+        copyQueue_.EnQue(local);
+    }
 
-        // 从 VECIN DeQue（保证 GM→UB 完成），拷贝到 VECOUT buffer
-        LocalTensor<uint8_t> xLocalDeq = inQueue_.DeQue<uint8_t>();
-        LocalTensor<uint8_t> yLocal = outQueue_.AllocTensor<uint8_t>();
-        // UB->UB 拷贝：把已就绪的输入数据搬到输出队列 buffer
-        // 使用 DataCopy 需要 32B 对齐，元素级拷贝更通用
-        uint32_t alignedBytes = (bytes + 31) & ~31u;
-        AscendC::DataCopy(yLocal, xLocalDeq, alignedBytes);
-        outQueue_.EnQue(yLocal);
-        inQueue_.FreeTensor(xLocalDeq);
+    __aicore__ inline void CopyOutRows(uint64_t dstOffsetBytes, uint32_t rows,
+                                       uint32_t rowBytes, uint32_t dstGapBytes)
+    {
+        // DeQue 将同一块 UB 切换为 VECOUT，等待对应的 MTE2 完成后才允许 MTE3 读取。
+        LocalTensor<uint8_t> local = copyQueue_.DeQue<uint8_t>();
+        DataCopyExtParams copyOutParams;
+        copyOutParams.blockCount = rows;
+        copyOutParams.blockLen = rowBytes;
+        // DataCopyPad 自动跳过每行的 dummy 数据，因此 UB 端保持紧凑 stride=0。
+        copyOutParams.srcStride = 0;
+        copyOutParams.dstStride = dstGapBytes;
+        copyOutParams.rsv = 0;
+        DataCopyPad(yGm_[dstOffsetBytes], local, copyOutParams);
+        copyQueue_.FreeTensor(local);
+    }
 
-        // UB -> GM (VECOUT)
-        LocalTensor<uint8_t> yLocalDeq = outQueue_.DeQue<uint8_t>();
-        DataCopyExtParams copyOutParams{1, bytes, 0, 0, 0};
-        DataCopyPad(yGm_[dstOffsetBytes], yLocalDeq, copyOutParams);
-        outQueue_.FreeTensor(yLocalDeq);
+    static __aicore__ inline uint32_t AlignUp32(uint32_t bytes)
+    {
+        return (bytes + DATA_BLOCK_BYTES - 1) & ~(DATA_BLOCK_BYTES - 1);
     }
 
 private:
@@ -212,8 +229,7 @@ private:
     uint32_t inputCatOffset_[MAX_INPUT_NUM];
 
     AscendC::TPipe pipe;
-    AscendC::TQue<AscendC::TPosition::VECIN,  2> inQueue_;
-    AscendC::TQue<AscendC::TPosition::VECOUT, 2> outQueue_;
+    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 2> copyQueue_;
     AscendC::GlobalTensor<uint8_t> inputGm_[MAX_INPUT_NUM];
     AscendC::GlobalTensor<uint8_t> yGm_;
 };
