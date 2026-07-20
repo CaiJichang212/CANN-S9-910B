@@ -91,6 +91,8 @@ private:
         }
 
         pipe.InitBuffer(inQueue, BUFFER_NUM, copyTileLen_ * dtypeSize_);
+        // inQueue 是 TQueBind<VECIN, VECOUT>：EnQue 自动建立 MTE2(GM→UB)→MTE3(UB→GM) 同步，
+        // 无需显式事件，也无需 Vector 桥接（参考内置 transpose v35 transpose_tensor_move.h）。
         for (uint32_t row = rowStart; row < rowEnd; row++) {
             uint64_t srcBase = DecodeRow(row);
             uint64_t dstBase = (uint64_t)row * (uint64_t)W_;
@@ -322,7 +324,7 @@ private:
 
 private:
     AscendC::TPipe pipe;
-    AscendC::TQue<AscendC::TPosition::VECIN, BUFFER_NUM> inQueue;
+    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, BUFFER_NUM> inQueue;
     AscendC::TQue<AscendC::TPosition::VECIN, BUFFER_NUM> srcQue;
     AscendC::TQue<AscendC::TPosition::VECOUT, BUFFER_NUM> dstQue;
     AscendC::GlobalTensor<DTYPE_X> xGm;

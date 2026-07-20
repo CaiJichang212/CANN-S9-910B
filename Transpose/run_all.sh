@@ -6,6 +6,9 @@ set +e
 export TORCH_DEVICE_BACKEND_AUTOLOAD=0
 export LD_LIBRARY_PATH=$ASCEND_OPP_PATH/vendors/customize/op_api/lib/:$LD_LIBRARY_PATH
 
+# 共享 8 卡服务器：自动选一张空闲 NPU 卡（必须 source，以继承 ASCEND_RT_VISIBLE_DEVICES）
+source "$(dirname "$0")/pick_free_npu.sh" || { echo "[run_all] 无空闲 NPU 卡，退出" >&2; exit 1; }
+
 # 确保 whl 已装
 if ! python3 -c "import custom_ops_lib" 2>/dev/null; then
     echo "[INFO] custom_ops_lib 未装，安装 dist/*.whl"

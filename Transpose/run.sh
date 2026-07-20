@@ -1,5 +1,7 @@
 #!/bin/bash
 export LD_LIBRARY_PATH=$ASCEND_OPP_PATH/vendors/customize/op_api/lib/:$LD_LIBRARY_PATH
+  # 共享 8 卡服务器：自动选一张空闲 NPU 卡（必须 source，以继承 ASCEND_RT_VISIBLE_DEVICES）
+  source "$(dirname "$0")/pick_free_npu.sh" || { echo "[run] 无空闲 NPU 卡，退出" >&2; exit 1; }
   # 清除上次测试性能文件
 #rm -rf ./dist/*
 if [ "x$1" == "x1" ]; then

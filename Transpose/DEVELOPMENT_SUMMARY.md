@@ -10,12 +10,16 @@
 
 ## 〇、给 Agent 的快速指令（先读这段）
 
-**当前算子已开发到「代码完成、可编译、未经上板验证」阶段。** 之前因旧服务器 NPU 设备卡死（崩溃内核遗留 AICore hang），无法跑精度/性能测试。新服务器 NPU 正常，你的首要任务是：
+**当前算子已开发到「代码完成、可编译、12 case 精度全过」阶段。** 之前因旧服务器上**误用 NPU**（共享 8 卡服务器，默认抢卡 0 而卡 0 被他人占用，报 `device is used`），误判为「设备卡死」而停滞。**NPU 选卡现已修正**（见 §3.2，新增 `pick_free_npu.sh`），上板链路打通。
 
-1. **搭好环境**（见第三节）→ **build + 装包** → **跑 `run_all.sh` 验证 12 个 case 的精度**。
-2. 根据精度结果**修 bug**（大概率有几处，详见第五节「待验证/高风险点」）。
-3. 精度全过后，**msprof 量性能对比内置 baseline**，优化慢路径（非 half 2D 转置、任意 permute）。
-4. 达标后**打包 zip 提交**。
+**2026-07-10 修复了阻塞全部 case 的正确性 bug**（详见 §5 / §8.0a）：
+- **测试链路污染**：`custom_ops_lib` whl 与 `libcust_opapi.so` 被同机其它算子项目（SquareSumV1/Greater/Concat）的 install **反复覆盖**，表现为 `TypeError: incompatible... (4参)` 或 `aclnnTranspose not in libopapi.so`。**这不是算子 bug**。稳定测试法见 §3.3。
+- **真正的内核 bug**：COPY 路径用 `TQue<VECIN>` 做纯 DMA 搬运（MTE2→MTE3 无 Vector 桥接），EnQue/DeQue 只同步 MTE2→**Vector**，MTE3 抢跑读到 UB 旧数据（输出前几行乱、数据滞后 `BUFFER_NUM` 个 tile）。**修复**：`inQueue` 改为 `TQueBind<TPosition::VECIN, TPosition::VECOUT, BUFFER_NUM>`（参考内置 transpose v35 `transpose_tensor_move.h`），EnQue 自动建 MTE2→MTE3 同步。**坑**：对 `TQue<VECIN>` 加显式 `SetFlag<HardEvent::MTE2_MTE3>` 会死锁崩溃。
+
+**当前你的任务（精度已过，进入性能阶段）**：
+1. **msprof 量 AICore 耗时对比内置 baseline**（§4 性能度量规则）。
+2. 优化慢路径：非 half 2D 转置（`TransposeGeneric` 逐元素）、任意 permute 步长兜底（`CopyTileStrided` 逐元素 `GetValue`）——这两条是**已知性能债**（§6）。
+3. 达标后**打包 zip 提交**（§9）。
 
 **绝对约束**：只能用 `dev-transpose-0707` 分支代码，禁止合并其他分支（Concat/Greater/IndexAdd/SquareSumV1）的算子实现。tiling 必须通用，**禁止针对已知 case 定制化**（否则 0 分）。
 
@@ -34,9 +38,9 @@
 | SoC 配置 | ✅ `ascend910b`（CMakePresets + AddConfig） | — |
 
 ### 未完成（你的任务）
-- ❌ **上板精度验证**（核心，之前设备卡死没跑成）
-- ❌ **修精度 bug**（有几处高风险点，详见第五节）
-- ❌ **性能对比基线 + 优化慢路径**
+- ✅ **上板精度验证**（已通过，12 case 全过，见 §5）
+- ✅ **修精度 bug**（已修：COPY 路径 `TQue<VECIN>`→`TQueBind<VECIN,VECOUT>`，见 §5/§8.0a）
+- ❌ **性能对比基线 + 优化慢路径**（非 half 转置逐元素、任意 permute 步长逐元素）
 - ❌ **打包提交**（`zip_op.sh`）
 
 ---
@@ -74,12 +78,22 @@ pip3 install numpy==1.24.0 pybind11==2.13.1 expecttest pyyaml decorator scipy at
 > **坑**：`opc`（算子编译器）依赖 decorator/scipy/attrs/psutil/pyyaml，缺哪个就报哪个，层层嵌套。一次装齐。
 > **坑**：whl 构建（`setup.py` import torch_npu）会触发设备初始化，若设备异常设 `export TORCH_DEVICE_BACKEND_AUTOLOAD=0` 绕过。
 
-### 3.2 确认设备正常
+### 3.2 确认设备正常 + 选空闲卡（共享服务器，必做）
 ```bash
-npu-smi info                      # 应正常显示 20 AICore，无 "device is used"
+npu-smi info                      # 看 8 张卡状态、各卡 "running processes"
 python3 -c "import torch,torch_npu; print(torch.npu.is_available(), torch.npu.device_count())"
 ```
-> 若报 `drvRet=87 / device is used (-8020)`，是设备被崩溃内核污染，需 `npu-smi set -t device-reset -i 0` 或重启。
+> **⚠️ 共享服务器（8 卡）核心规范**：
+> - 这是**公用**服务器，部分卡（尤其低编号 0/1/2/3）可能被他人占用。**禁止默认抢卡 0**。
+> - 所有上板运行（`run.sh`/`run_all.sh`/手动 python）前，**必须先选一张空闲卡**：
+>   ```bash
+>   source ./pick_free_npu.sh     # 自动解析 npu-smi，选最高编号空闲卡，export ASCEND_RT_VISIBLE_DEVICES
+>   # 或手动：先 npu-smi info 看哪张空，再 export ASCEND_RT_VISIBLE_DEVICES=<空闲id>
+>   ```
+>   `run.sh`/`run_all.sh` 已内置 `source pick_free_npu.sh`，无需额外操作。
+> - 判定「空闲」：`npu-smi info` 底部该卡显示 `No running processes found in NPU X`（HBM ~3.4GB 是驱动基线，不算占用）。
+> - 若报 `drvRet=87 / device is used (-8020)`：**是当前默认卡被他人占用，不是设备损坏**。换一张空闲卡即可，**禁止** `npu-smi set -t device-reset`（会踢掉他人进程）。
+> - `ASCEND_RT_VISIBLE_DEVICES=<id>`：进程级限制可见物理设备，重映射为逻辑 0；设后 `set_device(0)`/`.npu()` 用的就是这张卡。msprof 的 `--application` 子进程自动继承。
 
 ---
 
@@ -100,12 +114,14 @@ export TORCH_DEVICE_BACKEND_AUTOLOAD=0
 python3 setup.py build bdist_wheel
 pip3 install dist/custom_ops*.whl --force-reinstall
 
-# 4) 批量精度验证（12 个 case）
+# 4) 批量精度验证（12 个 case）—— run_all.sh 已内置选空闲卡
 export TORCH_DEVICE_BACKEND_AUTOLOAD=0
 bash run_all.sh
 
-# 5) 单 case 精度+性能（msprof）
+# 5) 单 case 精度+性能（msprof）—— run.sh 已内置选空闲卡
 bash run.sh 1      # caseN：1=重新装whl；之后可 bash run.sh <N>
+
+# 手动跑单条命令时，先选卡：source ./pick_free_npu.sh && python3 test_op.py 1
 ```
 
 ### 性能度量规则（`get_time.py`）
@@ -119,27 +135,27 @@ bash run.sh 1      # caseN：1=重新装whl；之后可 bash run.sh <N>
 
 ---
 
-## 五、待验证 / 高风险点（上板后优先排查）
+## 五、已修复的正确性 bug（2026-07-10 实测定位）
 
-> 这些是**逻辑层面已手推验证、但未经上板实测**的点，按崩溃/错误概率排序。上板后若某 case 崩溃或出错，**优先查这里**。
+> **结论**：12 case 精度**全过**。阻塞全部 case 的根因有两层，均已修：
 
-### 🔴 高风险 1：half vtranspose 路径（case1/5/9，主路径）
-- `Transpose(dst, src)` 在 `TransposeBlk` 里被调用。源 `src` 从 `srcQue(VECIN)` DeQue，目的 `dstUB` 从 `dstQue(VECOUT)` AllocTensor。
-- **风险点**：vtranspose 对 UB 布局/对齐有隐含要求。当前依赖「16 half=32B=1block，dstStride=0 天然紧凑」。若 vtranspose 仍崩，检查：
-  - `srcQue`/`dstQue` 的 `InitBuffer` 大小是否足够（当前 `ubElems=max(srcBytes,dstBytes)/dtypeSize`，half 时 = 256 元素=512B/buffer）。
-  - 是否需要显式 `SetFlag/WaitFlag` 同步（当前靠 TQue 的 EnQue/DeQue 自动同步 MTE2→V→MTE3）。
-  - 尾块（mh<16 或 nw<16）时 vtranspose 读到 UB 未初始化区（垃圾值），但输出只写有效区——逻辑上安全，**但需实测确认不崩**。
+### 5.1 测试链路污染（非算子 bug，但会让所有 case "fail"）
+共享服务器上 `custom_ops_lib` whl 和 `vendors/customize/op_api/lib/libcust_opapi.so` 被**同机其它算子项目**（SquareSumV1/Greater/Concat/IndexAdd，各自 `build/lib/` 下有自己的 `custom_ops_lib.so`）的 install **随时覆盖**：
+- `libcust_opapi.so` 被覆盖 → 只剩 SquareSumV1 符号 → `RuntimeError: aclnnTranspose ... not in libopapi.so`。
+- `custom_ops_lib` whl 被覆盖 → 别项目的 4 参签名 `(Tensor, Tuple, bool, Tuple)` → `TypeError: custom_op() incompatible...`。
+- 共享 op-info json 被覆盖 → `EZ9999: compilerInfo is nullptr ... TilingForTranspose do tiling failed`。
 
-### 🟡 中风险 2：非 half 2D 转置逐元素路径（case2/3/4/6/7）
-- `TransposeGeneric` 用 `GetValue`/`SetValue` 逐元素，从 `src(VECIN)` 读、写 `dstUB(VECOUT)`。
-- **风险点**：LocalTensor 的 `GetValue`/`SetValue` 在 S pipe，与 EnQue/DeQue 的跨 pipe 同步可能需显式 event。若结果错乱或崩溃，考虑加 `SetFlag<HardEvent::V_S>`/`WaitFlag` 或改用 UB→UB `DataCopy(DataCopyParams)`。
+**稳定测试法（见 §3.3）**：build+install 后把 `libcust_opapi.so` 复制到私有目录 `LD_LIBRARY_PATH` 前置、`build/lib.*/custom_ops_lib*.so` 复制到私有目录 `PYTHONPATH` 前置；批量测试需每 case 前重装 `.run`（他人约每 1-2 分钟覆盖一次）。内核 `.o`/json 按 op 分目录，不会被覆盖。
 
-### 🟡 中风险 3：任意 permute 步长兜底（case11/12）
-- `CopyTileStrided` 用 `xGm.GetValue()`（GM 直接读，AICPU 往返）逐元素。慢但应正确。
-- **风险点**：`GetValue` 对 int8/fp32 的类型转换；`blockCount≤4095` 的 tile 切分（已 clamp 到 4095）。
+### 5.2 内核 bug：COPY 路径缺 MTE2→MTE3 同步（已修）
+- **现象**：COPY 连续路径（case8 identity 等）输出前几行乱、后几行对；单核也错（4×4 identity 输出 row2=row0 数据，滞后 `BUFFER_NUM` 个 tile）。
+- **根因**：`inQueue` 原为 `TQue<VECIN>`，其 EnQue/DeQue 只插入 MTE2→**Vector** 同步；COPY 路径是 MTE2(GM→UB)→MTE3(UB→GM) 直连、无 V 指令桥接，MTE3 看不到该事件，抢跑读到 UB 旧数据。
+- **修复**：`inQueue` 改 `TQueBind<TPosition::VECIN, TPosition::VECOUT, BUFFER_NUM>`（参考内置 transpose v35 `transpose_tensor_move.h` 的 `TQueBind<VECIN,VECOUT,1>`），EnQue 自动建 MTE2→MTE3 同步，无需显式事件。
+- **踩坑**：曾尝试对 `TQue<VECIN>` 加 `SetFlag/WaitFlag<HardEvent::MTE2_MTE3>` → event ID 与 TQue 内部事件冲突 → kernel 死锁、设备 reset（`dcmi -8005`）。**不要这么做**，直接换 `TQueBind`。
 
-### 🟢 低风险 4：COPY 连续路径（case8 identity、S==1 的 permute）
-- `CopyTileContiguous` 是标准 DataCopyPad 连续搬运，最稳。
+### 5.3 TRANSPOSE 路径无需改（已验证全对）
+- half 走 `Transpose()`(V 指令)、非 half 走 `TransposeGeneric`(GetValue/SetValue)，经 `srcQue(VECIN)→V/S→dstQue(VECOUT)` 的 EnQue/DeQue 隐式同步，case1/5/9/10（half）、case2/3/4/6/7（非 half）全过。
+- 任意 permute 步长兜底 `CopyTileStrided`(GetValue)：case11/12 全过。
 
 ### 关键 API 约束速查（踩过的坑，别再踩）
 | 约束 | 说明 |
@@ -152,6 +168,7 @@ bash run.sh 1      # caseN：1=重新装whl；之后可 bash run.sh <N>
 | **DataCopyPad 参数数** | GM→UB 需 4 参（含 `DataCopyPadExtParams<T>`）；UB→GM 只需 3 参。 |
 | **tiling 字段全 uint32_t** | host 用 `set_xxx(arr)/get_xxx()`，kernel 用 `GET_TILING_DATA(t,tiling)`，不 include host 头。 |
 | **910B 无 NDDMA** | 只能 `DataCopy`+`DataCopyParams`/`DataCopyPad` stride 搬运，无高维 DMA。 |
+| **纯 DMA 搬运用 `TQueBind<VECIN,VECOUT>`** | MTE2→MTE3 无 Vector 桥接时，`TQue<VECIN>` 的 EnQue 只同步 MTE2→V，MTE3 抢跑。改用 `TQueBind<VECIN,VECOUT,N>`（EnQue 自动同步 MTE2→MTE3）。**禁**对 `TQue<VECIN>` 加 `SetFlag<MTE2_MTE3>`（死锁崩溃）。 |
 
 ---
 
@@ -224,6 +241,7 @@ mode=1 的 `blockDim` 当前由 `numRows`（COPY 几何）推算，应改用 `to
 
 ## 八、已解决的关键问题（历史记录，避免重犯）
 
+0. **【最重要】共享服务器误用 NPU**：旧服务器上默认抢卡 0（`test_op.py`/`custom_op.cpp`/`run.sh` 全无设备选择），卡 0 被他人占用时报 `device is used (-8020)`，**误判为「崩溃内核遗留 AICore hang」并试图 device-reset**。真相：换张空闲卡即可。修正：新增 `pick_free_npu.sh` 自动选空闲卡，接入 `run.sh`/`run_all.sh`；`ASCEND_RT_VISIBLE_DEVICES` 限定可见设备。**禁止 device-reset、禁止默认抢卡 0。**
 1. **崩溃根因**：原内核对所有 dtype 调 `Transpose()`(vtranspose)，仅 half 支持 → 用 `if constexpr` 守卫。
 2. **stride 单位错**：UB 侧错把字节当 32B block → 按 `DataCopyPad2D` 样例重写。
 3. **batch 循环丢失**：`ProcessTranspose` 漏前缀 batch 维 → `totalTiles=transBatch*nTiles*mTiles`，按平铺索引解 `(b,ti,tj)`，`matBase=b*transM*transN`。
