@@ -8,6 +8,8 @@ dist/
 **/__pycache__/
 PROF_*/
 *.pyc
+**/.local_opp/
+**/.local_python/
 
 # runtime / compile artifacts
 **/kernel_meta/

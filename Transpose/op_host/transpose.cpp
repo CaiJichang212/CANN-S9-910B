@@ -15,6 +15,11 @@ namespace optiling {
 static constexpr uint32_t MAX_BLOCK_DIM = 20;
 static constexpr uint32_t MAX_DIM = 8;
 static constexpr uint32_t ALIGN = 16; // 向量 stride 重排建议 16 倍数
+// TransposeGeneric performs scalar LocalTensor GetValue/SetValue accesses.
+// Keep each source/destination queue buffer below one 64 KiB local address
+// window.  With two queues and double buffering, the generic path uses at
+// most 128 KiB after the mandatory 16-element tile alignment.
+static constexpr uint32_t GENERIC_TRANSPOSE_UB_BUFFER_BYTES = 32 * 1024;
 
 static uint32_t DTypeToSize(ge::DataType dt)
 {
@@ -94,14 +99,19 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         }
     }
 
+    // A contiguous source inner dimension never needs UB transpose.  In
+    // particular, (M,1)->(1,M) has identical linear storage and must take the
+    // DMA COPY path before the 2D-transpose special case is considered.
+    // For int8 rows shorter than one 32B block, use the established strided
+    // COPY fallback instead of issuing many narrow DataCopyPad rows on the
+    // generic transpose path.
+    bool narrowInt8Transpose = isTranspose && dtypeSize == 1 && inSh[ndim - 1] < 32;
     uint32_t mode;
-    if (isTranspose) {
+    if (S == 1) {
+        mode = 0;
+    } else if (isTranspose && !narrowInt8Transpose) {
         mode = 1;
-    } else if (S == 1) {
-        mode = 0; // COPY
     } else {
-        // 暂未覆盖的 permute：回退到 COPY 路径（输出驱动），srcStrideInner>1 时由 kernel
-        // 逐元素处理。这里仍按 COPY 几何填参数，kernel 需兼容 S>1 的兜底。
         mode = 0;
     }
 
@@ -115,6 +125,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     }
 
     uint32_t numRows = (W > 0) ? static_cast<uint32_t>(std::min<uint64_t>(total / W, 0xFFFFFFFFull)) : 0;
+    // COPY work is distributed by output rows.  TRANSPOSE recalculates this
+    // from its tile count after tile geometry is known.
     uint32_t blockDim = std::min(MAX_BLOCK_DIM, std::max(1u, numRows));
 
     // COPY tileLen：贴满 UB (双缓冲，单 buffer ~80KB)
@@ -146,14 +158,21 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
             tn = 16;
             tm = 16;
         } else {
-            uint32_t budget = 64 * 1024;
+            uint32_t budget = GENERIC_TRANSPOSE_UB_BUFFER_BYTES;
             tn = std::min(transN, static_cast<uint32_t>(256));
             tn = std::max(ALIGN, (tn / ALIGN) * ALIGN);
             if (tn == 0) {
                 tn = ALIGN;
             }
-            uint32_t maxElems = budget / std::max(1u, dtypeSize);
-            tm = std::min(transM, maxElems / tn);
+            // The input tile has one 32B-aligned UB row per M row.  Bound the
+            // row count by that padded footprint (rather than raw elements),
+            // keeping each of the two single-buffer queues below the scalar
+            // LocalTensor address window even for int8 narrow-N matrices.
+            // DataCopyPad blockCount is also uint16_t and accepts at most
+            // 4095 rows.
+            uint32_t paddedRowBytes = ((tn * dtypeSize + 31) / 32) * 32;
+            uint32_t maxTileM = std::min<uint32_t>(budget / paddedRowBytes, 4095);
+            tm = std::min(transM, maxTileM);
             tm = (tm / ALIGN) * ALIGN;
             if (tm == 0) {
                 tm = ALIGN;
@@ -161,6 +180,14 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         }
         tileM = tm;
         tileN = tn;
+
+        // TRANSPOSE work units are tiles, not rows.  Basing blockDim on rows
+        // can leave a large matrix with a narrow N dimension on one core.
+        uint64_t mTiles = (static_cast<uint64_t>(transM) + tileM - 1) / tileM;
+        uint64_t nTiles = (static_cast<uint64_t>(transN) + tileN - 1) / tileN;
+        uint64_t totalTiles = static_cast<uint64_t>(transBatch) * mTiles * nTiles;
+        blockDim = static_cast<uint32_t>(std::min<uint64_t>(MAX_BLOCK_DIM,
+            std::max<uint64_t>(1, totalTiles)));
     }
 
     tiling.set_mode(mode);

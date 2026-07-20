@@ -1,10 +1,25 @@
+import os
+import sys
+from pathlib import Path
+
+# Prefer the extension built for this project.  Other exercises intentionally
+# use the same module name, so importing the site-package copy is unsafe.
+_PRIVATE_PYTHON = Path(os.environ.get(
+    "TRANSPOSE_PRIVATE_PYTHON_PATH",
+    Path(__file__).resolve().parent / ".local_python",
+))
+_PRIVATE_BUILD = _PRIVATE_PYTHON / "build"
+if _PRIVATE_BUILD.exists():
+    for _extension in _PRIVATE_BUILD.rglob("custom_ops_lib*.so"):
+        sys.path.insert(0, str(_extension.parent))
+        break
+
 import torch
 import torch_npu
 from torch_npu.testing.testcase import TestCase, run_tests
 import custom_ops_lib
 torch.npu.config.allow_internal_format = False
 import numpy as np
-import sys  
 
 case_data = {
     # --- case1: 基线 fp16 2D 转置 (128,256) ---
@@ -66,6 +81,16 @@ case_data = {
     'case12': {
         'input':np.random.uniform(-10, 10, [2, 19, 23]).astype(np.float32),
         'dims': (2, 0, 1)
+    },
+    # --- case13: int8 窄列大矩阵，覆盖 DMA blockCount=4095 上限 ---
+    'case13': {
+        'input':np.random.randint(-127, 127, [4096, 1]).astype(np.int8),
+        'dims': (1, 0)
+    },
+    # --- case14: int8 窄列大矩阵，覆盖多 tile 分核 ---
+    'case14': {
+        'input':np.random.randint(-127, 127, [10000, 1]).astype(np.int8),
+        'dims': (1, 0)
     },
 }
 

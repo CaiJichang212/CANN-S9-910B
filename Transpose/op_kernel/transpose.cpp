@@ -28,6 +28,9 @@
 using namespace AscendC;
 
 constexpr int32_t BUFFER_NUM = 2;
+// MTE3 can still be writing a tile when the next tile is submitted.  Keep two
+// buffers so a core never reuses the same UB region before that write retires.
+constexpr int32_t TRANSPOSE_BUFFER_NUM = 2;
 constexpr uint32_t MAX_DIM = 8;
 constexpr uint32_t BLOCK_BYTES = 32;
 constexpr uint32_t BLK = 16; // vtranspose 块边长
@@ -229,8 +232,13 @@ private:
         uint32_t dstBytes = dstRowBytes * tileN_;
         uint32_t ubBytes = (srcBytes > dstBytes) ? srcBytes : dstBytes;
         uint32_t ubElems = ubBytes / dtypeSize_;
-        pipe.InitBuffer(srcQue, BUFFER_NUM, ubElems * dtypeSize_);
-        pipe.InitBuffer(dstQue, BUFFER_NUM, ubElems * dtypeSize_);
+        pipe.InitBuffer(srcQue, TRANSPOSE_BUFFER_NUM, ubElems * dtypeSize_);
+        pipe.InitBuffer(dstQue, TRANSPOSE_BUFFER_NUM, ubElems * dtypeSize_);
+        // TQue provides the DMA/vector dependencies used by vtranspose.  The
+        // generic path uses scalar LocalTensor GetValue/SetValue (S pipe), so
+        // it needs its own explicit DMA-to-scalar and scalar-to-DMA events.
+        event_t mte2ToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE2_S));
+        event_t sToMte3 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_MTE3));
 
         uint64_t matElems = (uint64_t)transM_ * (uint64_t)transN_; // 单个矩阵元素数
         for (uint32_t tb = tStart; tb < tEnd; tb++) {
@@ -243,12 +251,13 @@ private:
             uint32_t mh = (tileM_ < transM_ - mi) ? tileM_ : (transM_ - mi);
             uint32_t nw = (tileN_ < transN_ - nj) ? tileN_ : (transN_ - nj);
             uint64_t matBase = (uint64_t)b * matElems; // 源/目的同 batch 偏移
-            TransposeBlk(matBase, mi, nj, mh, nw, srcRowBytes, dstRowBytes);
+            TransposeBlk(matBase, mi, nj, mh, nw, srcRowBytes, dstRowBytes, mte2ToS, sToMte3);
         }
     }
 
     __aicore__ inline void TransposeBlk(uint64_t matBase, uint32_t mi, uint32_t nj, uint32_t mh, uint32_t nw,
-                                         uint32_t srcRowBytes, uint32_t dstRowBytes)
+                                         uint32_t srcRowBytes, uint32_t dstRowBytes,
+                                         event_t mte2ToS, event_t sToMte3)
     {
         // ---- 1) GM->UB：读源 [mi..mi+mh) × [nj..nj+nw)，行布局 ----
         LocalTensor<DTYPE_X> srcUB = srcQue.AllocTensor<DTYPE_X>();
@@ -270,11 +279,22 @@ private:
         srcQue.EnQue(srcUB);
         LocalTensor<DTYPE_X> src = srcQue.DeQue<DTYPE_X>();
 
+        bool scalarTranspose = NeedsScalarTranspose(mh, nw);
+        if (scalarTranspose) {
+            SetFlag<HardEvent::MTE2_S>(mte2ToS);
+            WaitFlag<HardEvent::MTE2_S>(mte2ToS);
+        }
+
         // ---- 2) UB 内转置 src[mh][nw] -> dst[nw][mh] ----
         LocalTensor<DTYPE_X> dstUB = dstQue.AllocTensor<DTYPE_X>();
         TransposeUB(dstUB, src, mh, nw, srcRowBytes, dstRowBytes);
         dstQue.EnQue(dstUB);
         LocalTensor<DTYPE_X> dst = dstQue.DeQue<DTYPE_X>();
+
+        if (scalarTranspose) {
+            SetFlag<HardEvent::S_MTE3>(sToMte3);
+            WaitFlag<HardEvent::S_MTE3>(sToMte3);
+        }
 
         // ---- 3) UB->GM：写输出 [nj..nj+nw) × [mi..mi+mh) ----
         DataCopyExtParams outParams;
@@ -295,13 +315,24 @@ private:
     __aicore__ inline void TransposeUB(LocalTensor<DTYPE_X> &dst, const LocalTensor<DTYPE_X> &src,
                                         uint32_t mh, uint32_t nw, uint32_t srcRowBytes, uint32_t dstRowBytes)
     {
+        // AscendC Transpose is a fp16 16x16 instruction.  In particular, it
+        // does not define tail-tile behaviour, so every non-full tile must use
+        // the scalar layout-aware implementation below.
         if constexpr (sizeof(DTYPE_X) == sizeof(half)) {
-            // half 路径：TransposeBlk 已把 16×16 紧凑读入 src（dstStride=0，每行 16 元素=32B=1block），
-            // 直接对连续 16×16 调 vtranspose 即可（UB 内紧凑 256 元素）。
-            Transpose(dst, src); // vtranspose：dst[i][j]=src[j][i]
-        } else {
-            TransposeGeneric(dst, src, mh, nw, srcRowBytes, dstRowBytes);
+            if (mh == BLK && nw == BLK) {
+                Transpose(dst, src); // vtranspose：dst[i][j]=src[j][i]
+                return;
+            }
         }
+        TransposeGeneric(dst, src, mh, nw, srcRowBytes, dstRowBytes);
+    }
+
+    __aicore__ inline bool NeedsScalarTranspose(uint32_t mh, uint32_t nw)
+    {
+        if constexpr (sizeof(DTYPE_X) == sizeof(half)) {
+            return mh != BLK || nw != BLK;
+        }
+        return true;
     }
 
     // 通用 UB 内转置：dst[c][r] = src[r][c]，逐元素（dtype 无关，正确优先）。
@@ -325,8 +356,8 @@ private:
 private:
     AscendC::TPipe pipe;
     AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, BUFFER_NUM> inQueue;
-    AscendC::TQue<AscendC::TPosition::VECIN, BUFFER_NUM> srcQue;
-    AscendC::TQue<AscendC::TPosition::VECOUT, BUFFER_NUM> dstQue;
+    AscendC::TQue<AscendC::TPosition::VECIN, TRANSPOSE_BUFFER_NUM> srcQue;
+    AscendC::TQue<AscendC::TPosition::VECOUT, TRANSPOSE_BUFFER_NUM> dstQue;
     AscendC::GlobalTensor<DTYPE_X> xGm;
     AscendC::GlobalTensor<DTYPE_Y> yGm;
 

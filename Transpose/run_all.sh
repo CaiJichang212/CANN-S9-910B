@@ -1,27 +1,61 @@
 #!/bin/bash
 # run_all.sh —— 遍历 test_op.py 所有 case，仅做精度验证（不走 msprof），报告通过/失败。
 # 用法: bash run_all.sh
-# 前置: 已 bash build.sh && bash build_out/custom_opp_*.run && pip install dist/*.whl
+# 前置: 已 bash build.sh。脚本会将 OPP 与 pybind 扩展准备到项目私有目录。
 set +e
 export TORCH_DEVICE_BACKEND_AUTOLOAD=0
-export LD_LIBRARY_PATH=$ASCEND_OPP_PATH/vendors/customize/op_api/lib/:$LD_LIBRARY_PATH
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+PRIVATE_OPP=${TRANSPOSE_PRIVATE_OPP_PATH:-"$SCRIPT_DIR/.local_opp"}
+PRIVATE_PYTHON=${TRANSPOSE_PRIVATE_PYTHON_PATH:-"$SCRIPT_DIR/.local_python"}
+
+prepare_private_opp() {
+    local run_file private_lib
+    run_file=$(find "$SCRIPT_DIR/build_out" -maxdepth 1 -type f -name 'custom_opp_*.run' -print -quit 2>/dev/null || true)
+    private_lib="$PRIVATE_OPP/vendors/customize/op_api/lib/libcust_opapi.so"
+    if [ -z "$run_file" ]; then
+        echo "[run_all] 未找到 build_out/custom_opp_*.run；请先执行 bash build.sh" >&2
+        exit 1
+    fi
+    if [ ! -f "$private_lib" ] || [ "$run_file" -nt "$private_lib" ]; then
+        echo "[run_all] 安装自定义 OPP 到私有目录: $PRIVATE_OPP"
+        env -u ASCEND_CUSTOM_OPP_PATH bash "$run_file" --install-path="$PRIVATE_OPP" || exit 1
+    fi
+    # The installer receives the OPP root, while its generated set_env.bash
+    # exposes the runtime discovery path at vendors/customize.
+    export ASCEND_CUSTOM_OPP_PATH="$PRIVATE_OPP/vendors/customize"
+    export LD_LIBRARY_PATH="$PRIVATE_OPP/vendors/customize/op_api/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+}
+
+prepare_private_extension() {
+    local extension_file extension_dir
+    extension_file=$(find "$PRIVATE_PYTHON/build" -type f -name 'custom_ops_lib*.so' -print -quit 2>/dev/null || true)
+    if [ -z "$extension_file" ] || [ "$SCRIPT_DIR/extension/custom_op.cpp" -nt "$extension_file" ] || [ "$SCRIPT_DIR/setup.py" -nt "$extension_file" ]; then
+        echo "[run_all] 构建私有 custom_ops_lib 扩展: $PRIVATE_PYTHON/build"
+        mkdir -p "$PRIVATE_PYTHON"
+        (cd "$SCRIPT_DIR" && python3 setup.py build --build-base "$PRIVATE_PYTHON/build") || exit 1
+        extension_file=$(find "$PRIVATE_PYTHON/build" -type f -name 'custom_ops_lib*.so' -print -quit)
+    fi
+    if [ -z "$extension_file" ]; then
+        echo "[run_all] 未生成 custom_ops_lib 扩展" >&2
+        exit 1
+    fi
+    extension_dir=$(dirname "$extension_file")
+    export PYTHONPATH="$extension_dir${PYTHONPATH:+:$PYTHONPATH}"
+}
+
+prepare_private_opp
+prepare_private_extension
 
 # 共享 8 卡服务器：自动选一张空闲 NPU 卡（必须 source，以继承 ASCEND_RT_VISIBLE_DEVICES）
-source "$(dirname "$0")/pick_free_npu.sh" || { echo "[run_all] 无空闲 NPU 卡，退出" >&2; exit 1; }
+source "$SCRIPT_DIR/pick_free_npu.sh" || { echo "[run_all] 无空闲 NPU 卡，退出" >&2; exit 1; }
 
-# 确保 whl 已装
-if ! python3 -c "import custom_ops_lib" 2>/dev/null; then
-    echo "[INFO] custom_ops_lib 未装，安装 dist/*.whl"
-    pip3 install dist/custom_ops*.whl --force-reinstall 2>&1 | tail -1
-fi
-
-NCASE=12
+NCASE=14
 PASS=0
 FAIL=0
 FAILED_CASES=""
 for i in $(seq 1 $NCASE); do
     echo "==================== case$i ===================="
-    OUT=$(timeout 120 python3 test_op.py $i 2>/dev/null)
+    OUT=$(timeout 120 python3 "$SCRIPT_DIR/test_op.py" "$i" 2>&1)
     echo "$OUT"
     if echo "$OUT" | grep -q "verify result pass"; then
         echo ">>> case$i PASS"
