@@ -46,15 +46,7 @@ mkdir -p "$STAGING"
 
 cp -r "$OP_PROJECT/op_host" "$STAGING/"
 cp -r "$OP_PROJECT/op_kernel" "$STAGING/"
-# 匹配实际产物：custom_opp_openEuler_aarch64.run / custom_opp_ubuntu_aarch64.run 等
-shopt -s nullglob
-run_files=("$OP_PROJECT/build_out"/custom_opp_*.run)
-shopt -u nullglob
-if [ ${#run_files[@]} -eq 0 ]; then
-  echo "[ERROR] No custom_opp_*.run found under $OP_PROJECT/build_out/" >&2
-  exit 1
-fi
-cp "${run_files[@]}" "$STAGING/"
+cp "$OP_PROJECT/build_out/custom_opp_"*.run "$STAGING/"
 
 echo "Staging contents:"
 ls -la "$STAGING/"

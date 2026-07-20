@@ -147,8 +147,6 @@ fi
 # Copy to build_out
 mkdir -p "${BUILD_OUT_PATH}"
 cp "${PKG_PATH}" "${BUILD_OUT_PATH}/"
-# Also create a symlink/alias with ubuntu name for test framework compatibility
-cp "${PKG_PATH}" "${BUILD_OUT_PATH}/custom_opp_ubuntu_aarch64.run" 2>/dev/null || true
 
 echo "----------------------------------------------------------------"
 echo "[INFO] Build completed successfully!"
