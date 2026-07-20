@@ -29,15 +29,19 @@ fi
 
 echo "===== [1/3] Building operator: $OP_NAME ====="
 cd "$OP_PROJECT"
-rm -rf build build_out
-# SquareSumV1 的 CMakeLists.txt 使用 find_package(ASC REQUIRED)，需通过 CMAKE_PREFIX_PATH / ASC_DIR
-# 指向 $ASCEND_HOME_PATH/aarch64-linux/lib64/cmake/（ASCConfig.cmake 所在目录）。
-# 容器内 ASCEND_HOME_PATH 已预设为 /usr/local/Ascend/cann-8.5.0，未设置时回退到默认路径。
-: "${ASCEND_HOME_PATH:=/usr/local/Ascend/cann-8.5.0}"
-export ASCEND_HOME_PATH
-export ASC_DIR="${ASCEND_HOME_PATH}/aarch64-linux/lib64/cmake"
-export CMAKE_PREFIX_PATH="${ASCEND_HOME_PATH}/aarch64-linux"
-bash build.sh
+if [ "${SKIP_BUILD:-0}" = "1" ]; then
+    echo "[SKIP_BUILD=1] 跳过编译，复用已有 build_out/"
+else
+    rm -rf build build_out
+    # SquareSumV1 的 CMakeLists.txt 使用 find_package(ASC REQUIRED)，需通过 CMAKE_PREFIX_PATH / ASC_DIR
+    # 指向 $ASCEND_HOME_PATH/aarch64-linux/lib64/cmake/（ASCConfig.cmake 所在目录）。
+    # 容器内 ASCEND_HOME_PATH 已预设为 /usr/local/Ascend/cann-8.5.0，未设置时回退到默认路径。
+    : "${ASCEND_HOME_PATH:=/usr/local/Ascend/cann-8.5.0}"
+    export ASCEND_HOME_PATH
+    export ASC_DIR="${ASCEND_HOME_PATH}/aarch64-linux/lib64/cmake"
+    export CMAKE_PREFIX_PATH="${ASCEND_HOME_PATH}/aarch64-linux"
+    bash build.sh
+fi
 echo ""
 
 echo "===== [2/3] Preparing staging dir ====="
