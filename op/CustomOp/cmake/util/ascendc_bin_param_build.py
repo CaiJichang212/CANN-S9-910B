@@ -147,6 +147,8 @@ class BinParamBuilder(opdesc_parser.OpDesc):
         compile_file = os.path.join(self.out_path, '-'.join(name_com) + '.sh')
         compile_file = os.path.realpath(compile_file)
 
+        # The operator is registered as ConcatCustom, so it has a distinct
+        # op-store schema and can use the standard runtime-compatible format.
         bin_cmd_str = 'res=$(opc $1 --main_func={fun} --input_param={param} --soc_version={soc} \
                 --output=$2 --impl_mode={impl} --simplified_key_mode=0 --op_mode=dynamic '
 

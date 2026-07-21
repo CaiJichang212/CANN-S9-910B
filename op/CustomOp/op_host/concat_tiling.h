@@ -23,11 +23,17 @@ BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   TILING_DATA_FIELD_DEF_ARR(uint32_t, MAX_CONCAT_INPUT_NUM, inputCatOffset);
   // 输出沿 dim 维的总长度
   TILING_DATA_FIELD_DEF(uint32_t, totalCatLen);
-  // 多核切分核数（按输出扁平字节区间切分，与 dim 取值无关地满核）
+  // 多核切分。splitMode=0 为整行切分，1 为行×输出列切分。
   TILING_DATA_FIELD_DEF(uint32_t, usedCoreNum);
+  TILING_DATA_FIELD_DEF(uint32_t, splitMode);
+  // 非 32B 对齐输出行的安全行周期；当前这类场景回退整行切分。
+  TILING_DATA_FIELD_DEF(uint32_t, rowPeriod);
+  TILING_DATA_FIELD_DEF(uint32_t, rowSliceNum);
+  TILING_DATA_FIELD_DEF(uint32_t, colCoreNum);
+  TILING_DATA_FIELD_DEF(uint32_t, colBlockBytes);
 END_TILING_DATA_DEF;
 
-REGISTER_TILING_DATA_CLASS(Concat, ConcatCustomTilingData)
+REGISTER_TILING_DATA_CLASS(ConcatCustom, ConcatCustomTilingData)
 
 }  // namespace optiling
 

@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
-"""Deterministic correctness matrix for the custom aclnnConcat kernel.
+"""Acceptance-oriented correctness matrix for ``aclnnConcatCustom``.
 
-The extension performs its own 30-call warm-up loop.  This script deliberately
-uses torch.cat as the golden result and covers rank/dim/dtype, zero-length
-inputs, 256-way fragmented rows, and the >64KiB row fallback.
+The matrix deliberately mirrors the published acceptance dimensions instead
+of encoding a handful of benchmark shapes: dtype, value range, rank/shape,
+positive and negative concat axes, input count, empty inputs, and DMA tile
+boundaries are varied independently.  All data is deterministic, so a failed
+case can be reproduced with ``--case`` (or ``--seed`` for generated cases).
+
+Examples:
+  python3 test_matrix.py --quick
+  python3 test_matrix.py --random-cases 24 --seed 20260721
+  python3 test_matrix.py --case rank6_fp16_dim3 --repeat 10
 """
 
 import argparse
+import random
+from dataclasses import dataclass
+from typing import Iterable
 
 import torch
 import torch_npu  # noqa: F401 - registers the NPU backend
@@ -14,66 +24,220 @@ import torch_npu  # noqa: F401 - registers the NPU backend
 import custom_ops_lib
 
 
-def alternating_splits() -> list[int]:
+@dataclass(frozen=True)
+class ConcatCase:
+    name: str
+    dtype: torch.dtype
+    shape: tuple[int, ...]
+    dim: int
+    splits: tuple[int, ...]
+    value_range: tuple[int, int]
+    pattern: str = "ramp"
+
+
+def alternating_splits() -> tuple[int, ...]:
     # 128 * 15 + 128 * 17 == 4096.  Every non-empty row segment is non-32B
     # aligned for fp16/fp32/int8, exercising DataCopyPad's multi-row path.
-    return [15 if index % 2 == 0 else 17 for index in range(256)]
+    return tuple(15 if index % 2 == 0 else 17 for index in range(256))
 
 
-CASES = [
-    ("rank1_fp16_dim0_zero", torch.float16, (97,), 0, [31, 0, 66]),
-    ("rank2_fp32_dim0_zero", torch.float32, (17, 31), 0, [0, 7, 10]),
-    ("rank2_int8_last_unaligned", torch.int8, (13, 64), -1, [15, 17, 0, 32]),
-    ("rank3_int32_middle", torch.int32, (4, 9, 13), 1, [3, 0, 6]),
-    ("rank3_fp16_last_zero", torch.float16, (3, 5, 17), -1, [1, 0, 16]),
-    ("rank3_int32_middle_aligned", torch.int32, (8, 4, 16), 1, [1, 3]),
-    ("single_input_large_row_fallback", torch.float16, (2, 40000), -1, [40000]),
-    ("fragmented_256_fp16", torch.float16, (2048, 4096), -1, alternating_splits()),
-    ("fragmented_256_fp32", torch.float32, (256, 4096), -1, alternating_splits()),
-    ("fragmented_256_int8", torch.int8, (256, 4096), -1, alternating_splits()),
-]
+# Hand-picked L0/L1 cases.  They cover every dtype accepted by op_host,
+# published shapes (including (2,3,4,5,6,7) and (2024,3000)), every axis
+# direction, empty inputs, the 256-input limit, and transfer boundaries.
+CASES = (
+    ConcatCase("rank1_fp16_dim0_zero", torch.float16, (97,), 0, (31, 0, 66), (-1, 1)),
+    ConcatCase("rank1_int32_exact", torch.int32, (4,), -1, (1, 1, 2), (1, 10)),
+    ConcatCase("rank2_fp32_dim0_zero", torch.float32, (17, 31), 0, (0, 7, 10), (-1000, 1000)),
+    ConcatCase("rank2_int8_last_unaligned", torch.int8, (13, 64), -1, (15, 17, 0, 32), (-100, 100)),
+    ConcatCase("rank3_int32_middle", torch.int32, (4, 9, 13), 1, (3, 0, 6), (1, 10)),
+    ConcatCase("rank3_fp16_last_zero", torch.float16, (3, 5, 17), -1, (1, 0, 16), (-1, 1)),
+    ConcatCase("rank3_int32_middle_aligned", torch.int32, (8, 4, 16), 1, (1, 3), (1, 10)),
+    ConcatCase("fp16_boundary_lengths_unaligned_row", torch.float16, (11, 97), -1,
+               (1, 15, 17, 31, 33), (-1000, 1000)),
+    ConcatCase("fp16_middle_axis_2d", torch.float16, (9, 256, 17), 1,
+               (31, 33, 64, 128), (-1, 1)),
+    ConcatCase("fp32_before_dim_over_4095", torch.float32, (5003, 64), -1,
+               (31, 33), (-1000, 1000)),
+    ConcatCase("single_input_large_row_fallback", torch.float16, (2, 40000), -1,
+               (40000,), (-1, 1)),
+    ConcatCase("rank6_fp16_dim3", torch.float16, (2, 3, 4, 5, 6, 7), 3,
+               (1, 0, 2, 2), (-1, 1)),
+    ConcatCase("rank6_fp32_negative_axis", torch.float32, (2, 3, 4, 5, 6, 7), -2,
+               (2, 1, 3), (-1000, 1000)),
+    ConcatCase("rank7_int32_axis0", torch.int32, (4, 2, 2, 3, 2, 3, 4), 0,
+               (1, 0, 3), (1, 10)),
+    ConcatCase("score_shape_2024x3000_fp32", torch.float32, (2024, 3000), 1,
+               (1, 1023, 0, 1976), (-1000, 1000)),
+    ConcatCase("fragmented_256_fp16", torch.float16, (2048, 4096), -1,
+               alternating_splits(), (-1, 1)),
+    ConcatCase("fragmented_256_fp32", torch.float32, (256, 4096), -1,
+               alternating_splits(), (-1000, 1000)),
+    ConcatCase("fragmented_256_int8", torch.int8, (256, 4096), -1,
+               alternating_splits(), (-100, 100)),
+    # S9 的形状上界和非 32B 对齐特征。每项保持总元素数可在单卡上验证，
+    # 但分别命中 N/N2=10000、N3/N4=1000 及不同 concat 轴。
+    ConcatCase("s9_fp16_last_axis_10000", torch.float16, (3, 10000), -1,
+               (1, 31, 32, 33, 127, 9776), (-1, 1)),
+    ConcatCase("s9_fp32_axis0_10000", torch.float32, (10000, 3), 0,
+               (1, 31, 9968), (-1000, 1000)),
+    ConcatCase("s9_int32_rank4_axis1_1000", torch.int32, (3, 1000, 17, 31), 1,
+               (1, 31, 32, 936), (1, 10)),
+    ConcatCase("s9_int8_rank4_axis2_1000", torch.int8, (2, 17, 1000, 31), 2,
+               (1, 31, 32, 936), (-100, 100)),
+    ConcatCase("s9_fp16_rank5_axis3_999", torch.float16, (2, 3, 17, 999, 31), -2,
+               (1, 31, 32, 935), (-1, 1)),
+    # 输入数分层覆盖 framework TensorList 描述符和 host 端 256 路上限之间的
+    # 常见规模，避免只验证 1/2/256 三个孤立点。
+    ConcatCase("input_count_8_fp16", torch.float16, (16, 136), -1,
+               (17, 17, 17, 17, 17, 17, 17, 17), (-1, 1)),
+    ConcatCase("input_count_64_int32", torch.int32, (8, 64), -1,
+               (1,) * 64, (1, 10)),
+    # Concat 没有数值计算；浮点特殊值应当逐 bit 保留，而不只是满足 rtol/atol。
+    ConcatCase("fp16_special_values_bitwise", torch.float16, (3, 33), -1,
+               (1, 32), (-1, 1), "special"),
+    ConcatCase("fp32_special_values_bitwise", torch.float32, (2, 65), -1,
+               (1, 31, 33), (-1000, 1000), "special"),
+)
+
+LARGE_CASE_PREFIXES = ("score_shape_", "fragmented_256_", "single_input_large_", "s9_")
 
 
-def make_input(shape: tuple[int, ...], dtype: torch.dtype) -> torch.Tensor:
+def make_input(shape: tuple[int, ...], dtype: torch.dtype,
+               value_range: tuple[int, int], pattern: str = "ramp") -> torch.Tensor:
+    """Create deterministic values that occupy the requested acceptance range."""
     count = 1
-    for dim in shape:
-        count *= dim
-    # Integer-like values make accidental byte shifts obvious while remaining
-    # exactly representable by every dtype in the matrix.
-    values = (torch.arange(count, dtype=torch.int32) % 97) - 48
+    for size in shape:
+        count *= size
+    low, high = value_range
+    base = torch.arange(count, dtype=torch.int32)
+    if dtype.is_floating_point:
+        # 1009 relatively prime samples ensure every dtype sees both signs and
+        # non-integral values without relying on random-number generator state.
+        values = low + (base.remainder(1009).to(torch.float32) / 1008.0) * (high - low)
+    else:
+        values = low + base.remainder(high - low + 1)
+    if pattern == "special":
+        if not dtype.is_floating_point:
+            raise ValueError("special pattern is valid only for floating-point dtypes")
+        # Include +0/-0, infinities and NaN.  Their bit patterns, rather than
+        # arithmetic closeness, are the oracle for this copy-only operator.
+        specials = torch.tensor(
+            [0.0, -0.0, float("inf"), float("-inf"), float("nan"), 0.333251953125],
+            dtype=torch.float32)
+        values[:min(count, specials.numel())] = specials[:min(count, specials.numel())]
+    elif pattern != "ramp":
+        raise ValueError(f"unknown data pattern: {pattern}")
     return values.reshape(shape).to(dtype)
 
 
-def run_case(name: str, dtype: torch.dtype, shape: tuple[int, ...], dim: int, splits: list[int]) -> None:
-    source = make_input(shape, dtype)
-    inputs = list(torch.split(source, splits, dim=dim))
-    golden = torch.cat(inputs, dim=dim)
-    actual = custom_ops_lib.custom_op([tensor.npu() for tensor in inputs], dim, list(golden.shape)).cpu()
-    if not torch.equal(actual, golden):
-        differing = int((actual != golden).sum().item())
-        raise AssertionError(f"{name}: {differing} elements differ")
-    print(f"PASS {name}: dtype={dtype}, shape={shape}, dim={dim}, inputs={len(inputs)}")
+def random_splits(total: int, parts: int, rng: random.Random) -> tuple[int, ...]:
+    """Return ``parts`` non-negative lengths with an exact, reproducible sum."""
+    cuts = sorted(rng.randrange(total + 1) for _ in range(parts - 1))
+    return tuple(b - a for a, b in zip((0, *cuts), (*cuts, total)))
+
+
+def generated_cases(count: int, seed: int) -> tuple[ConcatCase, ...]:
+    """L1 fuzz cases spanning rank 1..7 without benchmark-specific tiling."""
+    rng = random.Random(seed)
+    dtype_options = (
+        (torch.float16, (-1, 1)),
+        (torch.float32, (-1000, 1000)),
+        (torch.int32, (1, 10)),
+        (torch.int8, (-100, 100)),
+    )
+    cases = []
+    for index in range(count):
+        rank = rng.randint(1, 7)
+        shape = [rng.randint(1, 9) for _ in range(rank)]
+        axis = rng.randrange(rank)
+        shape[axis] = rng.randint(1, 97)
+        dtype, value_range = rng.choice(dtype_options)
+        # Include zero-length inputs regularly; the rest use 2..8 inputs to
+        # exercise list-tensor descriptors without exceeding the 256 limit.
+        parts = rng.randint(2, 8)
+        splits = random_splits(shape[axis], parts, rng)
+        dim = axis if index % 2 == 0 else axis - rank
+        cases.append(ConcatCase(
+            f"generated_{index:02d}_rank{rank}_{str(dtype).split('.')[-1]}", dtype,
+            tuple(shape), dim, splits, value_range))
+    return tuple(cases)
+
+
+def validate_case(case: ConcatCase) -> None:
+    axis = case.dim % len(case.shape)
+    if len(case.splits) == 0 or len(case.splits) > 256:
+        raise ValueError(f"{case.name}: input count must be in [1, 256]")
+    if any(length < 0 for length in case.splits):
+        raise ValueError(f"{case.name}: split lengths must be non-negative")
+    if sum(case.splits) != case.shape[axis]:
+        raise ValueError(f"{case.name}: split lengths do not match shape[{axis}]")
+
+
+def run_case(case: ConcatCase, repeat: int) -> None:
+    validate_case(case)
+    source = make_input(case.shape, case.dtype, case.value_range, case.pattern)
+    inputs = list(torch.split(source, case.splits, dim=case.dim))
+    golden = torch.cat(inputs, dim=case.dim)
+    npu_inputs = [tensor.npu() for tensor in inputs]
+    for iteration in range(repeat):
+        actual = custom_ops_lib.custom_op(npu_inputs, case.dim, list(golden.shape)).cpu()
+        if actual.dtype == torch.float16:
+            equal = torch.equal(actual.view(torch.int16), golden.view(torch.int16))
+        elif actual.dtype == torch.float32:
+            equal = torch.equal(actual.view(torch.int32), golden.view(torch.int32))
+        else:
+            equal = torch.equal(actual, golden)
+        if not equal:
+            differing = int((actual != golden).sum().item())
+            raise AssertionError(
+                f"{case.name} iteration {iteration + 1}: {differing} elements differ bitwise")
+    print(
+        f"PASS {case.name}: dtype={case.dtype}, shape={case.shape}, dim={case.dim}, "
+        f"inputs={len(inputs)}, range={case.value_range}, pattern={case.pattern}, repeat={repeat}")
+
+
+def select_cases(cases: Iterable[ConcatCase], names: set[str], quick: bool,
+                 no_large: bool) -> tuple[ConcatCase, ...]:
+    cases = tuple(cases)
+    known = {case.name for case in cases}
+    unknown = names - known
+    if unknown:
+        raise SystemExit(f"unknown case(s): {', '.join(sorted(unknown))}")
+    selected = tuple(case for case in cases if not names or case.name in names)
+    if quick:
+        selected = tuple(case for case in selected if not case.name.startswith(("fragmented_256_", "generated_")))
+    if no_large:
+        selected = tuple(case for case in selected if not case.name.startswith(LARGE_CASE_PREFIXES))
+    return selected
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--quick", action="store_true", help="skip the three 256-input stress cases")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--quick", action="store_true", help="skip 256-input stress and generated L1 cases")
+    parser.add_argument("--no-large", action="store_true", help="skip 2024x3000, >64KiB, and 256-input cases")
     parser.add_argument("--case", action="append", default=[], help="run only a named case (repeatable)")
+    parser.add_argument("--repeat", type=int, default=1, help="run every selected case continuously N times")
+    parser.add_argument("--random-cases", type=int, default=12, help="number of deterministic generated L1 cases")
+    parser.add_argument("--seed", type=int, default=20260721, help="seed used to generate L1 cases")
+    parser.add_argument("--list", action="store_true", help="list cases and exit")
     args = parser.parse_args()
 
-    selected = set(args.case)
-    known = {case[0] for case in CASES}
-    unknown = selected - known
-    if unknown:
-        raise SystemExit(f"unknown case(s): {', '.join(sorted(unknown))}")
+    if args.repeat < 1:
+        raise SystemExit("--repeat must be at least 1")
+    if args.random_cases < 0:
+        raise SystemExit("--random-cases must not be negative")
 
-    for case in CASES:
-        name = case[0]
-        if selected and name not in selected:
-            continue
-        if args.quick and name.startswith("fragmented_256_"):
-            continue
-        run_case(*case)
+    all_cases = CASES + generated_cases(args.random_cases, args.seed)
+    if args.list:
+        for case in all_cases:
+            print(case.name)
+        return
+
+    selected = select_cases(all_cases, set(args.case), args.quick, args.no_large)
+    if not selected:
+        raise SystemExit("no test cases selected")
+    for case in selected:
+        run_case(case, args.repeat)
 
 
 if __name__ == "__main__":

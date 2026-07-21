@@ -143,6 +143,22 @@ function(add_bin_compile_target)
   if (NOT TARGET binary)
     add_custom_target(binary)
   endif()
+  # opc obtains dynamic-shape tiling definitions from the OPP layout next to
+  # the generated adapter.  Make a small staging layout backed by the host
+  # tiling library before any kernel compile starts.  Without this dependency
+  # a clean parallel build falls back to whichever global custom OPP happens
+  # to be installed, which can leave GET_TILING_DATA without a definition.
+  set(_TILING_STAGE_DIR ${BINCMP_OUT_DIR}/customize/op_impl/ai_core/tbe/op_tiling)
+  if (NOT TARGET ${BINCMP_TARGET}_tiling_registry)
+    add_custom_target(${BINCMP_TARGET}_tiling_registry
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${_TILING_STAGE_DIR}
+      COMMAND ${CMAKE_COMMAND} -E rm -f ${_TILING_STAGE_DIR}/liboptiling.so
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+              ${CMAKE_BINARY_DIR}/op_host/libcust_opmaster_rt2.0.so
+              ${_TILING_STAGE_DIR}/liboptiling.so
+      DEPENDS cust_optiling
+    )
+  endif()
   add_custom_target(${BINCMP_TARGET}
                     COMMAND cp -r ${BINCMP_IMPL_DIR}/*.* ${BINCMP_OUT_DIR}/src
   )
@@ -171,6 +187,9 @@ function(add_bin_compile_target)
       add_custom_target(${BINCMP_TARGET}_${op_file}_copy
                         COMMAND cp ${BINCMP_ADP_DIR}/${op_file}.py ${BINCMP_OUT_DIR}/src/${op_type}.py
       )
+      # The generated Python adapter is produced by ascendc_impl_gen.  Without
+      # this edge a clean parallel build can try to copy it before it exists.
+      add_dependencies(${BINCMP_TARGET}_${op_file}_copy ascendc_impl_gen)
       install(DIRECTORY ${BINCMP_OUT_DIR}/bin/${op_file}
         DESTINATION ${BINCMP_INSTALL_DIR}/${BINCMP_COMPUTE_UNIT} OPTIONAL
       )
@@ -182,7 +201,7 @@ function(add_bin_compile_target)
                       COMMAND ${_ASCENDC_ENV_VAR} bash ${bin_script} ${BINCMP_OUT_DIR}/src/${op_type}.py ${BINCMP_OUT_DIR}/bin/${op_file} $(MAKE)
                       WORKING_DIRECTORY ${BINCMP_OUT_DIR}
     )
-    add_dependencies(${BINCMP_TARGET}_${op_file}_${op_index} ${BINCMP_TARGET} ${BINCMP_TARGET}_${op_file}_copy)
+    add_dependencies(${BINCMP_TARGET}_${op_file}_${op_index} ${BINCMP_TARGET} ${BINCMP_TARGET}_${op_file}_copy ${BINCMP_TARGET}_tiling_registry)
     add_dependencies(${BINCMP_TARGET}_gen_ops_config ${BINCMP_TARGET}_${op_file}_${op_index})
   endforeach()
   install(FILES ${BINCMP_OUT_DIR}/bin/binary_info_config.json

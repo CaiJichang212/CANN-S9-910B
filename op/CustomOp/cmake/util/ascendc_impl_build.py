@@ -314,15 +314,36 @@ class AdpBuilder(opdesc_parser.OpDesc):
     def __init__(self: any, op_type: str):
         self.argsdefv = []
         self.op_compile_option:str = '{}'
+        self.kernel_src_file = ''
         super().__init__(op_type)
+
+
+    def _resolve_kernel_source_file(self: any, impl_path: str) -> str:
+        """Resolve the device source without coupling its name to ``opFile``.
+
+        Custom-op registration names (for example ``concat_custom``) are part
+        of the public runtime ABI, while source filenames are an independent
+        project convention.  Prefer the legacy ``opFile.cpp`` name, then use a
+        single unambiguous C++ source in the kernel directory.
+        """
+        default_name = self.op_file + '.cpp'
+        if os.path.exists(os.path.join(impl_path, default_name)):
+            return default_name
+        source_files = sorted(
+            name for name in os.listdir(impl_path) if name.endswith('.cpp')
+        )
+        if len(source_files) == 1:
+            return source_files[0]
+        return ''
 
 
     def write_adapt(self: any, impl_path, path: str, op_compile_option_all: list = None):
         self._build_paradefault()
         if os.environ.get('BUILD_BUILTIN_OPP') != '1' and impl_path != "":
-            src_file = os.path.join(impl_path, self.op_file + '.cpp')
-            if not os.path.exists(src_file):
-                print(f"[ERROR]: operator: {self.op_file} source file: {src_file} does not found, please check.")
+            self.kernel_src_file = self._resolve_kernel_source_file(impl_path)
+            if not self.kernel_src_file:
+                print(f"[ERROR]: operator: {self.op_file} needs exactly one kernel .cpp file in {impl_path} "
+                      f"when {self.op_file}.cpp is absent, please check.")
                 return
         out_path = os.path.abspath(path)
         if self.dynamic_shape and not out_path.endswith('dynamic'):
@@ -549,7 +570,7 @@ class AdpBuilder(opdesc_parser.OpDesc):
             kern_name = self.kern_name
         else:
             kern_name = self.op_intf
-        src = self.op_file + '.cpp'
+        src = self.kernel_src_file or self.op_file + '.cpp'
         virt_exprs = self._build_virtual()
         fd.write(IMPL_API.format(self.op_type, pchk, self.op_intf, argsdef, kern_name, virt_exprs, argsval,\
                                  self.custom_compile_options, self.custom_all_compile_options, self.op_intf,\

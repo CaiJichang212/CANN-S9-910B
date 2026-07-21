@@ -16,8 +16,8 @@ rights reserved.
 
 namespace domi {
 // register op info to GE
-REGISTER_CUSTOM_OP("Concat")
+REGISTER_CUSTOM_OP("ConcatCustom")
     .FrameworkType(TENSORFLOW)   // type: CAFFE, TENSORFLOW
-    .OriginOpType("Concat")      // name in tf module
+    .OriginOpType("ConcatCustom")      // name in tf module
     .ParseParamsByOperatorFn(AutoMappingByOpFn);
 }  // namespace domi

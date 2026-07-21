@@ -8,19 +8,131 @@
  *   输出为                   [beforeDimSize, totalCatLen,     afterDimSize]
  *   afterDimSize 维在内存上连续。
  *
- * 核切分：kernel 按输出扁平字节区间 [myStart,myEnd) 切分给各核，
- *   与 beforeDim/dim 取值无关地满核（解决 dim=0/beforeDim=1 时单核欠载问题）。
+ * 核切分：优先枚举行×输出列的二维方案。一个核只遍历自己列区间相交
+ * 的输入；输出行不能安全列分时保留整行切分。
  */
 #include "concat_tiling.h"
 #include "register/op_def_registry.h"
 #include "tiling/tiling_api.h"
+#include "tiling/platform/platform_ascendc.h"
 
+#include <algorithm>
 #include <cstdint>
 
 namespace optiling {
 
-// 910B4-1 单卡 AICore 数量
-constexpr uint32_t AICORE_NUM = 20;
+constexpr uint32_t DATA_BLOCK_BYTES = 32;
+constexpr uint32_t PREFERRED_COL_BYTES = 512;
+constexpr uint32_t TILE_BYTES = 64 * 1024;
+constexpr uint32_t DMA_SETUP_COST = 4096;
+
+static uint32_t Gcd(uint32_t lhs, uint32_t rhs)
+{
+    while (rhs != 0) {
+        uint32_t next = lhs % rhs;
+        lhs = rhs;
+        rhs = next;
+    }
+    return lhs;
+}
+
+static uint64_t AlignUp(uint64_t value, uint32_t alignment)
+{
+    return (value + alignment - 1) / alignment * alignment;
+}
+
+static uint32_t CeilDiv(uint32_t value, uint32_t divisor)
+{
+    return (value + divisor - 1) / divisor;
+}
+
+struct SplitChoice {
+    uint32_t usedCoreNum = 1;
+    uint32_t splitMode = 0;
+    uint32_t rowPeriod = 1;
+    uint32_t rowSliceNum = 1;
+    uint32_t colCoreNum = 1;
+    uint32_t colBlockBytes = 0;
+    uint64_t worstCost = ~0ULL;
+};
+
+static uint64_t EstimateColumnCost(uint32_t rows, uint32_t colBegin, uint32_t colEnd,
+                                   uint32_t inputNum, const uint32_t *inputCatLen,
+                                   const uint32_t *inputCatOffset, uint64_t catUnitBytes)
+{
+    uint64_t cost = 0;
+    for (uint32_t input = 0; input < inputNum; ++input) {
+        const uint64_t inputBegin = static_cast<uint64_t>(inputCatOffset[input]) * catUnitBytes;
+        const uint64_t inputEnd = inputBegin + static_cast<uint64_t>(inputCatLen[input]) * catUnitBytes;
+        const uint64_t begin = std::max<uint64_t>(colBegin, inputBegin);
+        const uint64_t end = std::min<uint64_t>(colEnd, inputEnd);
+        if (begin >= end) continue;
+        const uint64_t pieceBytes = end - begin;
+        const uint64_t alignedPieceBytes = AlignUp(pieceBytes, DATA_BLOCK_BYTES);
+        // 超出 UB 的窄列会逐行再切块；模型保守估计其 DMA 数。
+        const uint64_t rowsPerCopy = std::max<uint64_t>(1, TILE_BYTES / alignedPieceBytes);
+        const uint64_t copyCount = (static_cast<uint64_t>(rows) + rowsPerCopy - 1) / rowsPerCopy;
+        cost += copyCount * DMA_SETUP_COST + static_cast<uint64_t>(rows) * alignedPieceBytes;
+    }
+    return cost;
+}
+
+static SplitChoice ChooseSplit(uint32_t availableCores, uint32_t beforeDimSize, uint64_t rowBytes,
+                               uint32_t inputNum, const uint32_t *inputCatLen,
+                               const uint32_t *inputCatOffset, uint64_t catUnitBytes)
+{
+    SplitChoice best;
+    if (beforeDimSize == 0 || rowBytes == 0) return best;
+
+    const uint32_t rowCores = std::max(1U, std::min(availableCores, beforeDimSize));
+    const uint32_t rowsPerCore = CeilDiv(beforeDimSize, rowCores);
+    best.usedCoreNum = rowCores;
+    best.rowPeriod = DATA_BLOCK_BYTES / Gcd(static_cast<uint32_t>(rowBytes % DATA_BLOCK_BYTES), DATA_BLOCK_BYTES);
+    best.colBlockBytes = rowBytes > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rowBytes);
+    best.worstCost = EstimateColumnCost(rowsPerCore, 0, best.colBlockBytes, inputNum,
+                                        inputCatLen, inputCatOffset, catUnitBytes);
+
+    // A fixed logical column boundary cannot be 32B aligned for every row when
+    // rowBytes is not 32B aligned.  Keep those layouts on the race-free row path.
+    if ((rowBytes % DATA_BLOCK_BYTES) != 0 || rowBytes > UINT32_MAX) return best;
+
+    const uint32_t rowBytes32 = static_cast<uint32_t>(rowBytes);
+    auto consider = [&](uint32_t columnBytes) {
+        if (columnBytes == 0) return;
+        const uint32_t colCores = CeilDiv(rowBytes32, columnBytes);
+        if (colCores < 2 || colCores > availableCores) return;
+        for (uint32_t rowSlices = 1; rowSlices <= availableCores / colCores; ++rowSlices) {
+            const uint32_t used = rowSlices * colCores;
+            const uint32_t rows = CeilDiv(beforeDimSize, rowSlices);
+            uint64_t worst = 0;
+            for (uint32_t col = 0; col < colCores; ++col) {
+                const uint32_t begin = col * columnBytes;
+                const uint32_t end = std::min(rowBytes32, begin + columnBytes);
+                worst = std::max(worst, EstimateColumnCost(rows, begin, end, inputNum,
+                                                           inputCatLen, inputCatOffset, catUnitBytes));
+            }
+            // Prefer 512B boundaries for indistinguishable estimates, while
+            // allowing the 32B candidate to use every AIV when it models faster.
+            if (worst < best.worstCost ||
+                (worst == best.worstCost && columnBytes == PREFERRED_COL_BYTES && best.splitMode != 1)) {
+                best.usedCoreNum = used;
+                best.splitMode = 1;
+                best.rowSliceNum = rowSlices;
+                best.colCoreNum = colCores;
+                best.colBlockBytes = columnBytes;
+                best.worstCost = worst;
+            }
+        }
+    };
+
+    if (rowBytes32 >= PREFERRED_COL_BYTES) consider(PREFERRED_COL_BYTES);
+    const uint32_t maxColumnParts = std::min(availableCores, CeilDiv(rowBytes32, DATA_BLOCK_BYTES));
+    for (uint32_t parts = 2; parts <= maxColumnParts; ++parts) {
+        const uint32_t columnBytes = static_cast<uint32_t>(AlignUp(CeilDiv(rowBytes32, parts), DATA_BLOCK_BYTES));
+        consider(columnBytes);
+    }
+    return best;
+}
 
 static ge::graphStatus TilingFunc(gert::TilingContext *context)
 {
@@ -111,17 +223,15 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         default:             dtypeSize = 2; break;
     }
 
-    // 6. 多核切分：按 beforeDim 行切分给各核（每行内是连续输出段，避免跨核写同一 32B block）
-    //    - 数据量足够大时用满 20 核；beforeDim 小时按行数自适应
-    uint32_t usedCoreNum = AICORE_NUM;
-    if (beforeDimSize == 0) {
-        usedCoreNum = 1;
-    } else if (usedCoreNum > beforeDimSize) {
-        usedCoreNum = beforeDimSize;
-    }
-    if (usedCoreNum == 0) {
-        usedCoreNum = 1;
-    }
+    // 6. 用运行时平台核数建模，而不是把具体卡型的核数写死在算子里。
+    auto platform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
+    int32_t platformAivCores = platform.GetCoreNumAiv();
+    uint32_t availableCores = platformAivCores > 0 ? static_cast<uint32_t>(platformAivCores) : 1U;
+    const uint64_t catUnitBytes = static_cast<uint64_t>(afterDimSize) * dtypeSize;
+    const uint64_t outputRowBytes = static_cast<uint64_t>(totalCatLen) * catUnitBytes;
+    SplitChoice split = ChooseSplit(availableCores, beforeDimSize, outputRowBytes,
+                                    static_cast<uint32_t>(tensorNum), inputCatLenArr,
+                                    inputCatOffsetArr, catUnitBytes);
 
     // 7. 写 tiling
     tiling.set_inputNum(static_cast<uint32_t>(tensorNum));
@@ -131,13 +241,18 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     tiling.set_beforeDimSize(beforeDimSize);
     tiling.set_afterDimSize(afterDimSize);
     tiling.set_totalCatLen(totalCatLen);
-    tiling.set_usedCoreNum(usedCoreNum);
+    tiling.set_usedCoreNum(split.usedCoreNum);
+    tiling.set_splitMode(split.splitMode);
+    tiling.set_rowPeriod(split.rowPeriod);
+    tiling.set_rowSliceNum(split.rowSliceNum);
+    tiling.set_colCoreNum(split.colCoreNum);
+    tiling.set_colBlockBytes(split.colBlockBytes);
 
     // 数组字段整体写入（set 方法接收指针，内部 memcpy）
     tiling.set_inputCatLen(inputCatLenArr);
     tiling.set_inputCatOffset(inputCatOffsetArr);
 
-    context->SetBlockDim(usedCoreNum);
+    context->SetBlockDim(split.usedCoreNum);
     tiling.SaveToBuffer(context->GetRawTilingData()->GetData(),
                         context->GetRawTilingData()->GetCapacity());
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
@@ -207,9 +322,9 @@ static ge::graphStatus InferDataType(gert::InferDataTypeContext *context)
 
 
 namespace ops {
-class Concat : public OpDef {
+class ConcatCustom : public OpDef {
 public:
-    explicit Concat(const char *name) : OpDef(name)
+    explicit ConcatCustom(const char *name) : OpDef(name)
     {
         this->Input("srcList")
             .ParamType(DYNAMIC)
@@ -232,5 +347,5 @@ public:
     }
 };
 
-OP_ADD(Concat);
+OP_ADD(ConcatCustom);
 }  // namespace ops
