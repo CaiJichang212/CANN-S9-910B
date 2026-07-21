@@ -2,9 +2,11 @@
 """Comprehensive NPU precision test for all modes/dtypes."""
 import os
 os.environ['ASCEND_RT_VISIBLE_DEVICES'] = '7'
-# Put squaresumv1_custom vendor libs first in LD_LIBRARY_PATH
-vendor_lib = '/usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/lib'
-os.environ['LD_LIBRARY_PATH'] = vendor_lib + ':' + os.environ.get('LD_LIBRARY_PATH', '')
+
+import ctypes
+# The custom-op wrapper resolves ACLNN symbols from this globally loaded
+# library.  Changing LD_LIBRARY_PATH after process start cannot affect dlopen.
+ctypes.CDLL("libopapi.so", mode=ctypes.RTLD_GLOBAL)
 
 import numpy as np
 import torch

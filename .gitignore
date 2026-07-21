@@ -13,3 +13,20 @@ PROF_*/
 **/kernel_meta/
 **/extra-info/
 **/*_profiling_output_record
+
+# ============================================================
+# CMake 构建产物（ST 测试 mock 构建目录）
+# ============================================================
+**/tests/st/build-mock/
+**/tests/st/build/
+
+# ============================================================
+# SquareSumV1 评测：原始 profiling 数据（仅跟踪报告/汇总）
+# ============================================================
+# 验收 profiling 原始日志（msprof.log / exit_status / npu_*.txt）
+SquareSumV1/perf_acceptance_raw/
+SquareSumV1/scientific_deep_profile_20260721/
+SquareSumV1/scientific_perf_4_7_20260721/
+
+# docs/perf 下的 profiling CSV 中间汇总（保留 .md 报告，忽略原始 CSV）
+SquareSumV1/docs/perf/
