@@ -117,3 +117,20 @@ Concat_0630.zip
 Concat_0630_zip/
 Concat/extra-info/
 **/extra-info/
+
+# ============================================================
+# S9 评测：构建产物与原始数据（仅跟踪报告/汇总）
+# ============================================================
+# 构建产物
+Concat/kernel_meta/
+Concat/opp/
+
+# 评测用例级原始数据（device.txt / exit_status / *.exit / profiling_output_record）
+Concat/perf_eval/cases/
+Concat/perf_eval/acceptance_20260721/*/
+Concat/perf_eval/s9_scientific_20260721/calibration/
+Concat/perf_eval/s9_scientific_20260721/deep/*.exit
+Concat/perf_eval/s9_scientific_20260721/latency/*/
+
+# 单次性能快照（result-20260720.txt 已作为基线跟踪；新快照建议合并到 docs/baseline_results.md）
+result-20260720-2.txt
