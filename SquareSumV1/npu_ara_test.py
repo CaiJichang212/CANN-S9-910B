@@ -78,17 +78,22 @@ if __name__ == '__main__':
     cases = [
         # ARA_FULLLOAD (Key=2)
         ("ARA_FULLLOAD fp16 [4,3,1000] axis=1", (4,3,1000), torch.float16, 1, False),
+        # A0=997 is not 32B aligned for fp16: verifies GM srcStride bytes.
+        ("ARA_FULLLOAD fp16 [4,3,997] axis=1", (4,3,997), torch.float16, 1, False),
         ("ARA_FULLLOAD fp32 [4,3,1000] axis=1", (4,3,1000), torch.float32, 1, False),
 
         # ARA_ROWSPLIT (Key=3)
         ("ARA_ROWSPLIT fp16 [4,10000,100] axis=1", (4,10000,100), torch.float16, 1, False),
+        # rLength>4095 forces the DMA-safe Key3 path; fp32 avoids fp16 overflow.
+        ("ARA_ROWSPLIT fp32 [1,5000,100] axis=1", (1,5000,100), torch.float32, 1, False),
 
         # AR (Key=0/1) regression
         ("AR_FULLLOAD fp16 [4,1000] axis=-1", (4,1000), torch.float16, -1, False),
         ("AR_FULLLOAD fp32 [4,1000] axis=-1", (4,1000), torch.float32, -1, False),
 
         # MULTI_AXIS (Key=4)
-        ("MULTI_AXIS fp16 [2,3,4] axis=[0,2]", (2,3,4), torch.float16, [0,2], False),
+        # Non-32B final row verifies Key4 only reads valid GM elements.
+        ("MULTI_AXIS fp16 [2,3,5] axis=[0,2]", (2,3,5), torch.float16, [0,2], False),
     ]
 
     res = [run(*c) for c in cases]

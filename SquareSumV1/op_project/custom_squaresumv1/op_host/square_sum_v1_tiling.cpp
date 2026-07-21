@@ -35,6 +35,8 @@ constexpr uint32_t WS_SYS_SIZE = 0U;
 constexpr size_t WORKSPACE_NUM = 1;
 constexpr uint32_t UB_SIZE_910B = 192 * 1024; // 192KB total, use 184KB as safe limit
 constexpr uint32_t UB_SAFE_LIMIT = 184 * 1024;
+// DataCopyPad(DataCopyExtParams)::blockCount is limited to [1, 4095].
+constexpr int64_t MAX_DMA_BLOCK_COUNT = 4095;
 
 // Get platform info
 static ge::graphStatus GetPlatformInfo(gert::TilingContext* context, uint64_t* ubSize, int64_t* coreNum)
@@ -280,7 +282,11 @@ static void ComputeLayerSubTiling(
         }
     } else {
         // ARA mode
-        int64_t a0Align = CeilAlign(a0Length, static_cast<int64_t>(fp32Epb));
+        // Every UB row written by DataCopyPad must start at 32B.  fp32 needs
+        // 8 elements and fp16/bf16 needs 16, so use the stricter alignment.
+        const int64_t rowAlign = std::max(static_cast<int64_t>(fp32Epb),
+                                          static_cast<int64_t>(32 / typeSize));
+        int64_t a0Align = CeilAlign(a0Length, rowAlign);
 
         auto computeAraUbNeeded = [&](int64_t rRows, int64_t cols) -> uint64_t {
             uint64_t inBytes = rRows * cols * typeSize;
@@ -301,26 +307,29 @@ static void ComputeLayerSubTiling(
 
         uint64_t ubNeeded = computeAraUbNeeded(rLength, tileA0Align);
 
-        if (ubNeeded <= ubSize) {
+        // A full-load 2D DMA cannot encode more than 4095 rows.  Route such
+        // shapes to ROWSPLIT even when they happen to fit in UB.
+        const bool forceRowSplit = rLength > MAX_DMA_BLOCK_COUNT;
+        if (ubNeeded <= ubSize && !forceRowSplit) {
             layer.subMode = 2; // ARA_FULLLOAD
         } else {
             // Binary search for max tileA0
             int64_t maxA0 = a0Align;
-            int64_t minA0 = static_cast<int64_t>(fp32Epb);
+            int64_t minA0 = rowAlign;
             int64_t bestA0 = 0;
 
             while (minA0 <= maxA0) {
-                int64_t mid = CeilAlign((minA0 + maxA0) / 2, static_cast<int64_t>(fp32Epb));
-                if (mid < static_cast<int64_t>(fp32Epb)) mid = fp32Epb;
+                int64_t mid = CeilAlign((minA0 + maxA0) / 2, rowAlign);
+                if (mid < rowAlign) mid = rowAlign;
                 if (computeAraUbNeeded(rLength, mid) <= ubSize) {
                     bestA0 = mid;
-                    minA0 = mid + fp32Epb;
+                    minA0 = mid + rowAlign;
                 } else {
-                    maxA0 = mid - fp32Epb;
+                    maxA0 = mid - rowAlign;
                 }
             }
 
-            if (bestA0 >= static_cast<int64_t>(fp32Epb)) {
+            if (bestA0 >= rowAlign && !forceRowSplit) {
                 layer.subMode = 2;
                 tileA0Align = bestA0;
                 tileA0Len = std::min(tileA0Align, a0Length);
@@ -328,11 +337,11 @@ static void ComputeLayerSubTiling(
             } else {
                 // ARA_ROWSPLIT
                 layer.subMode = 3;
-                tileA0Align = std::min(static_cast<int64_t>(fp32Epb * 8), a0Align);
+                tileA0Align = std::min(rowAlign * 8, a0Align);
                 tileA0Len = std::min(tileA0Align, a0Length);
                 numA0Tiles = CeilDiv(a0Length, tileA0Len);
 
-                int64_t maxR = rLength;
+                int64_t maxR = std::min(rLength, MAX_DMA_BLOCK_COUNT);
                 int64_t minR = 1;
                 int64_t bestR = 1;
                 while (minR <= maxR) {
@@ -726,7 +735,11 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         // === ARA mode ===
         if (a0Length == 0) a0Length = 1;
 
-        a0LengthAlign = CeilAlign(a0Length, static_cast<int64_t>(fp32ElementsPerBlock));
+        // DataCopyPad lays successive UB rows on 32B boundaries.  Align for
+        // both the input element type and the fp32 accumulation path.
+        const int64_t araRowAlign = std::max(static_cast<int64_t>(fp32ElementsPerBlock),
+                                             static_cast<int64_t>(inputElementsPerBlock));
+        a0LengthAlign = CeilAlign(a0Length, araRowAlign);
 
         tileA0Len = a0Length;
         tileA0Align = a0LengthAlign;
@@ -746,42 +759,43 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
 
         uint64_t ubNeededAraFull = computeAraUbNeeded(rLength, tileA0Align);
 
-        if (ubNeededAraFull <= ubSize) {
+        const bool forceRowSplit = rLength > MAX_DMA_BLOCK_COUNT;
+        if (ubNeededAraFull <= ubSize && !forceRowSplit) {
             tilingMode = 2;
             numA0Tiles = 1;
         } else {
             int64_t maxTileA0 = a0LengthAlign;
-            int64_t minTileA0 = static_cast<int64_t>(fp32ElementsPerBlock);
+            int64_t minTileA0 = araRowAlign;
             int64_t bestTileA0 = 0;
 
             while (minTileA0 <= maxTileA0) {
                 int64_t mid = (minTileA0 + maxTileA0) / 2;
-                mid = CeilAlign(mid, static_cast<int64_t>(fp32ElementsPerBlock));
-                if (mid < static_cast<int64_t>(fp32ElementsPerBlock)) {
-                    mid = fp32ElementsPerBlock;
+                mid = CeilAlign(mid, araRowAlign);
+                if (mid < araRowAlign) {
+                    mid = araRowAlign;
                 }
                 uint64_t ubNeeded = computeAraUbNeeded(rLength, mid);
                 if (ubNeeded <= ubSize) {
                     bestTileA0 = mid;
-                    minTileA0 = mid + fp32ElementsPerBlock;
+                    minTileA0 = mid + araRowAlign;
                 } else {
-                    maxTileA0 = mid - fp32ElementsPerBlock;
+                    maxTileA0 = mid - araRowAlign;
                 }
             }
 
-            if (bestTileA0 >= static_cast<int64_t>(fp32ElementsPerBlock)) {
+            if (bestTileA0 >= araRowAlign && !forceRowSplit) {
                 tilingMode = 2;
                 tileA0Align = bestTileA0;
                 tileA0Len = std::min(tileA0Align, a0Length);
                 numA0Tiles = CeilDiv(a0Length, tileA0Len);
             } else {
                 tilingMode = 3;
-                tileA0Align = static_cast<int64_t>(fp32ElementsPerBlock * 8);
+                tileA0Align = araRowAlign * 8;
                 tileA0Align = std::min(tileA0Align, a0LengthAlign);
                 tileA0Len = std::min(tileA0Align, a0Length);
                 numA0Tiles = CeilDiv(a0Length, tileA0Len);
 
-                int64_t maxRChunk = rLength;
+                int64_t maxRChunk = std::min(rLength, MAX_DMA_BLOCK_COUNT);
                 int64_t minRChunk = 1;
                 int64_t bestRChunk = 1;
 

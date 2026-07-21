@@ -226,8 +226,12 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
         //   - outBuf: max(8, tileA0Align) elements of float (ReduceSum scalar or temp)
         //   - tmpBuf: small, for ReduceSum scalar helper
 
-        int64_t maxRLen = 1;
-        int64_t maxA0Align = 8; // minimum 8 fp32 elements (32 bytes)
+        // DataCopyPad may materialize a 32B tail in UB even when blockLen is
+        // the shorter valid GM length.  Size both input and fp32 work buffers
+        // for that rounded single-row capacity.
+        const int64_t inputBlockElems = 32 / sizeof(T);
+        int64_t maxRLen = inputBlockElems;
+        int64_t maxA0Align = (inputBlockElems > 8) ? inputBlockElems : 8;
 
         for (int32_t li = 0; li < numLayers_; li++) {
             int64_t rLen = tilingData->layerRLength[li];
@@ -235,11 +239,14 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
             int64_t a0Len = tilingData->layerA0Length[li];
             int64_t isTail = tilingData->layerIsTailReduce[li];
 
-            if (rLen > maxRLen) maxRLen = rLen;
+            int64_t rLenInputAlign = (rLen + inputBlockElems - 1) / inputBlockElems * inputBlockElems;
+            if (rLenInputAlign > maxRLen) maxRLen = rLenInputAlign;
 
             // For tail reduce layers, a0Align not needed (scalar output)
             if (!isTail && a0Len > 0) {
-                int64_t a0Align = (a0Len + 7) / 8 * 8; // align to 8 for fp32
+                int64_t a0Align = (a0Len + inputBlockElems - 1) / inputBlockElems * inputBlockElems;
+                int64_t a0Fp32Align = (a0Len + 7) / 8 * 8;
+                if (a0Fp32Align > a0Align) a0Align = a0Fp32Align;
                 if (a0Align > maxA0Align) maxA0Align = a0Align;
             }
         }
@@ -394,7 +401,9 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
 
             DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
             DataCopyPad(xLocal, inputGM[globalRowIdx * rLength_ + chunkStart], copyParams, padParams);
-            PipeBarrier<PIPE_V>();
+            // DataCopyPad is issued by MTE.  PIPE_V alone does not establish
+            // an MTE2 -> Vector dependency for a raw TBuf.
+            PipeBarrier<PIPE_ALL>();
 
             LocalTensor<float> reduceDst = outQueueYSingle.Get<float>();
 
@@ -425,6 +434,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
             PipeBarrier<PIPE_V>();
         }
 
+        PipeBarrier<PIPE_ALL>();
+
         DataCopyExtParams copyParamsOut;
         copyParamsOut.blockCount = 1;
         copyParamsOut.blockLen = sizeof(T);
@@ -432,6 +443,9 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
         copyParamsOut.dstStride = 0;
         copyParamsOut.rsv = 0;
         DataCopyPad(resultGM[globalRowIdx], yLocal, copyParamsOut);
+        // outQueueYSingle is reused by the next row; wait for MTE3 before
+        // overwriting the raw TBuf source of this non-queued DMA.
+        PipeBarrier<PIPE_ALL>();
     }
 }
 
@@ -461,13 +475,18 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             LocalTensor<T> xLocal = inQueueXSingle.Get<T>();
             // 清零 xLocal：最后 a0 tile 的 a0Len 可能 < alignedCols，避免未 Copy 的 padding 垃圾参与 reduce
             Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rLength_ * alignedCols));
-            PipeBarrier<PIPE_V>();
+            PipeBarrier<PIPE_ALL>();
 
             DataCopyExtParams copyParams;
             copyParams.blockCount = static_cast<uint16_t>(rLength_);
             copyParams.blockLen = a0Len * sizeof(T);
-            copyParams.srcStride = static_cast<uint16_t>((a0Length_ - a0Len) * sizeof(T) / 32);
-            copyParams.dstStride = 0;
+            // Source is GM: srcStride is measured in bytes (not 32B blocks).
+            copyParams.srcStride = static_cast<uint32_t>((a0Length_ - a0Len) * sizeof(T));
+            // Destination is UB: dstStride is in 32B datablocks.  A partial
+            // final A0 tile must still land at the alignedCols row pitch.
+            const int64_t ubRowBlocks = alignedCols * sizeof(T) / 32;
+            const int64_t copiedBlocks = (a0Len * sizeof(T) + 31) / 32;
+            copyParams.dstStride = static_cast<uint32_t>(ubRowBlocks - copiedBlocks);
             copyParams.rsv = 0;
             DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
             DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
@@ -507,6 +526,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
                 PipeBarrier<PIPE_V>();
             }
 
+            PipeBarrier<PIPE_ALL>();
+
             int64_t resultGmOffset = globalRowIdx * a0Length_ + a0Start;
             DataCopyExtParams copyParamsOut;
             copyParamsOut.blockCount = 1;
@@ -520,6 +541,9 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             } else {
                 DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
             }
+            // The next A0 tile reuses accLocal/yLocal.  Without an MTE3
+            // dependency the following Duplicate can turn this tile into zero.
+            PipeBarrier<PIPE_ALL>();
         }
     }
 }
@@ -531,7 +555,6 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
 template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
 {
-    LocalTensor<uint8_t> tmpLocal = tmpBuf.Get<uint8_t>();
     LocalTensor<float> accLocal = accBuf.Get<float>();
 
     for (int64_t i = 0; i < myRows_; i++) {
@@ -563,44 +586,53 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
 
                 LocalTensor<T> xLocal = inQueueXSingle.Get<T>();
 
+                // DataCopyPad advances each UB block to a 32B boundary.  The
+                // host guarantees alignedCols is an input-type 32B multiple;
+                // clear the final partial A0 tile before copying its rows.
+                Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rSize * alignedCols));
+                PipeBarrier<PIPE_ALL>();
+
                 DataCopyExtParams copyParams;
                 copyParams.blockCount = static_cast<uint16_t>(rSize);
                 copyParams.blockLen = a0Len * sizeof(T);
-                copyParams.srcStride = static_cast<uint16_t>((a0Length_ - a0Len) * sizeof(T) / 32);
-                copyParams.dstStride = 0;
+                // GM-side stride is in bytes; rSize is capped to 4095 by host tiling.
+                copyParams.srcStride = static_cast<uint32_t>((a0Length_ - a0Len) * sizeof(T));
+                // Keep each copied UB row at alignedCols, including the last
+                // partial A0 tile (UB stride unit is one 32B datablock).
+                const int64_t ubRowBlocks = alignedCols * sizeof(T) / 32;
+                const int64_t copiedBlocks = (a0Len * sizeof(T) + 31) / 32;
+                copyParams.dstStride = static_cast<uint32_t>(ubRowBlocks - copiedBlocks);
                 copyParams.rsv = 0;
 
                 DataCopyPadExtParams<T> padParams{false, 0, 0, static_cast<T>(0)};
                 DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
-                PipeBarrier<PIPE_V>();
-
-                LocalTensor<float> chunkResult = outQueueYSingle.Get<float>();
+                PipeBarrier<PIPE_ALL>();
 
                 if constexpr (isFloatInput) {
                     Mul(xLocal, xLocal, xLocal, rSize * alignedCols);
                     PipeBarrier<PIPE_V>();
-                    uint32_t srcShape[2] = {static_cast<uint32_t>(rSize),
-                                            static_cast<uint32_t>(alignedCols)};
-                    ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                        chunkResult, xLocal, tmpLocal, srcShape, true);
+                    for (int64_t rIdx = 0; rIdx < rSize; rIdx++) {
+                        Add(accLocal, accLocal,
+                            xLocal.template ReinterpretCast<float>()[static_cast<uint32_t>(rIdx * alignedCols)],
+                            static_cast<int32_t>(alignedCols));
+                        PipeBarrier<PIPE_V>();
+                    }
                 } else {
                     LocalTensor<float> xFp32 = computeBuf.Get<float>();
+                    // Do not round castCount up: xFp32 is allocated exactly
+                    // rSize * alignedCols elements and the old round-up read
+                    // past its end on partial chunks.
                     uint32_t castCount = static_cast<uint32_t>(rSize * alignedCols);
-                    uint32_t castAlign = 256 / sizeof(float);
-                    castCount = ((castCount + castAlign - 1) / castAlign) * castAlign;
                     Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
                     PipeBarrier<PIPE_V>();
                     Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
                     PipeBarrier<PIPE_V>();
-                    uint32_t srcShape[2] = {static_cast<uint32_t>(rSize),
-                                            static_cast<uint32_t>(alignedCols)};
-                    ReduceSum<float, AscendC::Pattern::Reduce::RA, true>(
-                        chunkResult, xFp32, tmpLocal, srcShape, true);
+                    for (int64_t rIdx = 0; rIdx < rSize; rIdx++) {
+                        Add(accLocal, accLocal, xFp32[static_cast<uint32_t>(rIdx * alignedCols)],
+                            static_cast<int32_t>(alignedCols));
+                        PipeBarrier<PIPE_V>();
+                    }
                 }
-
-                PipeBarrier<PIPE_V>();
-                Add(accLocal, accLocal, chunkResult, alignedCols);
-                PipeBarrier<PIPE_V>();
             }
 
             LocalTensor<T> yLocal = outQueueYSingle.Get<T>();
@@ -608,6 +640,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
                 Cast(yLocal, accLocal, RoundMode::CAST_NONE, alignedCols);
                 PipeBarrier<PIPE_V>();
             }
+
+            PipeBarrier<PIPE_ALL>();
 
             int64_t resultGmOffset = globalRowIdx * a0Length_ + a0Start;
             DataCopyExtParams copyParamsOut;
@@ -622,6 +656,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
             } else {
                 DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
             }
+            // Raw TBuf storage is immediately reused by the next A0 tile.
+            PipeBarrier<PIPE_ALL>();
         }
     }
 }
@@ -667,11 +703,11 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
             if (isFirstLayer) {
                 // Read rLen elements from inputGM, square, ReduceSum
                 LocalTensor<T> xLocal = multiInBuf.Get<T>();
-                int64_t rLenAlign = (rLen + (32 / sizeof(T)) - 1) / (32 / sizeof(T)) * (32 / sizeof(T));
-                if (rLenAlign < (32 / sizeof(T))) rLenAlign = (32 / sizeof(T));
                 DataCopyExtParams copyParams;
                 copyParams.blockCount = 1;
-                copyParams.blockLen = rLenAlign * sizeof(T);
+                // blockLen describes valid GM data.  Passing an aligned length
+                // reads beyond the final row when rLen is not 32B aligned.
+                copyParams.blockLen = rLen * sizeof(T);
                 copyParams.srcStride = 0;
                 copyParams.dstStride = 0;
                 copyParams.rsv = 0;
@@ -764,11 +800,11 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
                     // Read a0Len elements from inputGM
                     LocalTensor<T> xLocal = multiInBuf.Get<T>();
                     int64_t gmOffset = rowIdx * rLen * a0Len + rIdx * a0Len;
-                    int64_t a0LenAlign = (a0Len + (32 / sizeof(T)) - 1) / (32 / sizeof(T)) * (32 / sizeof(T));
-                    if (a0LenAlign < (32 / sizeof(T))) a0LenAlign = (32 / sizeof(T));
                     DataCopyExtParams cp;
                     cp.blockCount = 1;
-                    cp.blockLen = a0LenAlign * sizeof(T);
+                    // Keep GM transfer length equal to the valid tail.  UB
+                    // padding is handled by DataCopyPad, without an OOB read.
+                    cp.blockLen = a0Len * sizeof(T);
                     cp.srcStride = 0;
                     cp.dstStride = 0;
                     cp.rsv = 0;
