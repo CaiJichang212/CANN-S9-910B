@@ -6,9 +6,9 @@ set -e
 OP_NAME="Greater"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OP_PROJECT="$SCRIPT_DIR/$OP_NAME/op_project/custom_greater"
-STAGING="${SCRIPT_DIR}/${OP_NAME}_zip"
 # 拼接日期时间戳后缀，便于区分不同版本：例如 Greater_20260710_153000.zip
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+STAGING="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}_zip"
 ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
 
 echo "===== [1/3] Building operator ====="
