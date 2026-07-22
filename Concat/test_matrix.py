@@ -9,8 +9,9 @@ case can be reproduced with ``--case`` (or ``--seed`` for generated cases).
 
 Examples:
   python3 test_matrix.py --quick
-  python3 test_matrix.py --random-cases 24 --seed 20260721
+  python3 test_matrix.py --random-cases 100 --seed 20260721
   python3 test_matrix.py --case rank6_fp16_dim3 --repeat 10
+  msprof --application="python3 test_matrix.py --perf --repeat 30"
 """
 
 import argparse
@@ -39,6 +40,18 @@ def alternating_splits() -> tuple[int, ...]:
     # 128 * 15 + 128 * 17 == 4096.  Every non-empty row segment is non-32B
     # aligned for fp16/fp32/int8, exercising DataCopyPad's multi-row path.
     return tuple(15 if index % 2 == 0 else 17 for index in range(256))
+
+
+def wide_non_aligned_256_splits() -> tuple[int, ...]:
+    """256 unequal pieces totaling 262144, including zero-length entries.
+
+    The total creates a >64KiB, non-32B fp16 row.  Its input boundaries are
+    intentionally unrelated to safe row/column split boundaries.
+    """
+    lengths = [1023 if index % 2 == 0 else 1025 for index in range(256)]
+    lengths[0] = 0
+    lengths[1] += 1023
+    return tuple(lengths)
 
 
 # Hand-picked L0/L1 cases.  They cover every dtype accepted by op_host,
@@ -98,6 +111,34 @@ CASES = (
     ConcatCase("fp32_special_values_bitwise", torch.float32, (2, 65), -1,
                (1, 31, 33), (-1000, 1000), "special"),
 )
+
+# These shapes have few logical rows, large output work, and non-32B-aligned
+# rows. They guard the required safe row fallback without unpublished shapes.
+WIDE_NON_ALIGNED_CASES = (
+    ConcatCase("wide_non_aligned_before1_fp16", torch.float16, (1, 524289), -1,
+               (15, 17, 131071, 131072, 262114), (-1, 1)),
+    ConcatCase("wide_non_aligned_before1_16m_fp16", torch.float16, (1, 8388609), -1,
+               (15, 17, 2097151, 2097152, 4194274), (-1, 1)),
+    ConcatCase("wide_non_aligned_before8_fp32", torch.float32, (8, 131073), -1,
+               (15, 17, 65535, 65506), (-1000, 1000)),
+    ConcatCase("wide_non_aligned_rank3_axis1_fp16", torch.float16, (2, 131073, 3), 1,
+               (1, 15, 17, 65535, 65505), (-1, 1)),
+    ConcatCase("wide_non_aligned_axis0_fp16", torch.float16, (131073, 17), 0,
+               (1, 15, 17, 65535, 65505), (-1, 1)),
+    ConcatCase("wide_non_aligned_256_zero_fp16", torch.float16, (1, 262144), -1,
+               wide_non_aligned_256_splits(), (-1, 1)),
+)
+
+# Use this focused subset with an external 30-iteration msprof collection.
+# It retains fragmented and large-row controls so a row-fallback change is not
+# mistaken for an improvement in unrelated MTE2-bound paths.
+PERF_CASE_NAMES = frozenset((
+    *(case.name for case in WIDE_NON_ALIGNED_CASES),
+    "fragmented_256_fp16",
+    "fragmented_256_fp32",
+    "score_shape_2024x3000_fp32",
+    "single_input_large_row_fallback",
+))
 
 LARGE_CASE_PREFIXES = ("score_shape_", "fragmented_256_", "single_input_large_", "s9_")
 
@@ -197,13 +238,15 @@ def run_case(case: ConcatCase, repeat: int) -> None:
 
 
 def select_cases(cases: Iterable[ConcatCase], names: set[str], quick: bool,
-                 no_large: bool) -> tuple[ConcatCase, ...]:
+                 no_large: bool, perf: bool) -> tuple[ConcatCase, ...]:
     cases = tuple(cases)
     known = {case.name for case in cases}
     unknown = names - known
     if unknown:
         raise SystemExit(f"unknown case(s): {', '.join(sorted(unknown))}")
     selected = tuple(case for case in cases if not names or case.name in names)
+    if perf:
+        selected = tuple(case for case in selected if case.name in PERF_CASE_NAMES)
     if quick:
         selected = tuple(case for case in selected if not case.name.startswith(("fragmented_256_", "generated_")))
     if no_large:
@@ -217,8 +260,11 @@ def main() -> None:
     parser.add_argument("--no-large", action="store_true", help="skip 2024x3000, >64KiB, and 256-input cases")
     parser.add_argument("--case", action="append", default=[], help="run only a named case (repeatable)")
     parser.add_argument("--repeat", type=int, default=1, help="run every selected case continuously N times")
-    parser.add_argument("--random-cases", type=int, default=12, help="number of deterministic generated L1 cases")
+    parser.add_argument("--random-cases", type=int, default=100,
+                        help="number of deterministic generated L1 cases (100 is the full L1 regression)")
     parser.add_argument("--seed", type=int, default=20260721, help="seed used to generate L1 cases")
+    parser.add_argument("--perf", action="store_true",
+                        help="select the structural performance matrix; collect it with 30 msprof repetitions")
     parser.add_argument("--list", action="store_true", help="list cases and exit")
     args = parser.parse_args()
 
@@ -227,13 +273,13 @@ def main() -> None:
     if args.random_cases < 0:
         raise SystemExit("--random-cases must not be negative")
 
-    all_cases = CASES + generated_cases(args.random_cases, args.seed)
+    all_cases = CASES + WIDE_NON_ALIGNED_CASES + generated_cases(args.random_cases, args.seed)
     if args.list:
         for case in all_cases:
             print(case.name)
         return
 
-    selected = select_cases(all_cases, set(args.case), args.quick, args.no_large)
+    selected = select_cases(all_cases, set(args.case), args.quick, args.no_large, args.perf)
     if not selected:
         raise SystemExit("no test cases selected")
     for case in selected:

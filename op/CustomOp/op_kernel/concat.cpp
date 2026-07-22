@@ -29,6 +29,7 @@ using namespace AscendC;
 constexpr uint32_t TILE_BYTES = 64 * 1024;
 constexpr uint32_t DATA_BLOCK_BYTES = 32;
 constexpr uint32_t MAX_COPY_BLOCK_COUNT = 4095;
+constexpr uint32_t SPLIT_COLUMNS = 1;
 
 class KernelConcat {
 public:
@@ -59,23 +60,25 @@ public:
         }
         const uint64_t catUnitBytes = static_cast<uint64_t>(afterDimSize_) * dtypeSize_;
         const uint64_t outputRowBytes = static_cast<uint64_t>(totalCatLen_) * catUnitBytes;
+        if (outputRowBytes == 0) return;
+
         uint32_t startRow = 0;
         uint32_t endRow = 0;
         uint64_t colBegin = 0;
         uint64_t colEnd = outputRowBytes;
 
-        if (tiling.splitMode == 1) {
+        if (tiling.splitMode == SPLIT_COLUMNS) {
             const uint32_t rowSlice = coreId / tiling.colCoreNum;
             const uint32_t col = coreId - rowSlice * tiling.colCoreNum;
-            startRow = beforeDimSize_ * rowSlice / tiling.rowSliceNum;
-            endRow = beforeDimSize_ * (rowSlice + 1) / tiling.rowSliceNum;
+            startRow = static_cast<uint64_t>(beforeDimSize_) * rowSlice / tiling.rowSliceNum;
+            endRow = static_cast<uint64_t>(beforeDimSize_) * (rowSlice + 1) / tiling.rowSliceNum;
             colBegin = static_cast<uint64_t>(col) * tiling.colBlockBytes;
             colEnd = colBegin + tiling.colBlockBytes;
             if (colBegin >= outputRowBytes) return;
             if (colEnd > outputRowBytes) colEnd = outputRowBytes;
         } else {
-            startRow = beforeDimSize_ * coreId / usedCoreNum_;
-            endRow = beforeDimSize_ * (coreId + 1) / usedCoreNum_;
+            startRow = static_cast<uint64_t>(beforeDimSize_) * coreId / usedCoreNum_;
+            endRow = static_cast<uint64_t>(beforeDimSize_) * (coreId + 1) / usedCoreNum_;
         }
         if (startRow >= endRow || colBegin >= colEnd) return;
 
