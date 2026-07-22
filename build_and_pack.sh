@@ -9,14 +9,14 @@ set -e
 # 默认算子名：Transpose（本仓库下唯一含 op_host/op_kernel 的算子）
 OP_NAME="${1:-Transpose}"
 # 日期后缀：精确到秒，避免同一天多次打包覆盖
-DATE_TAG="$(date +%Y%m%d_%H%M%S)"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # 算子工程根目录：$SCRIPT_DIR/$OP_NAME（如 Transpose/）
 OP_PROJECT="$SCRIPT_DIR/$OP_NAME"
-STAGING="${SCRIPT_DIR}/${OP_NAME}_zip"
 # 产物：Transpose_20260710_153045.zip，便于区分版本
-ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${DATE_TAG}.zip"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+STAGING="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}_zip"
+ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
 
 # 前置检查：避免运行时再因路径错而失败
 if [ ! -d "$OP_PROJECT" ]; then
