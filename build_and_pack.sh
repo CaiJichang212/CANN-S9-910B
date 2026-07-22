@@ -1,6 +1,8 @@
 #!/bin/bash
 # One-click build + package for concat operator
-# Usage: docker exec -it cann850 bash -c "cd /home/liyc/hw-S9/case_910b && bash build_and_pack.sh"
+# Usage: docker exec -u 1000:1000 -it cann850 bash -c "cd /home/liyc/hw-S9/case_910b && bash build_and_pack.sh"
+# NOTE: -u 1000:1000 让 cann850 以 uid 1000 运行（与宿主 HwHiAiUser / s8 ma-user 一致），
+#       避免 root 创建的文件被其它容器无法删除的权限冲突。
 set -e
 
 OP_NAME="Concat"
