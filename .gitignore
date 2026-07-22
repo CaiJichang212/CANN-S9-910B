@@ -1,10 +1,117 @@
 *zip*
-# build artifacts
-**/build_out/
-**/build/
-build/
-dist/
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
 *.egg-info/
-**/__pycache__/
+.eggs/
+dist/
+build/
+*.whl
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# ============================================================
+# C/C++ 编译产物
+# ============================================================
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+*.d
+
+# ============================================================
+# CMake 构建产物
+# ============================================================
+build/
+build_out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeScripts/
+cmake_install.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+Makefile
+Makefile2
+install_manifest.txt
+compile_commands.json
+
+# ============================================================
+# Ascend C 自定义算子生成产物
+# ============================================================
+# 自动生成的代码/配置
+autogen/
+**/binary/ascend*/gen/
+**/binary/ascend*/*.json
+**/binary/ascend*/*.o
+**/tbe/op_info_cfg/ai_core/**/aic-*-ops-info.json
+**/tbe/op_info_cfg/ai_core/npu_supported_ops.json
+**/tbe/.impl_timestamp
+
+# 安装脚本与打包产物
+*.run
+CustomOp.zip
+CustomOp_zip/
+version.info
+
+# ============================================================
+# Profiling 输出
+# ============================================================
 PROF_*/
-*.pyc
+*.prof
+prof_output/
+
+# ============================================================
+# 日志与临时文件
+# ============================================================
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# IDE / 编辑器
+# ============================================================
+.idea/
+.vscode/
+*.iml
+.project
+.cproject
+.settings/
+.clangd/
+.cache/
+
+# ============================================================
+# 其他
+# ============================================================
+core
+core.*
+**/extra-info/
+
+# ============================================================
+# S9 评测：构建产物与原始数据（仅跟踪报告/汇总）
+# ============================================================
+# 构建产物
+
