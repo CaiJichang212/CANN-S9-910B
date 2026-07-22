@@ -6,11 +6,22 @@
 
 ---
 
+## 修订记录
+
+| 日期 | 版本 | 内容 |
+|---|---:|---|
+| 2026-07-20 | v2 | 新增原子大块 scatter、串行尾块和 index 所有权回退的实现与验证结论；以第 11 节为当前实现的唯一准则。 |
+| 早期开发阶段 | v1 | 二维切分 RMW 版本的设计、调试与 API 踩坑记录。 |
+
+> 阅读顺序：第 4～10 节保留了 v1 的排错经验，仍有参考价值；涉及“最终实现”“性能结果”时，以第 11～13 节为准。
+
+---
+
 ## 0. 一句话结论
 
-**先查 API 真实签名与 dtype/roundmode 支持矩阵（以 `asc-devkit/impl/basic_api/dav_c220/` 的 `SupportType` 为准，比文档可靠）-> 再写代码；编译过 ≠ 跑通 ≠ 精度对，三重验证缺一不可；性能对齐 built-in baseline 即视为达标。**
+**先按 dtype 和对齐条件划分并发策略，再写 kernel：可证明无冲突的完整 32B 对齐向量用 DMA 原子加；无法证明者按 index 所有权串行 RMW。编译通过不代表 DMA 位置、浮点舍入与重复 index 语义正确，必须分层验证。**
 
-IndexAdd 最终交付：5 dtype 全部精度通过（自测 36 例 + 官方 5 case），AICore 耗时达内置 `aclnnIndexAdd` baseline（≤ baseline，在噪声内）。
+当前版本：5 dtype、任意 dim、重复 index 与非对齐语义均已在本地覆盖验证；完整官方 case 集未在工作区，不能由本地数据推断最终 `prof_sum`。
 
 ---
 
@@ -82,7 +93,7 @@ IndexAdd 最终交付：5 dtype 全部精度通过（自测 36 例 + 官方 5 ca
 
 ## 3. 关键技术决策
 
-### 3.1 核切分：二维切分，天然无 WAW（核心创新）
+### 3.1 v1 核切分：二维切分，天然无 WAW（历史方案）
 
 **最初设想**（CLAUDE.md 推荐）：排序合并 / 分桶 / 原子加。
 
@@ -366,7 +377,7 @@ export LD_LIBRARY_PATH=$(echo $LD_LIBRARY_PATH | sed 's#[^:]*vendors/customize/o
 
 ---
 
-## 9. 最终交付状态
+## 9. v1 交付状态（历史记录）
 
 **精度**：自测 36 例全过 + 官方 5 case 全 pass（5 dtype × ROW/AFTER × 非对齐 × 重复 index × 3D/4D/5D/中间 dim × 负 dim × 大 shape × 1D × M=1 × all-same-index）。
 
@@ -398,3 +409,125 @@ export LD_LIBRARY_PATH=$(echo $LD_LIBRARY_PATH | sed 's#[^:]*vendors/customize/o
 - 样例：`/home/liyc/hw-S9/samples/operator/ascendc/`（AddCustom 的 VECIN/VECOUT 队列模式）
 - 上层方法论：`/home/liyc/hw-S9/AscendC算子开发经验教训.md`（Greater 全流程沉淀）
 - 项目指南：`/home/liyc/hw-S9/case_910b_IndexAdd/CLAUDE.md`
+
+---
+
+## 11. v2 原子大块优化：当前实现
+
+### 11.1 为什么 v1 二维 RMW 仍然不够快
+
+二维切分能消除 WAW，适合作为正确性基线；但每个 `(row, i)` 向量仍要执行“读 output → Add/Cast → 写 output”。当 `M` 很大且 `afterDimSize` 也大时，输出会被反复从 HBM 读写，小块 MTE2/MTE3 数量随更新次数增长，成为主瓶颈。
+
+v2 的核心变化是：对可以安全使用普通 `DataCopy` 的连续大块，直接把 source 原子累加到 output，省去 output 的读入和 Vector Add；不满足原子条件的布局仍回退到无 WAW 的确定性 RMW。该策略把“性能快路径”和“语义保底路径”明确分开。
+
+### 11.2 当前 Tiling 策略
+
+host 侧统一使用以下核数，copy 与 scatter 共用同一组 AICore：
+
+```text
+blockDim = min(20, max(1, ceil(max(selfBytes, sourceBytes) / 16 KiB)))
+```
+
+设计要点：
+
+- `selfBytes`、`sourceBytes`、任务数与所有 GM 偏移均用 `uint64_t` 计算；写入 tiling ABI 前检查单个 extent 能否放入既有的 `uint32_t` 字段。
+- `index` 在每核加载一次，最大 8000 个 `int32`，约 32 KiB；不使用 workspace。
+- copy、原子桥接和 RMW tile 均为 16 KiB。以最重的 bf16/int8 Cast 路径计，实际 UB 缓冲约 145 KiB（含两个 256B 隔离 padding），低于 910B 可用 UB 预算。
+- 原子快路径条件为：非 bf16、单个 `afterDim` 向量至少 320B，且向量字节数是 32B 的整数倍。后一个条件确保 source 和 output 的每个 `(row, i)` 向量起点均满足普通 DMA 的对齐要求。
+
+`320B` 不是功能约束，而是性能阈值：即使后续放宽到可处理前后尾块的布局，也要保证中间原子主体至少为 256B，避免用原子替换成更小的传输。
+
+### 11.3 两阶段执行模型
+
+```text
+Phase 1: self --MTE2--> VECIN --UB bridge--> VECOUT --MTE3--> output
+         所有核完成后 SyncAll()
+
+Phase 2A（原子快路径）:
+  按 flattened(row, i) 均分任务
+  source --MTE2--> VECIN --UB bridge--> VECOUT
+  SetAtomicAdd<T>() + DataCopy(VECOUT -> output)
+  所有核完成后 SyncAll()
+
+Phase 3（仅 core 0）:
+  用原顺序 (row, i) 对原子前缀/后缀做精确 RMW
+
+Phase 2B（回退路径）:
+  owner = index[i] % scatterCoreNum
+  owner 核按 row、i 原顺序处理该 index 的全部更新
+```
+
+关键约束与原因：
+
+1. **原子只包裹 plain `DataCopy`**。`DataCopyPad` 不保证保留 DMA atomic 语义，不能拿来更新非对齐尾块。
+2. **MTE3 源必须在 `VECOUT`**。原子路径同样需要 `VECIN → VECOUT` 的 UB 桥接；直接从 `VECIN` 写 GM 可能静默失败。
+3. **尾块必须等待所有原子完成**。`SyncAll()` 后由 core 0 按原始 `(row, i)` 次序执行 RMW，避免与原子写竞争，也保持低精度逐次更新的语义。
+4. **回退按 index 值所有权而非按 i 所有权**。相同 target index 的所有更新必然落在同一核；该核仍按 i 升序处理，因此重复 index 无丢失，也不会改变该 target 的加法顺序。
+
+### 11.4 dtype 与数值语义
+
+| dtype | 快路径 | 回退/计算 | 经验结论 |
+|---|---|---|---|
+| fp32 | 原生 DMA atomic | 原生 Add | 原子顺序变化在赛题 fp32 容差内；高重复用例需重复验证。 |
+| fp16 | 原生 DMA atomic | 原生 Add | 对齐大向量可走原子；非对齐走所有权 RMW。 |
+| int32 | 原生 DMA atomic | 原生 Add | 整数加法满足结合性，逐元素精确比对。 |
+| int8 | 原生 DMA atomic | int8→half→int8 | 原子快路径用原生 int8；RMW 上行 `CAST_NONE`、下行 `CAST_RINT`。 |
+| bf16 | **禁用原子** | bf16→float→bf16 RMW | 原子完成顺序不确定，会改变每次 bf16 RNE 舍入的顺序；必须走确定性所有权回退。 |
+
+bf16 是本次最重要的反例：硬件虽然支持 `SetAtomicAdd<bfloat16_t>()`，但“硬件支持”不等于“满足框架数值语义”。有重复 index 时，bf16 的每次加法都会舍入；不同完成顺序可导致超容差。不要为了覆盖率强行让 bf16 走原子。
+
+### 11.5 实现层面的检查清单
+
+- 所有 `DataCopyExtParams.blockLen` 使用字节数；普通 `DataCopy` 的元素个数必须对应 32B 整数倍。
+- 原子状态紧邻目标 DMA：`SetAtomicAdd<T>()` → `DataCopy` → 管道屏障 → `SetAtomicNone()`。
+- `DataCopyPad` 只用于 copy 尾部和 RMW 尾部，且 GM→UB 传入 pad 参数、UB→GM 不传。
+- int8/bf16 Cast 的计数向上补齐到 256 元素；padding 数据不参与最终 GM 写回。
+- Cast/Add 工作缓冲之间插入 256B padding，规避 DAV_2201 常见 UB bank conflict。
+- 所有参与 `SyncAll()` 的核必须进入相同的同步点；`blockDim` 与 tiling 中的 `usedCoreNum` 必须一致。
+- 不要用 `GlobalTensor::GetValue/SetValue` 做大规模数据路径；它们只适合调试，性能会退化严重。
+
+---
+
+## 12. v2 验证记录与结果解读
+
+### 12.1 已完成验证
+
+| 项目 | 覆盖与结果 |
+|---|---|
+| 构建 | `bash op/CustomOp/build.sh` 成功，5 个 dtype kernel 变体均生成；最新 `.run` 已重新安装。 |
+| 基础用例 | `IndexAdd/test_op.py` case 1～5 均通过。 |
+| 维度/类型 | 自定义验证覆盖 fp32、fp16、bf16、int32、int8，rank 1～5 与负 dim。 |
+| 边界 | 覆盖 M=1 和 M=8000；int8 的 M=8000 用例逐元素精确一致。 |
+| 重复 index | fp32 原子路径与 bf16 回退路径均连续运行 50 次通过；bf16 做逐元素一致性检查。 |
+| 本地 profiling | fp32 `[256, 512]`、M=500 的原子快路径，`msprof` 预热后 20 次中位 `Task Duration` 为 **37.160 µs**。 |
+
+### 12.2 性能数据的正确使用方式
+
+- `get_time.py` 会把微秒再乘以 `1e6` 输出，阅读结果时应直接查看 `op_summary*.csv` 的 `Task Duration(us)`，或修正脚本后再汇总。
+- 本地公开 case 只能证明路径可运行，不能推导官方 5 case 的 `prof_sum`。验收前应按同一版本 `.run`、同一随机输入和中位数窗口采集全部官方 case。
+- 观察优化是否生效时，除总耗时外还应检查 MTE2/MTE3 传输数量：原子快路径不应再为每个更新读取 output，也不应出现“核数 × M”的细粒度 output RMW。
+
+### 12.3 共享环境的验证陷阱
+
+所有赛题算子共用 `vendors/customize` 和 Python 包名 `custom_ops_lib`。出现函数签名不匹配时，优先排查加载到的是否为本项目产物。
+
+```bash
+# 安装最新自定义算子包
+bash op/CustomOp/build_out/custom_opp_openEuler_aarch64.run
+
+# 运行当前目录刚构建的 Python 扩展，隔离同名包覆盖
+cd IndexAdd
+PYTHONPATH="$PWD/build/lib.linux-aarch64-cpython-311:$PYTHONPATH" \
+LD_LIBRARY_PATH="$ASCEND_OPP_PATH/vendors/customize/op_api/lib:$LD_LIBRARY_PATH" \
+python3 test_op.py 2
+```
+
+---
+
+## 13. 可复用的开发准则
+
+1. 先以**所有权切分**建立无竞争正确性基线，再有选择地引入原子，而不是把原子当作默认 scatter 解法。
+2. 原子快路径的条件必须同时覆盖：类型、GM 地址/长度对齐、尾块处理方式和浮点顺序容差；任一项不确定就回退。
+3. 对 bf16/fp16 先验证 reference 的逐次舍入语义，再谈“高精度累加”或并发重排；数值更精确不必然更接近 reference。
+4. 每次 kernel 改动后依次做：编译 → 单点精度 → 重复 index → 非对齐尾部 → 多 dtype → M=8000 → profiling。这样能把 API、并发和性能问题隔离开。
+5. 性能结论只引用可复现的原始 profiler 单位和完整 case 集；不要把脚本二次缩放后的数字直接与微秒阈值比较。

@@ -8,9 +8,8 @@ OP_NAME="IndexAdd"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # 算子工程实际位于 <worktree>/op/CustomOp/（与 Greater 分支的 op_project/custom_greater 不同）
 OP_PROJECT="$SCRIPT_DIR/op/CustomOp"
-STAGING="${SCRIPT_DIR}/${OP_NAME}_zip"
-# 拼接日期时间戳后缀，便于区分不同版本：例如 IndexAdd_20260710_153000.zip
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+STAGING="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}_zip"
 ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
 
 if [ ! -d "$OP_PROJECT" ]; then
