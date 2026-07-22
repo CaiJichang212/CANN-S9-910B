@@ -2,7 +2,7 @@
 *
 * Copyright (C) 2024. Huawei Technologies Co., Ltd. All rights reserved.
 *
- * Concat 算子 pybind 调用入口：调用自定义算子 aclnnConcatCustom。
+ * Concat 算子 pybind 调用入口：调用自定义算子 aclnnConcat。
 */
 #include <torch/extension.h>
 #include <torch/csrc/autograd/custom_function.h>
@@ -55,8 +55,7 @@ at::Tensor my_op_impl_npu(const tensor_list inputs, int64_t dim,
             inputs[0].options()  // 复用input的dtype/device（NPU）
         );
         EXEC_NPU_CMD(aclnnMul, a, b, c);
-        // Python 接口保持不变；内部使用不与内置 Concat 冲突的注册名。
-        EXEC_NPU_CMD(aclnnConcatCustom, inputs_x, dim, result);
+        EXEC_NPU_CMD(aclnnConcat, inputs_x, dim, result);
     }
     return result;
 }

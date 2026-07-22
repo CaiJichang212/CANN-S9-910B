@@ -1,6 +1,6 @@
 [
     {
-        "op": "ConcatCustom",
+        "op": "Concat",
         "input_desc": [
             {
                 "name": "srcList",

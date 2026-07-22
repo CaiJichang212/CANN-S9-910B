@@ -33,7 +33,7 @@ BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   TILING_DATA_FIELD_DEF(uint32_t, colBlockBytes);
 END_TILING_DATA_DEF;
 
-REGISTER_TILING_DATA_CLASS(ConcatCustom, ConcatCustomTilingData)
+REGISTER_TILING_DATA_CLASS(Concat, ConcatCustomTilingData)
 
 }  // namespace optiling
 

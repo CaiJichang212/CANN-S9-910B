@@ -322,9 +322,9 @@ static ge::graphStatus InferDataType(gert::InferDataTypeContext *context)
 
 
 namespace ops {
-class ConcatCustom : public OpDef {
+class Concat : public OpDef {
 public:
-    explicit ConcatCustom(const char *name) : OpDef(name)
+    explicit Concat(const char *name) : OpDef(name)
     {
         this->Input("srcList")
             .ParamType(DYNAMIC)
@@ -347,5 +347,5 @@ public:
     }
 };
 
-OP_ADD(ConcatCustom);
+OP_ADD(Concat);
 }  // namespace ops

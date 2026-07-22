@@ -45,12 +45,6 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/scripts/install.sh ${CMAKE_BINARY_
     COMMAND sed -i "s/vendor_name=customize/vendor_name=${vendor_name}/g" ${CMAKE_BINARY_DIR}/scripts/*
 )
 add_custom_target(modify_vendor ALL DEPENDS ${CMAKE_BINARY_DIR}/scripts/install.sh ${CMAKE_BINARY_DIR}/scripts/upgrade.sh)
-if (TARGET binary)
-    # CPack builds the regular ALL targets before collecting optional kernel
-    # install rules.  Tie that path to binary so fresh packages contain .o
-    # files instead of empty kernel directories.
-    add_dependencies(modify_vendor binary)
-endif()
 install(DIRECTORY ${CMAKE_BINARY_DIR}/scripts/ DESTINATION . FILE_PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_READ)
 
 install(FILES ${CMAKE_SOURCE_DIR}/custom.proto DESTINATION packages OPTIONAL)
@@ -78,10 +72,3 @@ set(CPACK_EXTERNAL_ENABLE_STAGING TRUE)
 set(CPACK_EXTERNAL_PACKAGE_SCRIPT ${CMAKE_SOURCE_DIR}/cmake/makeself.cmake)
 set(CPACK_EXTERNAL_BUILT_PACKAGES ${CPACK_PACKAGE_DIRECTORY}/_CPack_Packages/Linux/External/${CPACK_PACKAGE_FILE_NAME}/${CPACK_PACKAGE_FILE_NAME})
 include(CPack)
-
-# CPack installs binary kernels only when they already exist.  Keep package
-# creation self-contained so a fresh `--target package` cannot produce an OPP
-# without the ConcatCustom device binaries.
-if (TARGET package AND TARGET binary)
-    add_dependencies(package binary)
-endif()

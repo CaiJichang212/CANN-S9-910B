@@ -209,8 +209,8 @@ private:
     AscendC::GlobalTensor<uint8_t> yGm_;
 };
 
-extern "C" __global__ __aicore__ void concat_custom(GM_ADDR srcList, GM_ADDR dst,
-                                                     GM_ADDR workspace, GM_ADDR tiling)
+extern "C" __global__ __aicore__ void concat(GM_ADDR srcList, GM_ADDR dst,
+                                              GM_ADDR workspace, GM_ADDR tiling)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIV_ONLY);
     GET_TILING_DATA(tiling_data, tiling);
