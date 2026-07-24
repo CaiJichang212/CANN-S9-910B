@@ -47,7 +47,7 @@ echo ""
 echo "===== [3/3] Creating zip ====="
 rm -f "${SCRIPT_DIR}/${OP_NAME}"_*.zip
 cd "$SCRIPT_DIR"
-zip -r "${OP_NAME}_${TIMESTAMP}.zip" "${OP_NAME}_zip"
+zip -r "${OP_NAME}_${TIMESTAMP}.zip" "${OP_NAME}_${TIMESTAMP}_zip"
 
 echo ""
 echo "===== Done ====="
