@@ -59,7 +59,7 @@ echo "===== [3/3] Creating zip with date suffix ====="
 # 清理当前算子同名旧 zip（仅 *.zip，不动带日期后缀的历史版本）
 rm -f "${SCRIPT_DIR}/${OP_NAME}.zip"
 cd "$SCRIPT_DIR"
-zip -r "$ZIP_FILE" "${OP_NAME}_zip"
+zip -r "$ZIP_FILE" "$STAGING"
 
 echo ""
 echo "===== Done ====="
