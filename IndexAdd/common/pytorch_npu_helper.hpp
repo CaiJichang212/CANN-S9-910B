@@ -33,6 +33,7 @@
 
 
 #include "torch_npu/csrc/aten/NPUNativeFunctions.h"
+#include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
 #include "torch_npu/csrc/core/npu/NPUStream.h"
 #include "torch_npu/csrc/framework/OpCommand.h"
 #include "torch_npu/csrc/framework/interface/EnvVariables.h"
@@ -546,12 +547,12 @@ typedef void (*ReleaseHugeMem)(void *, bool);
     auto workspace_status = call(getWorkspaceSizeFunc, converted_params);     \
     TORCH_CHECK(workspace_status == 0,                                        \
                 "call " #aclnn_api " failed, detail:", aclGetRecentErrMsg()); \
+    at::Tensor workspace_tensor;                                              \
     void *workspace_addr = nullptr;                                           \
     if (workspace_size != 0) {                                                \
       at::TensorOptions options =                                             \
           at::TensorOptions(torch_npu::utils::get_npu_device_type());         \
-      auto workspace_tensor =                                                 \
-          at::empty({workspace_size}, options.dtype(kByte));                  \
+      workspace_tensor = at::empty({workspace_size}, options.dtype(kByte));   \
       workspace_addr = const_cast<void *>(workspace_tensor.storage().data()); \
     }                                                                         \
     auto acl_call = [converted_params, workspace_addr, workspace_size,        \
@@ -575,6 +576,11 @@ typedef void (*ReleaseHugeMem)(void *, bool);
     cmd.Name(#aclnn_api);                                                     \
     cmd.SetCustomHandler(acl_call);                                           \
     cmd.Run();                                                                \
+    if (workspace_size != 0) {                                                \
+      c10_npu::NPUCachingAllocator::recordStream(                             \
+          workspace_tensor.storage().data_ptr(),                              \
+          c10_npu::getCurrentNPUStream());                                    \
+    }                                                                         \
     if (unInitMemFunc) {                                                      \
       unInitMemFunc(nullptr, false);                                          \
     }                                                                         \

@@ -17,31 +17,15 @@ using namespace at;
 
 at::Tensor my_op_impl_npu(const at::Tensor& input, const at::Tensor& index, const at::Tensor& source,
                 int64_t dim) {
-    // at::Tensor result = at::empty_like(input);
-    auto round = 30;
+    // 30 轮 aclnnIndexAdd（前若干轮自然预热，取稳定区间中位数）。
+    // 不再创建占位 a/b/c 与 aclnnMul：在 set_device(k>0) + msprof 环境下，
+    // 额外的 aclnnMul 会污染 stream 上下文，使后续 aclnnIndexAdd 的 source
+    // 参数在 GetWorkspaceSize 阶段被判为 null。去掉后与 builtin 路径对齐。
+    constexpr int round = 30;
     at::Tensor result;
-    auto a = at::empty(
-        {4096, 4096},
-        at::TensorOptions()
-            .device(at::kPrivateUse1)  // 昇腾NPU固定设备标识 kPrivateUse1
-            .dtype(at::kFloat)         // float32
-    );
-    auto b = at::empty(
-        {4096, 4096},
-        at::TensorOptions()
-            .device(at::kPrivateUse1)  // 昇腾NPU固定设备标识 kPrivateUse1
-            .dtype(at::kFloat)         // float32
-    );
-    auto c = at::empty(
-        {4096, 4096},
-        at::TensorOptions()
-            .device(at::kPrivateUse1)  // 昇腾NPU固定设备标识 kPrivateUse1
-            .dtype(at::kFloat)         // float32
-    );
-    for (size_t i = 0; i < round; i++)
+    for (int i = 0; i < round; i++)
     {
         result = at::empty_like(input);
-        EXEC_NPU_CMD(aclnnMul, a, b, c);
         EXEC_NPU_CMD(aclnnIndexAdd, input, index, source, dim, result);
     }
     return result;
