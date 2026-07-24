@@ -39,6 +39,11 @@ constexpr uint32_t UB_SAFE_LIMIT = 184 * 1024;
 // DataCopyPad(DataCopyExtParams)::blockCount is limited to [1, 4095].
 constexpr int64_t MAX_DMA_BLOCK_COUNT = 4095;
 
+static uint64_t Align32(uint64_t bytes)
+{
+    return (bytes + 31U) & ~static_cast<uint64_t>(31U);
+}
+
 // Get platform info
 static ge::graphStatus GetPlatformInfo(gert::TilingContext* context, uint64_t* ubSize, int64_t* coreNum)
 {
@@ -519,6 +524,116 @@ static std::vector<LayerInfo> ComputeMultiAxisLayers(
     return layers;
 }
 
+// Key4 allocates raw fp32 TBufs once, then reuses them for every compact
+// layer.  This is intentionally not the single-axis ARA model: Init() owns
+// two fp32 matrix buffers, an fp32 accumulator, an fp32 reduced-output
+// buffer, and one ReduceSum scratch buffer.  Keep this calculation in lock
+// step with SquareSumV1::Init().
+static uint64_t ComputeCompactUbBytes(const std::vector<LayerInfo>& layers)
+{
+    uint64_t maxMatrixElems = 8;
+    uint64_t maxCols = 8;
+    uint64_t maxTmpBytes = 32;
+    for (const auto& layer : layers) {
+        const uint64_t cols = layer.isTailReduce ? 1U
+            : static_cast<uint64_t>(layer.tileA0Align);
+        const uint64_t rows = static_cast<uint64_t>(layer.rChunkSize);
+        maxMatrixElems = std::max(maxMatrixElems, rows * cols);
+        maxCols = std::max(maxCols, cols);
+        maxTmpBytes = std::max(maxTmpBytes,
+            static_cast<uint64_t>(std::max(layer.reduceTmpBytes, 32U)));
+    }
+    return 2U * Align32(maxMatrixElems * sizeof(float))
+        + 2U * Align32(maxCols * sizeof(float))
+        + Align32(maxTmpBytes);
+}
+
+static void RefreshCompactLayer(LayerInfo* layer)
+{
+    if (layer->isTailReduce) {
+        layer->rChunkSize = std::max(layer->rChunkSize, static_cast<int64_t>(1));
+        layer->chunkCols = layer->rChunkSize;
+        layer->numChunks = CeilDiv(layer->rLength, layer->rChunkSize);
+        layer->subMode = (layer->rChunkSize == layer->rLength) ? 0 : 1;
+        layer->reduceTmpBytes = ComputeTmpBufSize(
+            static_cast<uint32_t>(layer->rChunkSize), sizeof(float));
+        return;
+    }
+
+    layer->rChunkSize = std::max(layer->rChunkSize, static_cast<int64_t>(1));
+    layer->tileA0Len = std::min(layer->tileA0Align, layer->a0Length);
+    layer->numA0Tiles = CeilDiv(layer->a0Length, layer->tileA0Len);
+    layer->numRChunks = CeilDiv(layer->rLength, layer->rChunkSize);
+    layer->subMode = (layer->rChunkSize == layer->rLength) ? 2 : 3;
+
+    ge::Shape reduceShape({layer->rChunkSize, layer->tileA0Align});
+    uint32_t minTmp = 0;
+    AscendC::GetReduceSumMaxMinTmpSize(reduceShape, ge::DT_FLOAT,
+                                       AscendC::ReducePattern::RA,
+                                       true, true, layer->reduceTmpBytes, minTmp);
+    if (layer->reduceTmpBytes < 32) {
+        layer->reduceTmpBytes = 32;
+    }
+}
+
+// Select compact Key4 dimensions against its actual shared UB allocation.
+// Prefer reducing A0 tiles, then R chunks.  An unsafe minimal configuration
+// is rejected instead of emitting tiling data that can overrun UB at runtime.
+static bool ConfigureCompactMultiAxisLayers(std::vector<LayerInfo>* layers,
+                                            uint32_t typeSize, uint64_t ubLimit)
+{
+    for (auto& layer : *layers) {
+        layer.rChunkSize = std::min(layer.rLength, MAX_DMA_BLOCK_COUNT);
+        if (layer.isTailReduce) {
+            layer.tileA0Align = 0;
+            layer.tileA0Len = 0;
+        } else {
+            const int64_t rowAlign = std::max(static_cast<int64_t>(8),
+                                              static_cast<int64_t>(32 / typeSize));
+            layer.tileA0Align = CeilAlign(layer.a0Length, rowAlign);
+        }
+        RefreshCompactLayer(&layer);
+    }
+
+    while (ComputeCompactUbBytes(*layers) > ubLimit) {
+        LayerInfo* widest = nullptr;
+        int64_t widestAlign = 0;
+        for (auto& layer : *layers) {
+            if (!layer.isTailReduce && layer.tileA0Align > widestAlign) {
+                widest = &layer;
+                widestAlign = layer.tileA0Align;
+            }
+        }
+        if (widest != nullptr) {
+            const int64_t rowAlign = std::max(static_cast<int64_t>(8),
+                                              static_cast<int64_t>(32 / typeSize));
+            if (widest->tileA0Align > rowAlign) {
+                int64_t next = CeilAlign(widest->tileA0Align / 2, rowAlign);
+                if (next >= widest->tileA0Align) next = widest->tileA0Align - rowAlign;
+                widest->tileA0Align = std::max(next, rowAlign);
+                RefreshCompactLayer(widest);
+                continue;
+            }
+        }
+
+        LayerInfo* largestMatrix = nullptr;
+        int64_t largestElems = 0;
+        for (auto& layer : *layers) {
+            const int64_t cols = layer.isTailReduce ? 1 : layer.tileA0Align;
+            const int64_t elems = layer.rChunkSize * cols;
+            if (layer.rChunkSize > 1 && elems > largestElems) {
+                largestMatrix = &layer;
+                largestElems = elems;
+            }
+        }
+        if (largestMatrix == nullptr) return false;
+        largestMatrix->rChunkSize = std::max(static_cast<int64_t>(1),
+                                             largestMatrix->rChunkSize / 2);
+        RefreshCompactLayer(largestMatrix);
+    }
+    return true;
+}
+
 static ge::graphStatus GetWorkspaceSize(gert::TilingContext* context, size_t wsSize)
 {
     size_t* currentWorkspace = context->GetWorkspaceSizes(WORKSPACE_NUM);
@@ -633,6 +748,9 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         auto layers = ComputeMultiAxisLayers(
             inputShape, normalizedAxis, ubSize,
             typeSize, fp32ElementsPerBlock, fp32ElementsPerRepeat);
+        OP_CHECK_IF(!ConfigureCompactMultiAxisLayers(&layers, typeSize, ubSize),
+                    OP_LOGE(context, "MULTI_AXIS compact buffers cannot fit in %lu bytes UB", ubSize),
+                    return ge::GRAPH_FAILED);
 
         // Two dense fp32 stages are enough: layer i writes stage i%2 and the
         // next layer consumes it.  Each stage is 512B aligned; unlike the

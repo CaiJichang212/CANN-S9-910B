@@ -244,8 +244,11 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
                 maxTmpBytes = tilingData->layerReduceTmpBytes[li];
             }
         }
-        const uint32_t matrixBytes = static_cast<uint32_t>(maxMatrixElems * sizeof(float));
-        const uint32_t colsBytes = static_cast<uint32_t>(maxCols * sizeof(float));
+        const uint32_t matrixBytes = static_cast<uint32_t>(
+            (maxMatrixElems * sizeof(float) + 31) & ~static_cast<int64_t>(31));
+        const uint32_t colsBytes = static_cast<uint32_t>(
+            (maxCols * sizeof(float) + 31) & ~static_cast<int64_t>(31));
+        maxTmpBytes = (maxTmpBytes + 31) & ~static_cast<uint32_t>(31);
         pipe.InitBuffer(multiInBuf, matrixBytes);
         pipe.InitBuffer(multiComputeBuf, matrixBytes);
         pipe.InitBuffer(multiAccBuf, colsBytes);
@@ -1033,9 +1036,15 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
                     continue;
                 }
 
-                const int64_t ubPitchBlocks = tileAlign * sizeof(float) / 32;
-                const int64_t copiedBlocks = (validCols * (isFirst ? sizeof(T) : sizeof(float)) + 31) / 32;
-                const int64_t gmStride = (inner - validCols) * (isFirst ? sizeof(T) : sizeof(float));
+                // GM strides are byte units, while the UB stride is in 32B
+                // datablocks.  The first layer is laid out as T until Cast,
+                // so it must use T's row pitch; later workspace layers are
+                // already fp32.  Using fp32 here for fp16/bf16 leaves a hole
+                // between input rows and makes Cast/RA read the wrong data.
+                const int64_t elemBytes = isFirst ? sizeof(T) : sizeof(float);
+                const int64_t ubPitchBlocks = tileAlign * elemBytes / 32;
+                const int64_t copiedBlocks = (validCols * elemBytes + 31) / 32;
+                const int64_t gmStride = (inner - validCols) * elemBytes;
                 uint32_t shape[] = {static_cast<uint32_t>(validRows), static_cast<uint32_t>(tileAlign)};
 
                 if (isFirst) {

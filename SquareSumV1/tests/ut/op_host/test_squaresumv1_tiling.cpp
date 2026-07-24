@@ -102,6 +102,32 @@ static TilingResult RunTiling(
     return result;
 }
 
+static uint64_t Align32(uint64_t bytes)
+{
+    return (bytes + 31U) & ~static_cast<uint64_t>(31U);
+}
+
+// Keep this mirror of Key4 Init() deliberately small: any valid Key4 tiling
+// must fit the five raw TBuf allocations made by the compact kernel.
+static uint64_t Key4UbBytes(const SquareSumV1TilingData* td)
+{
+    uint64_t maxMatrixElems = 8;
+    uint64_t maxCols = 8;
+    uint64_t maxTmpBytes = 32;
+    for (int32_t li = 0; li < td->numLayers; ++li) {
+        const uint64_t cols = td->layerIsTailReduce[li] ? 1U
+            : static_cast<uint64_t>(td->layerTileA0Align[li]);
+        const uint64_t rows = static_cast<uint64_t>(td->layerRChunkSizeCompact[li]);
+        maxMatrixElems = std::max(maxMatrixElems, rows * cols);
+        maxCols = std::max(maxCols, cols);
+        maxTmpBytes = std::max(maxTmpBytes,
+                               static_cast<uint64_t>(td->layerReduceTmpBytes[li]));
+    }
+    return 2U * Align32(maxMatrixElems * sizeof(float))
+        + 2U * Align32(maxCols * sizeof(float))
+        + Align32(maxTmpBytes);
+}
+
 // =============================================================================
 // Test Fixture
 // =============================================================================
@@ -2132,6 +2158,64 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_compact_stages_are_dense_and_ali
     EXPECT_GT(td->layerRChunkSizeCompact[0], 0);
     EXPECT_GT(td->layerReduceTmpBytes[0], 0u);
     EXPECT_EQ(r.info.workspaceSizes[0], 4096u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_key4_fp16_regression_noncontiguous_keepdims)
+{
+    // Regression for the NPU layout failure: layer 0 is a non-tail fp16
+    // 2D DMA, so its row pitch must be input-type (16 fp16 values/32B), not
+    // fp32 (8 values/32B).  Keep-dims does not change kernel tiling.
+    for (bool keepDims : {false, true}) {
+        auto r = RunTiling({2, 3, 4, 5, 6}, ge::DT_FLOAT16, {1, 3}, keepDims);
+        ASSERT_TRUE(r.success);
+        const auto* td = AsTilingData(r.info);
+        ASSERT_NE(td, nullptr);
+        ASSERT_EQ(td->tilingMode, 4u);
+        ASSERT_EQ(td->numLayers, 2);
+        EXPECT_EQ(td->layerAxis[0], 3);
+        EXPECT_EQ(td->layerAxis[1], 1);
+        EXPECT_EQ(td->layerTileA0Align[0] % 16, 0);
+        EXPECT_LE(Key4UbBytes(td), 184U * 1024U);
+    }
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_key4_r_chunk_4095_and_4096_boundaries)
+{
+    for (int64_t rLength : {4095, 4096}) {
+        // Layer 0 reduces the tail, then layer 1 is the Key4 non-tail 2D
+        // route.  The latter must never encode a DataCopy blockCount > 4095.
+        auto r = RunTiling({2, rLength, 7, 3}, ge::DT_FLOAT16, {1, 3});
+        ASSERT_TRUE(r.success);
+        const auto* td = AsTilingData(r.info);
+        ASSERT_NE(td, nullptr);
+        ASSERT_EQ(td->tilingMode, 4u);
+        ASSERT_EQ(td->layerRLength[1], rLength);
+        EXPECT_LE(td->layerRChunkSizeCompact[1], 4095);
+        EXPECT_EQ(td->layerNumRChunks[1],
+                  (rLength + td->layerRChunkSizeCompact[1] - 1)
+                      / td->layerRChunkSizeCompact[1]);
+        EXPECT_LE(Key4UbBytes(td), 184U * 1024U);
+    }
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_key4_compact_ub_budget_and_dma_limits)
+{
+    for (auto dtype : {ge::DT_FLOAT16, ge::DT_BF16, ge::DT_FLOAT}) {
+        // A0 tails exercise 1, 6, 7, 15, 16 and 17 valid columns.  The
+        // negative axis form also guards normalization before Key4 routing.
+        for (int64_t a0 : {1, 6, 7, 15, 16, 17}) {
+            auto r = RunTiling({2, 3, 17, 5, a0}, dtype, {-4, -2});
+            ASSERT_TRUE(r.success);
+            const auto* td = AsTilingData(r.info);
+            ASSERT_NE(td, nullptr);
+            ASSERT_EQ(td->tilingMode, 4u);
+            EXPECT_LE(Key4UbBytes(td), 184U * 1024U);
+            for (int32_t li = 0; li < td->numLayers; ++li) {
+                EXPECT_GT(td->layerRChunkSizeCompact[li], 0);
+                EXPECT_LE(td->layerRChunkSizeCompact[li], 4095);
+            }
+        }
+    }
 }
 
 } // namespace SquareSumV1UT

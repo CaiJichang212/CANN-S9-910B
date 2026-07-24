@@ -56,7 +56,7 @@ struct SquareSumV1TilingData {
     // === MULTI_AXIS (Key=4) parameters ===
     int32_t  numLayers;                                          // Number of reduce layers (sorted innermost first)
     int32_t  layerAxis[SS_MAX_LAYERS];                           // Original axis index for each layer (sorted ascending)
-    int64_t  layerShapeBefore[SS_MAX_LAYERS][SS_MAX_LAYERS + 1]; // Shape before each layer reduce (max 6 dims for 5D input)
+    int64_t  layerShapeBefore[SS_MAX_LAYERS][SS_MAX_LAYERS + 1]; // Shape before each layer reduce (up to rank 8)
     int32_t  layerNDims[SS_MAX_LAYERS];                          // Number of dims in shape before each layer
     int64_t  layerReduceAxisIdx[SS_MAX_LAYERS];                  // Position of the reduce axis within the current shape (0-indexed)
     int64_t  layerRLength[SS_MAX_LAYERS];                        // Reduce axis length for each layer
@@ -64,7 +64,7 @@ struct SquareSumV1TilingData {
     int64_t  layerInputElemCount[SS_MAX_LAYERS];                 // Total element count at each layer input
     int64_t  layerOutputElemCount[SS_MAX_LAYERS];                // Total element count at each layer output
     int64_t  layerIsTailReduce[SS_MAX_LAYERS];                   // 1 = tail reduce (AR), 0 = non-tail (ARA)
-    int64_t  layerWorkspaceOffset[SS_MAX_LAYERS];                // Workspace offset (in bytes) for each layer's output
+    int64_t  layerWorkspaceOffset[SS_MAX_LAYERS];                // Workspace offset in fp32 elements for each layer's output
     int64_t  layerChunkCols[SS_MAX_LAYERS];                      // Chunk columns for tail-reduce layers (AR_COLSPLIT fallback)
     int64_t  layerNumChunks[SS_MAX_LAYERS];                      // Number of chunks for tail-reduce layers
     int64_t  layerTileA0Align[SS_MAX_LAYERS];                    // Tile A0 aligned for ARA layers
