@@ -42,6 +42,24 @@ def alternating_splits() -> tuple[int, ...]:
     return tuple(15 if index % 2 == 0 else 17 for index in range(256))
 
 
+def repeated_fragment_splits(parts: int, low: int, high: int,
+                             zero_index: int | None = None) -> tuple[int, ...]:
+    """Alternating short pieces, optionally moving one piece into its neighbour.
+
+    The sum is unchanged when a zero is introduced, so these cases isolate
+    TensorList/tiling behaviour from output-row-size changes.
+    """
+    if parts < 2:
+        raise ValueError("fragment matrix needs at least two inputs")
+    lengths = [low if index % 2 == 0 else high for index in range(parts)]
+    if zero_index is not None:
+        if not 0 <= zero_index < parts - 1:
+            raise ValueError("zero_index must leave a following input")
+        lengths[zero_index + 1] += lengths[zero_index]
+        lengths[zero_index] = 0
+    return tuple(lengths)
+
+
 def wide_non_aligned_256_splits() -> tuple[int, ...]:
     """256 unequal pieces totaling 262144, including zero-length entries.
 
@@ -87,6 +105,19 @@ CASES = (
                alternating_splits(), (-1000, 1000)),
     ConcatCase("fragmented_256_int8", torch.int8, (256, 4096), -1,
                alternating_splits(), (-100, 100)),
+    # MANY_FRAGMENTED matrix: input-count tiers, short-piece distributions,
+    # zero-length descriptors, beforeDim relative to the AIV count, all four
+    # public dtypes, and both aligned and deliberately non-aligned rows.
+    ConcatCase("fragmented_64_fp16_before1", torch.float16, (1, 1024), -1,
+               repeated_fragment_splits(64, 15, 17), (-1, 1)),
+    ConcatCase("fragmented_128_fp32_zero", torch.float32, (8, 2048), -1,
+               repeated_fragment_splits(128, 15, 17, 0), (-1000, 1000)),
+    ConcatCase("fragmented_256_int32_before40", torch.int32, (40, 4096), -1,
+               repeated_fragment_splits(256, 15, 17, 127), (1, 10)),
+    ConcatCase("fragmented_256_fp16_1_31_32", torch.float16, (4, 5440), -1,
+               tuple((1, 31, 32) * 85) + (0,), (-1, 1)),
+    ConcatCase("fragmented_64_fp16_row_unaligned", torch.float16, (4, 1025), -1,
+               (15,) * 63 + (80,), (-1, 1)),
     # S9 的形状上界和非 32B 对齐特征。每项保持总元素数可在单卡上验证，
     # 但分别命中 N/N2=10000、N3/N4=1000 及不同 concat 轴。
     ConcatCase("s9_fp16_last_axis_10000", torch.float16, (3, 10000), -1,
@@ -138,6 +169,11 @@ PERF_CASE_NAMES = frozenset((
     "fragmented_256_fp32",
     "score_shape_2024x3000_fp32",
     "single_input_large_row_fallback",
+    "fragmented_64_fp16_before1",
+    "fragmented_128_fp32_zero",
+    "fragmented_256_int32_before40",
+    "fragmented_256_fp16_1_31_32",
+    "fragmented_64_fp16_row_unaligned",
 ))
 
 LARGE_CASE_PREFIXES = ("score_shape_", "fragmented_256_", "single_input_large_", "s9_")
