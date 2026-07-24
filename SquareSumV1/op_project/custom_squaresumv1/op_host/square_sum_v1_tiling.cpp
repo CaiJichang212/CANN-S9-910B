@@ -1075,7 +1075,7 @@ static ge::graphStatus TilingParseForSquareSumV1([[maybe_unused]] gert::TilingPa
 
 struct SquareSumV1CompileInfo {};
 
-IMPL_OP_OPTILING(SquareSumV1Custom)
+IMPL_OP_OPTILING(SquareSumV1)
     .Tiling(SquareSumV1TilingFunc)
     .TilingParse<SquareSumV1CompileInfo>(TilingParseForSquareSumV1);
 

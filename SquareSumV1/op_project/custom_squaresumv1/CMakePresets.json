@@ -1,0 +1,39 @@
+{
+    "version": 1,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "SquareSumV1 Ascend 910B release",
+            "description": "Build a binary and source package for SquareSumV1 on Ascend 910B.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": {
+                    "type": "STRING",
+                    "value": "Release"
+                },
+                "ASCEND_COMPUTE_UNIT": {
+                    "type": "STRING",
+                    "value": "ascend910b"
+                },
+                "ENABLE_SOURCE_PACKAGE": {
+                    "type": "BOOL",
+                    "value": "True"
+                },
+                "ENABLE_BINARY_PACKAGE": {
+                    "type": "BOOL",
+                    "value": "True"
+                },
+                "ENABLE_TEST": {
+                    "type": "BOOL",
+                    "value": "False"
+                }
+            }
+        }
+    ]
+}

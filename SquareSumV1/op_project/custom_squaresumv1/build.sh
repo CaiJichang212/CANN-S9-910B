@@ -114,12 +114,11 @@ if ! check_compute_unit "$COMPUTE_UNIT"; then
 fi
 echo "[INFO] Compile for SoC: ${COMPUTE_UNIT}"
 
-CMAKE_ARGS=""
-CMAKE_ARGS="$CMAKE_ARGS -DASCEND_COMPUTE_UNIT=$COMPUTE_UNIT"
-# Do not rely on a CANN-template default or an inherited CMake cache.  The
-# installed dynamic implementation imports square_sum_v1.cpp, so it must be
-# embedded in the generated custom_opp_*.run package.
-CMAKE_ARGS="$CMAKE_ARGS -DENABLE_SOURCE_PACKAGE=TRUE"
+# Keep package switches in CMakePresets.json, which is also the format used by
+# the package installer diagnostics.  In particular, the dynamic
+# implementation imports square_sum_v1.cpp after installation, so the source
+# package must stay enabled there.
+CMAKE_ARGS="--preset default -DASCEND_COMPUTE_UNIT=$COMPUTE_UNIT"
 
 if [ ! -d "${BUILD_PATH}" ]; then
   mkdir -p "${BUILD_PATH}"
@@ -130,7 +129,15 @@ fi
 echo "----------------------------------------------------------------"
 echo "[INFO] Configuring project..."
 echo "[INFO] CMAKE_ARGS: ${CMAKE_ARGS}"
-cd "${BUILD_PATH}" && cmake ${CMAKE_ARGS} ..
+cd "${BASE_PATH}" && cmake ${CMAKE_ARGS}
+
+# A preset typed as BOOL produces a typed cache entry.  Do not allow a build
+# to continue if a caller or toolchain unexpectedly disabled source packing.
+if ! grep -Eiq '^ENABLE_SOURCE_PACKAGE:BOOL=(TRUE|ON|1)$' "${BUILD_PATH}/CMakeCache.txt"; then
+    echo "[ERROR] ENABLE_SOURCE_PACKAGE must be TRUE in CMakePresets.json" >&2
+    exit 1
+fi
+cd "${BUILD_PATH}"
 
 echo "----------------------------------------------------------------"
 echo "[INFO] Building project with ${THREAD_NUM} threads..."

@@ -3,9 +3,7 @@
  * \file aclnn_square_sum_v1.h
  * \brief Public ACLNN API for SquareSumV1.
  *
- * SquareSumV1Custom is an implementation-only L0 type used to avoid a CANN
- * built-in name collision.  This header deliberately preserves the submitted
- * ACLNN interface.
+ * This header preserves the submitted ACLNN interface.
  */
 
 #ifndef ACLNN_SQUARE_SUM_V1_H_

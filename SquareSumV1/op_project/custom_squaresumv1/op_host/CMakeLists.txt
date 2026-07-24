@@ -58,22 +58,15 @@ target_link_options(cust_optiling PRIVATE ${SECURE_LINK_OPTIONS})
 # ACLNN library
 set(op_api_dir ${CMAKE_CURRENT_SOURCE_DIR}/../op_api)
 set(op_api_srcs
-    # The code-generated wrapper owns the private SquareSumV1Custom L0
-    # registration and constructs the standard Nnopbase executor.  Keep it in
-    # the same libcust_opapi as the public compatibility API below.
-    ${ASCEND_AUTOGEN_PATH}/aclnn_square_sum_v1_custom.cpp
     ${op_api_dir}/aclnn_squaresumv1.cpp
     ${op_api_dir}/squaresumv1.cpp
 )
-set_source_files_properties(${ASCEND_AUTOGEN_PATH}/aclnn_square_sum_v1_custom.cpp
-    PROPERTIES GENERATED TRUE)
 npu_op_library(cust_opapi ACLNN
     ${op_api_srcs}
 )
 
 target_include_directories(cust_opapi PRIVATE
     ${op_api_dir}
-    ${ASCEND_AUTOGEN_PATH}
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/include
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/include/aclnn
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include
@@ -111,13 +104,4 @@ npu_op_package_add(${package_name}
         cust_optiling
         cust_opapi
         cust_op_proto
-)
-
-# The internal L0 type is intentionally suffixed Custom, so code generation
-# emits an internal aclnn_square_sum_v1_custom.h.  Ship the stable public
-# header as well: callers continue to use aclnnSquareSumV1 unchanged.
-npu_op_package_add(${package_name}
-    FILES
-        ${op_api_dir}/aclnn_square_sum_v1.h
-    TYPE ACLNN
 )

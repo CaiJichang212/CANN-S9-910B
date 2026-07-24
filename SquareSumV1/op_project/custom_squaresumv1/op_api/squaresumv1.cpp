@@ -18,7 +18,7 @@ using namespace op;
 
 namespace l0op {
 
-OP_TYPE_REGISTER(SquareSumV1Custom);
+OP_TYPE_REGISTER(SquareSumV1);
 
 static const std::initializer_list<op::DataType> AICORE_DTYPE_SUPPORT_LIST = {
     DataType::DT_FLOAT16, DataType::DT_FLOAT, DataType::DT_BF16
@@ -48,7 +48,7 @@ static const aclTensor* SquareSumV1AiCore(const aclTensor* input,
 {
     L0_DFX(SquareSumV1AiCore, input, result);
 
-    auto ret = ADD_TO_LAUNCHER_LIST_AICORE(SquareSumV1Custom,
+    auto ret = ADD_TO_LAUNCHER_LIST_AICORE(SquareSumV1,
         OP_INPUT(input),
         OP_ATTR(axis, keepDims),
         OP_OUTPUT(result));

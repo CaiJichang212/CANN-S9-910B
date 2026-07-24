@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | v1.0 | 基于 SquareSumV1（Ascend 910B / CANN 8.5.0）的问题定位、修复、上板回归与性能采集沉淀 | 2026-07-21 |
 | v1.1 | 补充私有 L0 注册、提交包闭环、设备映射、证据分级及 910B 多级规约经验 | 2026-07-24 |
+| v1.2 | 补充提交评分器的发布身份契约、源码包验证方法及 SquareSumV1 兼容性回归 | 2026-07-24 |
 
 ## 0. 先建立可复现的证据闭环
 
@@ -31,16 +32,30 @@
 5. **正确性稳定后再优化**：性能修改只动已证明的热点，并保留每次 profile 和回归证据。
 6. **最后以提交物复验**：从最终 zip 解出 `.run`，安装到全新目录后重新跑 smoke；工作区成功不等于提交包成功。
 
-## 2. API、注册与动态加载：公开接口和私有 L0 类型分层
+## 2. API、注册与动态加载：先锁定发布身份契约
 
-当自定义算子名称可能与 CANN 内置算子冲突时，不要仅靠库搜索路径“覆盖”内置实现。更可靠的做法是：
+公开 API、L0 注册名、vendor 目录、动态 Python 名和 kernel 源码名并不是可独立替换的字段；它们共同决定安装后运行时和评分器如何发现算子。提交前应先从一份已通过的包提取这份契约，再在后续优化中保持一致。
 
-- 对外保留稳定的 L2 API 名称和语义，例如 `aclnnSquareSumV1*`；调用方无需感知内部调整。
-- L0 类型使用唯一私有名称，例如 `SquareSumV1Custom`，以避免 tiling、infer-shape 或 binary-config 的注册键与内置算子冲突。
-- 让公开 L2 API 完成参数校验后，委托给 CANN 为私有 L0 类型生成的 wrapper；将该生成的 `.cpp` 一并链接入 `libcust_opapi.so`。
-- 不要手写一个“看似等价”的 executor 创建流程来代替生成 wrapper。缺少私有 L0 注册/动态 binary-config dispatch 时，常表现为找不到 kernel binary 或 561xxx 类运行时错误。
+以本项目通过评分器的 SquareSumV1 包为例，契约为：
 
-这一分层也便于演进：接口契约、参数校验和错误码保持稳定；tiling key、workspace 和 kernel 名称可以在包内独立迭代。
+| 层次 | 必须一致的值 | 验证位置 |
+| --- | --- | --- |
+| 对外 API | `aclnnSquareSumV1*` | `libcust_opapi.so`、调用样例 |
+| L0 / GE / tiling / infer-shape 注册 | `SquareSumV1` | `OP_ADD`、`REG_OP`、`IMPL_OP_*`、`OP_TYPE` |
+| package / vendor | `customize` | `set(package_name customize)`、安装后 `vendors/customize/` |
+| 动态实现目录 | `customize_impl/dynamic/` | `.run --list` |
+| 动态入口和源码 | `square_sum_v1.py`、`square_sum_v1.cpp` | `.run --list`、`npu_supported_ops.json` |
+
+私有 L0 名称（例如 `SquareSumV1Custom`）有时可规避内置算子冲突，但只有调用框架、安装路径、动态实现生成规则和评分器发现规则都同步适配时才可采用。不能只改 `OP_TYPE` 或 `package_name`：这会连带改变注册 JSON、动态 Python 文件名和源码目录。若评分器仍按公开名查找，就可能出现“cannot find square_sum_v1.cpp after pkg install”这类表面是源码缺失、实际是**安装后路径不匹配**的错误。
+
+因此，名称调整后的最小验证集必须包含：
+
+1. `CMakePresets.json`、`CMakeLists.txt` 与 `CMakeCache.txt` 均确认 `ENABLE_SOURCE_PACKAGE=True`；
+2. 对最终 `.run` 执行 `--list`，检查预期 vendor、动态目录、`.py` 和 `.cpp` 的完整路径；
+3. 解包 `.run` 后读取 `framework/plugin/npu_supported_ops.json`，确认注册名为调用方和评分器期望的名称；
+4. 与上一份成功包逐项比较上述字段，而不是只比较 `.run` 内是否存在任意一个同名 `.cpp`。
+
+公开接口契约稳定后，tiling key、workspace 和 kernel 算法仍可在不改变这组发现字段的前提下独立演进。
 
 ## 3. DataCopyPad 的核心约束
 
@@ -143,11 +158,12 @@
 - [ ] Host Tiling 与 Kernel 对齐、tile 大小、buffer 容量的推导一致。
 - [ ] 所有 `DataCopyPad` 的 `blockLen`、stride 单位和 `blockCount` 都按官方文档核对。
 - [ ] raw TBuf 的 MTE2→V、V→MTE3、MTE3→复用依赖均有同步。
-- [ ] 私有 L0 名称不与内置算子冲突；生成的私有 L0 wrapper 已链接到实际安装的 `libcust_opapi.so`。
+- [ ] 调用 API、L0/GE/tiling/infer-shape 注册名、`package_name`、vendor、动态 `.py` 和 `.cpp` 路径与已验证提交契约一致；如有私有化改名，已重新完成安装后发现验证。
 - [ ] 多轴 workspace 的 stage 数、FP32 字节数、对齐和每层输出所有权均由 Host 与 Kernel 共享的 tiling 数据描述。
 - [ ] 回归覆盖每个 TilingKey 的典型、非对齐和边界用例，并在真实 NPU 通过。
 - [ ] `git diff --check`、编译、安装、实际加载路径均确认无误；记录容器/宿主设备映射。
 - [ ] 提交包由项目指定脚本生成，且 `.run` 产物时间晚于最后一次源码修改；zip 不含绝对路径或无关构建目录。
+- [ ] `.run --list` 同时证明 `ENABLE_SOURCE_PACKAGE` 的实际结果：目标 `dynamic/` 目录中存在评分器将查找的 `<kernel>.cpp`，而非只检查 staging 目录中的源码。
 - [ ] 解包最终 zip 后，把其中 `.run` 安装到独立目录并重新跑真实 NPU smoke；比较安装包与工作区源码哈希。
 - [ ] 性能结果注明采集口径和 task 数据有效性，不将同类回归或无效 profiler 输出误写成隐藏测评已通过。
 

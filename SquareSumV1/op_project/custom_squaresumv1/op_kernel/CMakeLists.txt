@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------------------------------------------------
 
 npu_op_kernel_sources(ascendc_kernels
-    OP_TYPE SquareSumV1Custom
+    OP_TYPE SquareSumV1
     KERNEL_DIR .
     KERNEL_FILE square_sum_v1.cpp
 )

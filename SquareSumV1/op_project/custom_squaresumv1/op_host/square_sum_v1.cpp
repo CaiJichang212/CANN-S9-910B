@@ -13,13 +13,9 @@
 #include "register/op_def_registry.h"
 
 namespace ops {
-// The platform already owns the public L0 type `SquareSumV1`.  The ACLNN
-// entry points remain aclnnSquareSumV1*, but their implementation dispatches
-// this private L0 type so its tiling registry cannot be replaced by CANN's
-// built-in reduce implementation.
-class SquareSumV1Custom : public OpDef {
+class SquareSumV1 : public OpDef {
 public:
-    explicit SquareSumV1Custom(const char* name) : OpDef(name)
+    explicit SquareSumV1(const char* name) : OpDef(name)
     {
         this->Input("input")
             .ParamType(REQUIRED)
@@ -55,5 +51,5 @@ public:
         this->AICore().AddConfig("ascend910_93", aicoreConfig910B);
     }
 };
-OP_ADD(SquareSumV1Custom);
+OP_ADD(SquareSumV1);
 } // namespace ops

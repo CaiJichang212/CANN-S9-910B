@@ -14,7 +14,7 @@
 
 #include "ascendc/host_api/tiling/template_argument.h"
 
-ASCENDC_TPL_ARGS_DECL(SquareSumV1Custom,
+ASCENDC_TPL_ARGS_DECL(SquareSumV1,
     ASCENDC_TPL_DATATYPE_DECL(D_T_X, C_DT_FLOAT16, C_DT_FLOAT, C_DT_BF16, ASCENDC_TPL_INPUT(0))
 );
 

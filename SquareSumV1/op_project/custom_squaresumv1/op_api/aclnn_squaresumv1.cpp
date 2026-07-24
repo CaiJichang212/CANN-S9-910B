@@ -9,7 +9,8 @@
  */
 
 #include "aclnn_squaresumv1.h"
-#include "aclnn_square_sum_v1_custom.h"
+#include "squaresumv1.h"
+#include "aclnn_kernels/contiguous.h"
 #include "aclnn_kernels/common/op_error_check.h"
 #include "opdev/op_log.h"
 #include "opdev/op_dfx.h"
@@ -17,8 +18,6 @@
 #include "opdev/data_type_utils.h"
 #include "opdev/make_op_executor.h"
 #include "opdev/shape_utils.h"
-
-#include <set>
 
 using namespace op;
 
@@ -118,14 +117,32 @@ extern "C" aclnnStatus aclnnSquareSumV1GetWorkspaceSize(
 {
     L2_DFX_PHASE_1(aclnnSquareSumV1, DFX_IN(input), DFX_OUT(result));
 
+    auto uniqueExecutor = CREATE_EXECUTOR();
+    CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
+
     auto ret = CheckParams(input, axis, result, workspaceSize, const_cast<const aclOpExecutor**>(executor));
     CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
-    // Use the generated private-L0 wrapper.  It registers the exact
-    // SquareSumV1Custom op type with Nnopbase and creates the dynamic-kernel
-    // executor directly; our public API remains aclnnSquareSumV1*.
-    return aclnnSquareSumV1CustomGetWorkspaceSize(input, axis, keepDims, result,
-                                                   workspaceSize, executor);
+    if (input->IsEmpty()) {
+        *workspaceSize = 0;
+        uniqueExecutor.ReleaseTo(executor);
+        return ACLNN_SUCCESS;
+    }
+
+    auto inputContiguous = l0op::Contiguous(input, uniqueExecutor.get());
+    CHECK_RET(inputContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    auto resultContiguous = l0op::Contiguous(result, uniqueExecutor.get());
+    CHECK_RET(resultContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    const aclTensor* opResult = l0op::SquareSumV1(inputContiguous, axis, keepDims,
+                                                   resultContiguous, uniqueExecutor.get());
+    CHECK_RET(opResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    auto viewCopyResult = l0op::ViewCopy(opResult, result, uniqueExecutor.get());
+    CHECK_RET(viewCopyResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    *workspaceSize = uniqueExecutor->GetWorkspaceSize();
+    uniqueExecutor.ReleaseTo(executor);
+    return ACLNN_SUCCESS;
 }
 
 extern "C" aclnnStatus aclnnSquareSumV1(
@@ -135,5 +152,5 @@ extern "C" aclnnStatus aclnnSquareSumV1(
     aclrtStream stream)
 {
     L2_DFX_PHASE_2(aclnnSquareSumV1);
-    return aclnnSquareSumV1Custom(workspace, workspaceSize, executor, stream);
+    return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }

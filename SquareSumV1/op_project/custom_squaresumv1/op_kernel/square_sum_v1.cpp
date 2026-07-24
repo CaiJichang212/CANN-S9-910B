@@ -9,12 +9,8 @@
 
 #include "square_sum_v1.h"
 
-// CANN derives the kernel entry from the private L0 type
-// SquareSumV1Custom: square_sum_v1_custom.  It must stay aligned with the
-// OP_TYPE in CMakeLists.txt, while the exported ACLNN API keeps its original
-// SquareSumV1 name.
 template <typename D_T_X>
-__global__ __aicore__ void square_sum_v1_custom(GM_ADDR input, GM_ADDR result, GM_ADDR workspace, GM_ADDR tiling)
+__global__ __aicore__ void square_sum_v1(GM_ADDR input, GM_ADDR result, GM_ADDR workspace, GM_ADDR tiling)
 {
     REGISTER_TILING_DEFAULT(SquareSumV1TilingData);
     GET_TILING_DATA_WITH_STRUCT(SquareSumV1TilingData, tilingData, tiling);

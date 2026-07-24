@@ -19,10 +19,10 @@ set(ARCH32_COMPUTE_UNITS ascend910b ascend910_93)
 if(NOT DEFINED ASCEND_COMPUTE_UNIT OR ASCEND_COMPUTE_UNIT STREQUAL "")
     set(ASCEND_COMPUTE_UNIT ${ARCH32_COMPUTE_UNITS})
 endif()
-# Package identity and vendor must match.  Overriding only VENDOR_NAME leaves
-# code-generation targets under `customize`, and the runtime then cannot bind
-# the generated binary repository to SquareSumV1Custom.
-set(package_name squaresumv1_custom)
+# The evaluator discovers the submitted dynamic implementation under the
+# standard `customize` vendor and its SquareSumV1 registration.  Keep this
+# package identity aligned with that published operator name.
+set(package_name customize)
 
 npu_op_package(${package_name}
     TYPE RUN
