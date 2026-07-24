@@ -4,6 +4,7 @@
 #include "index_add_tiling.h"
 #include "register/op_def_registry.h"
 #include "tiling/tiling_api.h"
+#include "tiling/platform/platform_ascendc.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -11,12 +12,17 @@
 
 namespace optiling {
 
-constexpr uint32_t AICORE_NUM = 20;
 constexpr uint32_t COPY_TILE_BYTES = 16U * 1024U;
 constexpr uint32_t ATOMIC_TILE_BYTES = 16U * 1024U;
-// 320B leaves at least a 256B atomic body even in the general unaligned
-// middle-range calculation in the device code.
-constexpr uint32_t ATOMIC_THRESHOLD_BYTES = 320U;
+constexpr uint32_t ATOMIC_THRESHOLD_BYTES = 256U;
+constexpr uint32_t INDEX_CHUNK_LEN = 1024U;
+constexpr uint32_t POSITION_CHUNK_LEN = 1024U;
+constexpr uint32_t DMA_ALIGN_BYTES = 32U;
+
+enum class IndexAddPath : uint32_t {
+    ATOMIC = 0,
+    OWNER = 1,
+};
 
 enum class IndexAddDtype : uint32_t {
     FLOAT = 0,
@@ -34,6 +40,13 @@ static uint64_t CeilDiv(uint64_t x, uint64_t y)
 static bool FitsU32(uint64_t value)
 {
     return value <= static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
+}
+
+static bool SafeMul(uint64_t a, uint64_t b, uint64_t &result)
+{
+    if (a != 0U && b > std::numeric_limits<uint64_t>::max() / a) return false;
+    result = a * b;
+    return true;
 }
 
 static ge::graphStatus TilingFunc(gert::TilingContext *context)
@@ -70,10 +83,23 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     if (indexStorage.GetDimNum() != 1) return ge::GRAPH_FAILED;
     const uint64_t indexLen64 = static_cast<uint64_t>(indexStorage.GetDim(0));
 
+    // index_add accepts a rank-1 int32 index.  Source must match self on
+    // every dimension except dim, where its extent equals index.size(0).
+    const auto &sourceStorage = sourceShape->GetStorageShape();
+    if (sourceStorage.GetDimNum() != dimNum) return ge::GRAPH_FAILED;
+    for (uint32_t i = 0; i < dimNum; ++i) {
+        const uint64_t expected = i == udim ? indexLen64 : static_cast<uint64_t>(selfStorage.GetDim(i));
+        if (static_cast<uint64_t>(sourceStorage.GetDim(i)) != expected) return ge::GRAPH_FAILED;
+    }
+
     uint32_t dtypeSize = 0;
     uint32_t dtypeCode = static_cast<uint32_t>(IndexAddDtype::FLOAT);
     const auto selfDescPtr = context->GetInputDesc(0);
-    if (selfDescPtr == nullptr) return ge::GRAPH_FAILED;
+    const auto indexDescPtr = context->GetInputDesc(1);
+    const auto sourceDescPtr = context->GetInputDesc(2);
+    if (selfDescPtr == nullptr || indexDescPtr == nullptr || sourceDescPtr == nullptr ||
+        indexDescPtr->GetDataType() != ge::DT_INT32 ||
+        sourceDescPtr->GetDataType() != selfDescPtr->GetDataType()) return ge::GRAPH_FAILED;
     switch (selfDescPtr->GetDataType()) {
         case ge::DT_FLOAT:
             dtypeSize = 4; dtypeCode = static_cast<uint32_t>(IndexAddDtype::FLOAT); break;
@@ -96,11 +122,19 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         beforeDimSize64 == 0) {
         return ge::GRAPH_FAILED;
     }
-    const uint64_t selfBytes = beforeDimSize64 * dimLen64 * afterDimSize64 * dtypeSize;
-    const uint64_t sourceBytes = beforeDimSize64 * indexLen64 * afterDimSize64 * dtypeSize;
-    const uint64_t maxBytes = std::max(selfBytes, sourceBytes);
-    const uint32_t usedCoreNum = static_cast<uint32_t>(
-        std::min<uint64_t>(AICORE_NUM, std::max<uint64_t>(1, CeilDiv(maxBytes, COPY_TILE_BYTES))));
+    uint64_t selfElems = 0;
+    uint64_t sourceElems = 0;
+    uint64_t selfBytes = 0;
+    uint64_t sourceBytes = 0;
+    if (!SafeMul(beforeDimSize64, dimLen64, selfElems) ||
+        !SafeMul(selfElems, afterDimSize64, selfElems) ||
+        !SafeMul(selfElems, dtypeSize, selfBytes) ||
+        !SafeMul(beforeDimSize64, indexLen64, sourceElems) ||
+        !SafeMul(sourceElems, afterDimSize64, sourceElems) ||
+        !SafeMul(sourceElems, dtypeSize, sourceBytes)) return ge::GRAPH_FAILED;
+    auto platform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
+    uint32_t platformCoreNum = platform.GetCoreNumAiv();
+    if (platformCoreNum == 0U) platformCoreNum = 1U;
 
     const uint64_t vectorBytes = afterDimSize64 * dtypeSize;
     // Plain DMA atomic requires a 32B count and aligned source/destination.
@@ -114,7 +148,34 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     // index ownership; all other native atomic types remain on the fast path.
     const bool atomicEnabled = selfDescPtr->GetDataType() != ge::DT_BF16 &&
         vectorBytes >= ATOMIC_THRESHOLD_BYTES && (vectorBytes % 32U == 0U);
-    const uint32_t rmwTileLen = ATOMIC_TILE_BYTES / dtypeSize;
+    const uint32_t kTile = std::max(1U, ATOMIC_TILE_BYTES / dtypeSize);
+    const uint32_t indexChunkLen = static_cast<uint32_t>(std::min<uint64_t>(INDEX_CHUNK_LEN, indexLen64));
+    const uint32_t positionChunkLen = static_cast<uint32_t>(std::min<uint64_t>(POSITION_CHUNK_LEN, indexLen64));
+    // Each source vector is an independent atomic work item.  Index is still
+    // DMA-cached in chunks on device, but using chunk count here would launch
+    // only a few cores for B=1/M≈2K workloads (for example two 1024-element
+    // chunks), defeating the 40-AIV fast path.
+    const uint64_t atomicWork = beforeDimSize64 * indexLen64;
+    const uint64_t ownerWork = beforeDimSize64 * dimLen64 * CeilDiv(afterDimSize64, kTile);
+    const uint64_t work = atomicEnabled ? atomicWork : ownerWork;
+    const uint32_t usedCoreNum = static_cast<uint32_t>(
+        std::min<uint64_t>(platformCoreNum, std::max<uint64_t>(1U, work)));
+
+    uint64_t workspaceElems = 0;
+    uint64_t workspaceBytes = 0;
+    if (!atomicEnabled) {
+        if (!SafeMul(2U, dimLen64, workspaceElems) ||
+            workspaceElems > std::numeric_limits<uint64_t>::max() - indexLen64 - 1U) return ge::GRAPH_FAILED;
+        workspaceElems += indexLen64 + 1U;
+        if (!SafeMul(workspaceElems, sizeof(int32_t), workspaceBytes) ||
+            workspaceBytes > std::numeric_limits<uint64_t>::max() - (DMA_ALIGN_BYTES - 1U)) {
+            return ge::GRAPH_FAILED;
+        }
+        // DataCopyPad may align a GM read down/up to a 32B DMA block.  Keep
+        // padding after positions so the final workspace read cannot cross
+        // the allocator-visible end of this buffer.
+        workspaceBytes = (workspaceBytes + DMA_ALIGN_BYTES - 1U) & ~(static_cast<uint64_t>(DMA_ALIGN_BYTES) - 1U);
+    }
 
     tiling.set_dim(udim);
     tiling.set_beforeDimSize(static_cast<uint32_t>(beforeDimSize64));
@@ -125,17 +186,21 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     tiling.set_dtype(dtypeCode);
     tiling.set_usedCoreNum(usedCoreNum);
     tiling.set_scatterCoreNum(usedCoreNum);
+    tiling.set_path(static_cast<uint32_t>(atomicEnabled ? IndexAddPath::ATOMIC : IndexAddPath::OWNER));
     tiling.set_atomicEnabled(atomicEnabled ? 1U : 0U);
     tiling.set_copyTileBytes(COPY_TILE_BYTES);
     tiling.set_atomicTileBytes(ATOMIC_TILE_BYTES);
-    tiling.set_atomicThresholdBytes(ATOMIC_THRESHOLD_BYTES);
-    tiling.set_rmwTileLen(rmwTileLen);
+    tiling.set_kTile(kTile);
+    tiling.set_targetGroupSize(1U);
+    tiling.set_indexChunkLen(indexChunkLen);
+    tiling.set_positionChunkLen(positionChunkLen);
+    tiling.set_workspaceBytes(workspaceBytes);
 
     context->SetBlockDim(usedCoreNum);
     tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
     size_t *currentWorkspace = context->GetWorkspaceSizes(1);
-    currentWorkspace[0] = 0;
+    currentWorkspace[0] = static_cast<size_t>(workspaceBytes);
     return ge::GRAPH_SUCCESS;
 }
 
