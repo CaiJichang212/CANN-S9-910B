@@ -1,0 +1,78 @@
+[WARNING] msprof is running as root. For security reasons, use a regular user account instead.
+[INFO] Start profiling...
+PROFILE_CASE name=value_fp16_neg1_pos1_seed_a
+PROFILE_CASE name=value_fp16_neg1_pos1_seed_b
+PROFILE_CASE name=value_fp16_neg1000_pos1000
+PROFILE_CASE name=value_fp16_pos1_pos10
+PROFILE_CASE name=value_fp32_neg1_pos1_seed_a
+PROFILE_CASE name=value_fp32_neg1_pos1_seed_b
+PROFILE_CASE name=value_fp32_neg1000_pos1000
+PROFILE_CASE name=value_fp32_pos1_pos10
+PROFILE_CASE name=ar_fp16_n4
+PROFILE_CASE name=ar_fp16_n31
+PROFILE_CASE name=ar_fp16_n32
+PROFILE_CASE name=ar_fp16_n33
+PROFILE_CASE name=ar_fp16_n997
+PROFILE_CASE name=ar_fp16_n10000
+PROFILE_CASE name=large_fp16_tail
+PROFILE_CASE name=large_fp16_nontail
+PROFILE_CASE name=ar_fp32_n4
+PROFILE_CASE name=ar_fp32_n31
+PROFILE_CASE name=ar_fp32_n32
+PROFILE_CASE name=ar_fp32_n33
+PROFILE_CASE name=ar_fp32_n997
+PROFILE_CASE name=ar_fp32_n10000
+PROFILE_CASE name=large_fp32_tail
+PROFILE_CASE name=large_fp32_nontail
+PROFILE_CASE name=ara_fp16_a0_997
+PROFILE_CASE name=ara_fp16_keep_a0_33
+PROFILE_CASE name=ara_fp16_r4094_a0_8
+PROFILE_CASE name=ara_fp16_r4095_a0_8
+PROFILE_CASE name=ara_fp16_r4096_a0_8
+PROFILE_CASE name=ara_fp16_r5000_a0_100
+PROFILE_CASE name=ara_fp16_r10000_a0_100
+PROFILE_CASE name=ara_fp32_a0_997
+PROFILE_CASE name=ara_fp32_keep_a0_33
+PROFILE_CASE name=ara_fp32_r4094_a0_8
+PROFILE_CASE name=ara_fp32_r4095_a0_8
+PROFILE_CASE name=ara_fp32_r4096_a0_8
+PROFILE_CASE name=ara_fp32_r5000_a0_100
+PROFILE_CASE name=ara_fp32_r10000_a0_100
+PROFILE_CASE name=multi_contiguous_fp16
+PROFILE_CASE name=multi_noncontiguous_fp16
+PROFILE_CASE name=multi_negative_fp16
+PROFILE_CASE name=multi_all_axes_fp16
+PROFILE_CASE name=rank5_fp16_outer_axis
+PROFILE_CASE name=multi_contiguous_fp32
+PROFILE_CASE name=multi_noncontiguous_fp32
+PROFILE_CASE name=multi_negative_fp32
+PROFILE_CASE name=multi_all_axes_fp32
+PROFILE_CASE name=rank5_fp32_outer_axis
+[INFO] Start export data in PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB.
+Fri 24 Jul 2026 01:44:39 [INFO] [MSVP] [457531] msprof_common.py: Start analyzing data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/host" ...
+Fri 24 Jul 2026 01:44:39 [INFO] [MSVP] [457531] msprof_common.py: It may take few minutes, please be patient ...
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_common.py: Analysis data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/host" finished.
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_common.py: Start analyzing data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0" ...
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_common.py: It may take few minutes, please be patient ...
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_common.py: Analysis data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0" finished.
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0.
+Fri 24 Jul 2026 01:44:40 [INFO] [MSVP] [457531] msprof_export.py: There is no timeline data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/host"
+Fri 24 Jul 2026 01:44:41 [INFO] [MSVP] [457703] msprof_export.py: The data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/host" has been analyzed. Parsing phase will be skipped.
+Fri 24 Jul 2026 01:44:41 [INFO] [MSVP] [457703] msprof_export.py: The data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0" has been analyzed. Parsing phase will be skipped.
+Fri 24 Jul 2026 01:44:41 [INFO] [MSVP] [457703] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0.
+Fri 24 Jul 2026 01:44:41 [INFO] [MSVP] [457703] msprof_export.py: There is no summary data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/host"
+Fri 24 Jul 2026 01:44:42 [INFO] [MSVP] [457703] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0.
+Fri 24 Jul 2026 01:44:42 [INFO] [MSVP] [457703] msprof_export.py: There is no summary data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/device_0"
+Fri 24 Jul 2026 01:44:42 [INFO] [MSVP] [457703] msprof_common.py: Start exporting summary output_file.
+Fri 24 Jul 2026 01:44:42 [INFO] [MSVP] [457703] msprof_common.py: End exporting summary output_file.The file is stored in the /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB/mindstudio_profiler_output path.
+[INFO] Export all data in PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB done.
+[INFO] Start query data in PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB.
+Job Info	Device ID	Dir Name	Collection Time           	Model ID	Iteration Number	Top Time Iteration	Rank ID	
+
+NA      	         	host    	2026-07-24 01:44:27.220565	N/A     	N/A             	N/A               	-1     	
+
+NA      	0        	device_0	2026-07-24 01:44:27.898680	N/A     	N/A             	N/A               	-1     	
+
+[INFO] Query all data in PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB done.
+[INFO] Profiling finished.
+[INFO] Process profiling data complete. Data is saved in /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_after/scientific_pipeutil/PROF_000001_20260724014427218_AJHEMAQHQFOKCRGB

@@ -1,0 +1,19 @@
+=== msprof profiling ===
+App      : python3 /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/npu_scientific_perf_suite.py --profile-index=39
+Output   : /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516
+Warm-up  : 2
+--- Warm-up x2 ---
+  warm-up 1/2
+  warm-up 2/2
+--- aic-metrics=PipeUtilization -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_PipeUtilization ---
+--- aic-metrics=ArithmeticUtilization -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_ArithmeticUtilization ---
+--- aic-metrics=Memory -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_Memory ---
+--- aic-metrics=MemoryL0 -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_MemoryL0 ---
+--- aic-metrics=MemoryUB -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_MemoryUB ---
+--- aic-metrics=L2Cache -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_L2Cache ---
+--- aic-metrics=ResourceConflictRatio -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_ResourceConflictRatio ---
+--- sample-based (per-core load balance) -> /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516/PROF_Sample ---
+
+=== Done. PROF group = /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516 ===
+Next:
+  python3 /home/liyc/hw-S9/cannbot-skills/ops/ops-profiling/scripts/msprof_perf_summary.py /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260723/deep_key4_multi_noncontig_fp16/raw/PROF_GROUP_20260723_134516 <ops_dir>
