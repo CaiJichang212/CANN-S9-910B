@@ -134,3 +134,17 @@ Concat/perf_eval/s9_scientific_20260721/latency/*/
 
 # 单次性能快照（result-20260720.txt 已作为基线跟踪；新快照建议合并到 docs/baseline_results.md）
 result-20260720-2.txt
+
+# ============================================================
+# Concat perf_eval 运行副产物（仅跟踪 latency_summary.csv 与采集脚本）
+# ============================================================
+# OPP 安装产物（含 .so/.json，由 install 重新生成）
+Concat/perf_eval/current_20260723/opp/
+# profiling 原始数据与 case 目录（PROF_* 已由全局 PROF_*/ 覆盖，
+# _profiling_output_record 与其余 device 副产物在此忽略）
+Concat/perf_eval/current_20260723/latency/
+Concat/perf_eval/current_20260723/fragmented_recheck_round*/
+Concat/perf_eval/current_20260723/smoke_0910/
+
+# transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
+todo.md
