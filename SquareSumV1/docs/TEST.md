@@ -54,7 +54,7 @@
 
 ### 3.2 shape / dimensions 覆盖矩阵
 
-依据 `spec.yaml.inputs[0].rank_range: [0, 5]` 和维度范围约束：
+依据 `spec.yaml.inputs[0].rank_range: [0, 8]`：
 
 | dimensions | 输入 shape 示例 | L0 | L1 | 说明 |
 |-----------|----------------|----|----|------|
@@ -63,7 +63,7 @@
 | 2 | `[N2, N]` | Y | Y | 2-D reduce，axis=0/1/-1/-2 |
 | 3 | `[N3, N2, N]` | Y | Y | 3-D 多轴 reduce |
 | 4 | `[N4, N3, N2, N]` | Y | Y | 4-D 多轴 reduce |
-| 5 | `[..., N4, N3, N2, N]` | Y | Y | 5-D 最大维度 |
+| 5–8 | `[..., N4, N3, N2, N]` | Y | Y | 高 rank、多轴与负 axis 回归 |
 
 **非对齐覆盖**：各维度的 32B 边界场景（如 N=31、N=33、N=65 等），在 L1 中随机覆盖。
 
@@ -264,7 +264,7 @@ output = torch.sum(torch.square(x), axis, keepdim=keep_dims)
 
 | 输出 dtype | rtol | atol | loss（允许不满足比例） | metric |
 |-----------|------|------|----------------------|--------|
-| float16 | 1.0e-2 | 1.0e-2 | 1.0e-3 | max_relative |
+| float16 | 1.0e-3 | 1.0e-3 | 1.0e-3 | max_relative |
 | bfloat16 | 1.0e-2 | 1.0e-2 | 1.0e-3 | max_relative |
 | float32 | 1.0e-4 | 1.0e-4 | 1.0e-4 | max_relative |
 
@@ -299,7 +299,7 @@ output = torch.sum(torch.square(x), axis, keepdim=keep_dims)
 |------|--------|---------|------|
 | L0 | 117 | 核心功能直通，因子值覆盖（126 条原始 CSV 过滤 9 条超限维度后 117 条有效），axis 合法率 100% | `aclnnSquareSumV1_l0_test_cases.csv` |
 | L1 | 518 | 两两组合覆盖 + 边界场景（rank=0, 空 tensor, 65504），全部有效 | `aclnnSquareSumV1_l1_test_cases.csv` |
-| L2 | 9 | 异常用例（axis 越界、重复值、dtype 不支持、null 指针、rank>5 等） | `aclnnSquareSumV1_l2_test_cases.csv` |
+| L2 | 9 | 异常用例（axis 越界、重复值、dtype 不支持、null 指针、rank>8 等） | `aclnnSquareSumV1_l2_test_cases.csv` |
 
 ---
 
@@ -331,7 +331,7 @@ blackbox_case_targets:
 - 输出 dtype 与输入 dtype 一致（`result.dtype = input.dtype`）
 
 ### 9.2 shape 约束
-- 输入最多 5 维，各维度范围：N/N2 in [1,10000], N3 in [1,1000], N4 in [1,200]
+- 输入 rank 为 0–8；非标量维度为正整数
 - 任意维度可能不对齐 32B 边界
 - 输出 shape 由 axis 和 keep_dims 决定
 

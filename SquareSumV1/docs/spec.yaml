@@ -34,7 +34,7 @@ inputs:
   - name: x
     role: tensor
     dtype_set: [float16, float32, bfloat16]
-    rank_range: [0, 5]
+    rank_range: [0, 8]
     layout: ND
     shape:
       symbolic: ["...d"]
@@ -72,9 +72,9 @@ outputs:
 shape_constraints:
   symbols: {}
   global_constraints:
-    - "rank(x) <= 5"
+    - "rank(x) <= 8"
   notes:
-    - "输入最多 5 维 (...,N4,N3,N2,N)；N/N2∈[1,10000]、N3∈[1,1000]、N4∈[1,200]"
+    - "输入 rank 支持 0–8；非标量维度必须为正，任意维度可能不对齐 32B"
     - "任意维度可能不对齐 32 字节边界"
     - "输出 shape 由 axis 和 keep_dims 决定（shape_rule 以默认 axis=[-1],keep_dims=false 求解）"
     - "keep_dims=true 时被规约维度保留为 1；keep_dims=false 时被规约维度被去除"
@@ -151,7 +151,7 @@ numerical_stability:
 numerical_tolerance:
   source: "ops-precision-standard/float_compute_community.md"
   per_dtype:
-    float16:  {rtol: 1.0e-2, atol: 1.0e-2, metric: max_relative}
+    float16:  {rtol: 1.0e-3, atol: 1.0e-3, metric: max_relative}
     bfloat16: {rtol: 1.0e-2, atol: 1.0e-2, metric: max_relative}
     float32:  {rtol: 1.0e-4, atol: 1.0e-4, metric: max_relative}
 

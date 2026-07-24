@@ -91,17 +91,14 @@
 
 | 名称 | 类型 | shape | dtype |
 |------|------|-------|-------|
-| input | tensor | `(..., N4, N3, N2, N)`，最多 5 维 | float16 / bfloat16 / float |
+| input | tensor | rank 0–8；非标量维度为正，任意维度可非 32B 对齐 | float16 / bfloat16 / float |
 
 **维度范围**:
 
-| 维度符号 | 范围 | 说明 |
-|---------|------|------|
-| N（最内层） | [1, 10000] | 最内层维度 |
-| N2 | [1, 10000] | 第二维 |
-| N3 | [1, 1000] | 第三维 |
-| N4 | [1, 200] | 第四维 |
-| ... | 可选第 5 维 | 第五维大小与 N4 范围一致 |
+| 维度 | 范围 | 说明 |
+|------|------|------|
+| rank | [0, 8] | ACLNN 与 Host Tiling 的共同上限 |
+| 各非标量维度 | 正整数 | 支持任意 32B 对齐或非对齐长度 |
 
 > N ~ N4 均可能为非 32 的整倍数，需要考虑非对齐场景（tail 处理路径）。
 
@@ -140,7 +137,7 @@
 
 | 数据类型 | rtol | atol | loss（允许的不满足元素比例） |
 |---------|------|------|------|
-| float16 | 1e-2 | 1e-2 | 1e-3 |
+| float16 | 1e-3 | 1e-3 | 1e-3 |
 | bfloat16 | 1e-2 | 1e-2 | 1e-3 |
 | float32 | 1e-4 | 1e-4 | 1e-4 |
 
@@ -175,7 +172,7 @@ aclnnStatus aclnnSquareSumV1(
 
 | 参数名 | 类型 | 输入/输出 | 说明 |
 |-------|------|----------|------|
-| input | const aclTensor* | 输入 | 输入张量 X，dtype 为 float16/bfloat16/float，最多 5 维 |
+| input | const aclTensor* | 输入 | 输入张量 X，dtype 为 float16/bfloat16/float，rank 0–8 |
 | axis | const aclIntArray* | 输入 | 规约轴列表，可多值，支持负索引 |
 | keepDims | const bool | 输入 | 是否保留被规约的维度，默认 False |
 | result | aclTensor* | 输出 | 输出张量 Y，由调用方预分配。dtype 与 input 一致，shape 由 axis 和 keepDims 决定 |
