@@ -1,7 +1,0 @@
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/test_aclnn_square_sum_v1.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/edit_cache.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/rebuild_cache.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/list_install_components.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/install.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/install/local.dir
-/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/tests/st/build-mock/CMakeFiles/install/strip.dir
