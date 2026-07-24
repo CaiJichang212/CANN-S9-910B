@@ -21,7 +21,7 @@
 
 ## 用例集与正确性结果
 
-用例定义位于 [`Concat/test_matrix.py`](../../test_matrix.py)。默认集合为 **27 个固定 L0/L1 用例 + 12 个确定性随机 L1 用例 = 39 个**；随机种子为 `20260721`，可通过以下命令重现：
+用例定义位于 [`Concat/test_matrix.py`](Concat/test_matrix.py)。默认集合为 **27 个固定 L0/L1 用例 + 12 个确定性随机 L1 用例 = 39 个**；随机种子为 `20260721`，可通过以下命令重现：
 
 ```bash
 python3 Concat/test_matrix.py --random-cases 12 --seed 20260721
@@ -43,8 +43,8 @@ python3 Concat/test_matrix.py --random-cases 12 --seed 20260721
 - 运行时：CANN 8.5.0，目标架构 dav-2201；使用隔离安装的最终 custom OPP `.run` 包。
 - 互斥前提：采集开始前及完成后检查 NPU 0–3，均无运行进程；结束后的设备利用率为 0%。
 - 多卡校准：同一 `score_shape_2024x3000_fp32` 在 0–3 各采 29 个热态样本，设备中位数为 53.961 / 56.202 / 56.041 / 55.480 us，离散度 **3.99%**。因此采用 0–3 分卡并行采集全矩阵，避免长时间串行测试的频率与温度漂移，同时保留校准证据。
-- 全量矩阵：每 case 记录 30 个 `ConcatCustom`；剔除第一个冷启动后，使用 29 个样本的中位数、P95、最小/最大与 CV。原始文件在 [`latency/`](latency/)，结构化结果在 [`latency_summary.csv`](latency_summary.csv)。
-- 深度分析：对三项代表压力用例分别采集 `PipeUtilization`、`ArithmeticUtilization`、`Memory`、`MemoryL0`、`MemoryUB`、`L2Cache`、`ResourceConflictRatio` 和 sample-based 原始数据库。每个指标组同样剔除首个 `ConcatCustom`。采集目录在 [`deep/`](deep/)，自动汇总在 [`deep_summary.csv`](deep_summary.csv)。
+- 全量矩阵：每 case 记录 30 个 `ConcatCustom`；剔除第一个冷启动后，使用 29 个样本的中位数、P95、最小/最大与 CV。原始文件在 [`latency/`](Concat/perf_eval/s9_scientific_20260721/latency/)，结构化结果在 [`latency_summary.csv`](Concat/perf_eval/s9_scientific_20260721/latency_summary.csv)。
+- 深度分析：对三项代表压力用例分别采集 `PipeUtilization`、`ArithmeticUtilization`、`Memory`、`MemoryL0`、`MemoryUB`、`L2Cache`、`ResourceConflictRatio` 和 sample-based 原始数据库。每个指标组同样剔除首个 `ConcatCustom`。采集目录在 [`deep/`](Concat/perf_eval/s9_scientific_20260721/deep/)，自动汇总在 [`deep_summary.csv`](Concat/perf_eval/s9_scientific_20260721/deep_summary.csv)。
 
 ## 全量性能结果
 
@@ -67,7 +67,7 @@ python3 Concat/test_matrix.py --random-cases 12 --seed 20260721
 | 5 | `fp32_before_dim_over_4095` | fp32 `(5003,64)` | 40 | 17.761 | 18.645 | 2.76% |
 | 6 | `s9_fp16_rank5_axis3_999` | fp16 `(2,3,17,999,31)` | 40 | 16.721 | 17.612 | 2.73% |
 
-完整逐 case 数据（设备号、shape、Block Dim、29 样本统计和 AIV 中位时间）不在报告中二次抄写，见 [`latency_summary.csv`](latency_summary.csv)。
+完整逐 case 数据（设备号、shape、Block Dim、29 样本统计和 AIV 中位时间）不在报告中二次抄写，见 [`latency_summary.csv`](Concat/perf_eval/s9_scientific_20260721/latency_summary.csv)。
 
 ## 深度 profiling 与瓶颈定位
 
@@ -108,8 +108,8 @@ python3 Concat/test_matrix.py --random-cases 12 --seed 20260721
 
 ## 可复核产物
 
-- 用例定义与 bitwise oracle：[`Concat/test_matrix.py`](../../test_matrix.py)
-- 全量性能明细：[`latency_summary.csv`](latency_summary.csv)
-- 深度指标明细：[`deep_summary.csv`](deep_summary.csv)
-- 深度指标再生成脚本：[`summarize_deep.py`](summarize_deep.py)
-- 原始 msprof 文件：[`latency/`](latency/) 与 [`deep/`](deep/)
+- 用例定义与 bitwise oracle：[`Concat/test_matrix.py`](Concat/test_matrix.py)
+- 全量性能明细：[`latency_summary.csv`](Concat/perf_eval/s9_scientific_20260721/latency_summary.csv)
+- 深度指标明细：[`deep_summary.csv`](Concat/perf_eval/s9_scientific_20260721/deep_summary.csv)
+- 深度指标再生成脚本：[`summarize_deep.py`](Concat/perf_eval/s9_scientific_20260721/summarize_deep.py)
+- 原始 msprof 文件：[`latency/`](Concat/perf_eval/s9_scientific_20260721/latency/) 与 [`deep/`](Concat/perf_eval/s9_scientific_20260721/deep/)

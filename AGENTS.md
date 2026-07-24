@@ -134,7 +134,7 @@ bash build_and_pack.sh
 
 ## 7. 已归档验证与性能结果（2026-07-21）
 
-证据目录为 `Concat/perf_eval/s9_scientific_20260721/`，完整结论见 `S9_Concat_验收与性能分析报告.md`，逐 case 数据见 `latency_summary.csv` 与 `deep_summary.csv`。
+证据目录为 `Concat/perf_eval/s9_scientific_20260721/`，完整结论见项目根目录的 `S9_Concat_验收与性能分析报告.md`，逐 case 数据见 `latency_summary.csv` 与 `deep_summary.csv`。
 
 - **正确性**：39/39 通过，覆盖 27 个固定 L0/L1 用例和 12 个 seed `20260721` 的随机 L1 用例；fp16/fp32/int32/int8 均逐 bit/精确相等。
 - **统计口径**：每项采集 30 个 `ConcatCustom` 任务，剔除首个冷启动，统计 29 个热态 `Task Duration(us)`；使用 NPU 0–3 分卡采集，并保留校准记录。
@@ -172,6 +172,6 @@ bash build_and_pack.sh
 ## 10. 参考资料
 
 - 当前源码：`op/CustomOp/op_host/concat.cpp`、`op/CustomOp/op_kernel/concat.cpp`、`op/CustomOp/op_host/concat_tiling.h`。
-- 可复核验收报告：`Concat/perf_eval/s9_scientific_20260721/S9_Concat_验收与性能分析报告.md`。
+- 可复核验收报告：`S9_Concat_验收与性能分析报告.md`。
 - 官方 910B 实现与头文件：`/home/liyc/asc-devkit/impl/basic_api/dav_c220/`、`/home/liyc/asc-devkit/include/basic_api/kernel_struct_data_copy.h`。
 - 通用经验：`/home/liyc/hw-S9/AscendC算子开发经验教训.md` 与 `Concat算子优化经验.md`。
