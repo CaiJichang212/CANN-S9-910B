@@ -15,10 +15,9 @@ PROF_*/
 **/*_profiling_output_record
 
 # ============================================================
-# CMake 构建产物（ST 测试 mock 构建目录）
+# CMake 构建产物（ST 测试 mock/real 构建目录）
 # ============================================================
-**/tests/st/build-mock/
-**/tests/st/build/
+**/tests/st/build-*/
 
 # ============================================================
 # SquareSumV1 评测：原始 profiling 数据（仅跟踪报告/汇总）
@@ -35,6 +34,8 @@ SquareSumV1/docs/perf/
 # OPP 私有安装产物（由 build.sh / build_and_pack.sh 重新生成，含 .so）
 # ============================================================
 **/.local_opp/
+**/local_opp/
+**/.submit_opp_*/
 
 # ============================================================
 # perf_eval 运行副产物：仅保留 results 文本基线（npu_before/after.txt、
