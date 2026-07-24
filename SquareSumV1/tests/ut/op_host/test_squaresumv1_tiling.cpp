@@ -30,7 +30,7 @@
 
 #include "tiling_context_faker.h"
 #include "tiling_case_executor.h"
-#include "squaresumv1_tiling_data.h"
+#include "square_sum_v1_tiling_data.h"
 
 namespace SquareSumV1UT {
 using namespace std;
@@ -113,6 +113,20 @@ protected:
         std::cout << "SquareSumV1TilingTest TearDown." << std::endl;
     }
 };
+
+// The ACLNN front end rejects these too; exercising tiling directly prevents
+// malformed graph attributes from reaching CoalesceAxis/Kernel dispatch.
+TEST_F(SquareSumV1TilingTest, tiling_rejects_out_of_range_and_duplicate_axis)
+{
+    EXPECT_FALSE(RunTiling({2, 3}, ge::DT_FLOAT16, {2}).success);
+    EXPECT_FALSE(RunTiling({2, 3}, ge::DT_FLOAT16, {-3}).success);
+    EXPECT_FALSE(RunTiling({2, 3, 4}, ge::DT_FLOAT, {1, -2}).success);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_rejects_rank_above_aclnn_contract)
+{
+    EXPECT_FALSE(RunTiling({1, 1, 1, 1, 1, 1, 1, 1, 1}, ge::DT_FLOAT16, {-1}).success);
+}
 
 // =============================================================================
 // 1. Basic AR_FULLLOAD path - fp16, axis=-1, typical shape

@@ -20,13 +20,14 @@ message(STATUS "Building UT for SOC_VERSION: ${SOC_VERSION}")
 # =============================================================================
 set(OP_HOST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_host)
 
-# arch22 tiling source (Ascend910B)
-set(TILING_SRC ${OP_HOST_DIR}/arch22/${OP_NAME}_tiling.cpp)
-set(TILING_DATA_H ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel/arch22/${OP_NAME}_tiling_data.h)
+# The packaged source uses underscore-separated filenames directly under
+# op_host/op_kernel; the old arch22 layout was removed with the 910B port.
+set(TILING_SRC ${OP_HOST_DIR}/square_sum_v1_tiling.cpp)
+set(TILING_DATA_H ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel/square_sum_v1_tiling_data.h)
 
 set(OP_HOST_SRCS
-    ${OP_HOST_DIR}/${OP_NAME}_def.cpp
-    ${OP_HOST_DIR}/${OP_NAME}_infershape.cpp
+    ${OP_HOST_DIR}/square_sum_v1.cpp
+    ${OP_HOST_DIR}/square_sum_v1_infershape.cpp
     ${TILING_SRC}
 )
 
@@ -55,8 +56,7 @@ add_library(${OP_HOST_SO} SHARED
 target_include_directories(${OP_HOST_SO} PRIVATE
     ${UT_COMMON_INCLUDE_DIRS}
     ${OP_HOST_DIR}
-    ${OP_HOST_DIR}/arch22
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel/arch22
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel
 )
 
 # Compile Definitions for .so
@@ -93,8 +93,7 @@ add_executable(${UT_EXE}
 target_include_directories(${UT_EXE} PRIVATE
     ${UT_COMMON_INCLUDE_DIRS}
     ${OP_HOST_DIR}
-    ${OP_HOST_DIR}/arch22
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel/arch22
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../op_project/custom_squaresumv1/op_kernel
 )
 
 # Compile Definitions for UT
