@@ -24,6 +24,7 @@
 #include <cstring>
 #include <limits>
 #include <cstdint>
+#include <cstdlib>
 #include <algorithm>
 #include <sstream>
 #include <fstream>
@@ -662,8 +663,8 @@ void ParseAttributes(const std::string& attrStr,
 }
 
 TestDtype ParseDtype(const std::string& dtStr) {
-    if (dtStr.find("float16") != std::string::npos) return TestDtype::FLOAT16;
     if (dtStr.find("bfloat16") != std::string::npos) return TestDtype::BFLOAT16;
+    if (dtStr.find("float16") != std::string::npos) return TestDtype::FLOAT16;
     return TestDtype::FLOAT32;
 }
 
@@ -1890,7 +1891,7 @@ int CreateAclTensor(const std::vector<uint8_t>& hostData,
 aclDataType TestDtypeToAclDtype(TestDtype dt) {
     switch (dt) {
         case TestDtype::FLOAT16:  return ACL_FLOAT16;
-        case TestDtype::BFLOAT16: return ACL_BFLOAT16;
+        case TestDtype::BFLOAT16: return ACL_BF16;
         case TestDtype::FLOAT32:  return ACL_FLOAT;
     }
     return ACL_FLOAT;
@@ -2153,6 +2154,9 @@ int main(int argc, char* argv[]) {
     LOG_PRINT("CSV 用例文件: %s", csvPath.c_str());
 
     int32_t deviceId = 0;
+    if (const char* deviceEnv = std::getenv("SQUARESUMV1_DEVICE_ID"); deviceEnv != nullptr) {
+        deviceId = static_cast<int32_t>(std::strtol(deviceEnv, nullptr, 10));
+    }
     aclrtStream stream;
 
     auto ret = aclInit(nullptr);

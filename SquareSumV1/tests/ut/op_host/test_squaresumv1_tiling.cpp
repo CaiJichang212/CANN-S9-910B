@@ -37,7 +37,10 @@ using namespace std;
 using namespace ge;
 using namespace gert;
 
-static const std::string OP_NAME = "SquareSumV1";
+// SquareSumV1 is a CANN built-in L0 name.  The submitted public ACLNN API
+// dispatches the isolated implementation-only type below, so tiling UTs must
+// resolve the same registry entry as the packaged operator.
+static const std::string OP_NAME = "SquareSumV1Custom";
 
 // CompileInfo struct (matches tiling.cpp)
 struct SquareSumV1CompileInfo {};
@@ -778,8 +781,8 @@ TEST_F(SquareSumV1TilingTest, tiling_axis_position_first_axis_2d)
     EXPECT_EQ(td->rLength, 100);
     EXPECT_EQ(td->a0Length, 64);
     EXPECT_EQ(td->tilingMode, 2u);
-    // Single core since totalRows=1
-    EXPECT_EQ(td->usedCoreNum, 1);
+    // ARA work is split by (A1, A0-tile), so axis=0 keeps AIVs busy.
+    EXPECT_EQ(td->usedCoreNum, 8);
 }
 
 // =============================================================================
@@ -925,7 +928,7 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_fullload_mode2_single_tile)
 
     EXPECT_EQ(td->tilingMode, 2u);
     EXPECT_EQ(td->a0Length, 64);
-    EXPECT_EQ(td->numA0Tiles, 1);
+    EXPECT_EQ(td->numA0Tiles, 4);
     // rChunkSize/numRChunks should be 0 for ARA_FULLLOAD
     EXPECT_EQ(td->rChunkSize, 0);
     EXPECT_EQ(td->numRChunks, 0);
@@ -995,15 +998,13 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp32)
     EXPECT_EQ(td->tilingMode, 3u);
     EXPECT_EQ(td->rLength, 7000);
     EXPECT_EQ(td->a0Length, 64);
-    // tileA0Align = min(64, CeilAlign(64,8)=64) = 64
-    EXPECT_EQ(td->tileA0Align, 64);
-    EXPECT_EQ(td->tileA0Len, 64);
-    EXPECT_EQ(td->numA0Tiles, 1);
-    // rChunkSize found by binary search: 765
+    // The scheduler further tiles A0 to expose independent output owners.
+    EXPECT_EQ(td->tileA0Align, 16);
+    EXPECT_EQ(td->tileA0Len, 16);
+    EXPECT_EQ(td->numA0Tiles, 4);
     EXPECT_GT(td->rChunkSize, 0);
     EXPECT_GT(td->numRChunks, 1);
-    // ceil(7000 / 765) = 10
-    EXPECT_EQ(td->numRChunks, 10);
+    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
 }
 
 // =============================================================================
@@ -1022,12 +1023,10 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
     EXPECT_EQ(td->tilingMode, 3u);
     EXPECT_EQ(td->rLength, 5000);
     EXPECT_EQ(td->a0Length, 64);
-    EXPECT_EQ(td->tileA0Align, 64);
-    // rChunkSize found by binary search: 510
+    EXPECT_EQ(td->tileA0Align, 16);
     EXPECT_GT(td->rChunkSize, 0);
     EXPECT_GT(td->numRChunks, 1);
-    // ceil(5000 / 510) = 10
-    EXPECT_EQ(td->numRChunks, 10);
+    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
 }
 
 // =============================================================================
@@ -1052,10 +1051,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
                        + tileA0 * sizeof(float) * 2 + std::max(tileA0 * sizeof(float), 32UL);
     EXPECT_LE(ubAtChunk, 196608u);
 
-    // Verify (rChunkSize+1) * tileA0 would exceed UB
-    uint64_t ubAtChunkPlus1 = static_cast<uint64_t>(rChunk + 1) * tileA0 * sizeof(float)
-                            + tileA0 * sizeof(float) * 2 + std::max(tileA0 * sizeof(float), 32UL);
-    EXPECT_GT(ubAtChunkPlus1, 196608u);
+    // DMA rows are capped by the documented DataCopyPad blockCount limit.
+    EXPECT_LE(rChunk, 4095);
 }
 
 // -----------------------------------------------------------------------------
@@ -1149,7 +1146,7 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_edge_r_length_one)
     EXPECT_EQ(td->a0Length, 64);
     // R=1 fits trivially → ARA_FULLLOAD
     EXPECT_EQ(td->tilingMode, 2u);
-    EXPECT_EQ(td->numA0Tiles, 1);
+    EXPECT_EQ(td->numA0Tiles, 4);
 }
 
 // =============================================================================
@@ -1248,8 +1245,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_blockdim_single_core)
     ASSERT_NE(td, nullptr);
 
     EXPECT_EQ(td->totalRows, 1);
-    EXPECT_EQ(td->usedCoreNum, 1);
-    EXPECT_EQ(r.info.blockNum, 1u);
+    EXPECT_EQ(td->usedCoreNum, 8);
+    EXPECT_EQ(r.info.blockNum, 8u);
 }
 
 // =============================================================================
@@ -1257,10 +1254,9 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_blockdim_single_core)
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_boundary)
 {
-    // fp32: ubNeededFullLoad(24000) = 2*24000*4 + 1504 + 64 = 193568 ≤ 196608 → AR_FULLLOAD
-    // fp32: ubNeededFullLoad(25000) = 2*25000*4 + 1568 + 64 = 201632 > 196608 → AR_COLSPLIT
-    auto rFull = RunTiling({2, 24000}, ge::DT_FLOAT, {-1});
-    auto rSplit = RunTiling({2, 25000}, ge::DT_FLOAT, {-1});
+    // The production path reserves a 184KiB UB safety budget.
+    auto rFull = RunTiling({2, 23000}, ge::DT_FLOAT, {-1});
+    auto rSplit = RunTiling({2, 24000}, ge::DT_FLOAT, {-1});
     ASSERT_TRUE(rFull.success);
     ASSERT_TRUE(rSplit.success);
 
@@ -1298,11 +1294,7 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
                        + std::max(tileA0 * 4UL, 32UL);                   // tmp buffer
     EXPECT_LE(ubAtChunk, 196608u);
 
-    // Verify rChunkSize+1 would exceed UB
-    uint64_t ubAtChunkPlus1 = static_cast<uint64_t>(rChunk + 1) * tileA0 * ts
-                            + static_cast<uint64_t>(rChunk + 1) * tileA0 * 4UL
-                            + tileA0 * 4UL + tileA0 * ts + std::max(tileA0 * 4UL, 32UL);
-    EXPECT_GT(ubAtChunkPlus1, 196608u);
+    EXPECT_LE(rChunk, 4095);
 }
 
 // =============================================================================
@@ -1666,8 +1658,7 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    int64_t inputElems = 4 * 100 * 64;
-    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    size_t expectedWs = static_cast<size_t>(512) * sizeof(float) * 2;
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
@@ -1689,8 +1680,7 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    int64_t inputElems = 2 * 50 * 32;
-    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    size_t expectedWs = static_cast<size_t>(512) * sizeof(float) * 2;
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
@@ -2054,10 +2044,8 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_max_dim)
     EXPECT_EQ(td->totalRows, 2400);
     EXPECT_EQ(td->usedCoreNum, 20);
 
-    // Workspace: totalInputElems = 2*3*100*4*64 = 153600
-    // wsSize = 153600 * 4 * 2 = 1228800
-    int64_t inputElems = 2 * 3 * 100 * 4 * 64;
-    size_t expectedWs = static_cast<size_t>(inputElems) * sizeof(float) * 2;
+    // Two 512B-aligned compact stages, sized by the largest intermediate.
+    size_t expectedWs = static_cast<size_t>(2432) * sizeof(float) * 2;
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
@@ -2105,6 +2093,45 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_contiguous_nontail_not_key4)
     EXPECT_EQ(td->totalRows, 2);
     EXPECT_EQ(td->rLength, 5000);
     EXPECT_EQ(td->a0Length, 64);
+}
+
+// =============================================================================
+// Submission paths: compact multi-axis stages and large all-reduce cooperation
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_reduce_all_cooperative_uses_partial_workspace)
+{
+    // One very large output cannot get parallelism from A1/A0.  It must use
+    // the explicit two-stage cooperative path instead of the AR single core.
+    auto r = RunTiling({65536}, ge::DT_FLOAT, {0}, false, 20);
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 5u);
+    EXPECT_EQ(td->cooperativeChunkCols, 16320);
+    EXPECT_EQ(td->cooperativeCoreNum, 5);
+    EXPECT_EQ(td->usedCoreNum, 5);
+    EXPECT_EQ(r.info.blockNum, 5u);
+    ASSERT_GE(r.info.workspaceSizes.size(), 1u);
+    EXPECT_GE(r.info.workspaceSizes[0], 4096u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_compact_stages_are_dense_and_aligned)
+{
+    auto r = RunTiling({2, 3, 5}, ge::DT_BF16, {0, 2}, false, 20);
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 2);
+
+    // Layer 0 output is [2,3] = 6 fp32 values, not six 32B scalar slots.
+    EXPECT_EQ(td->layerOutputElemCount[0], 6);
+    EXPECT_EQ(td->layerWorkspaceOffset[0], 0);
+    EXPECT_EQ(td->layerWorkspaceOffset[1], 128);
+    EXPECT_GT(td->layerRChunkSizeCompact[0], 0);
+    EXPECT_GT(td->layerReduceTmpBytes[0], 0u);
+    EXPECT_EQ(r.info.workspaceSizes[0], 4096u);
 }
 
 } // namespace SquareSumV1UT

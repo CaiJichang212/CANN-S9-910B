@@ -33,6 +33,10 @@ if(NOT USE_MOCK)
     set(ASCENDCL_LIBRARIES ${CANN_ROOT}/lib64/libascendcl.so)
     set(CANN_INCLUDE_DIRS ${CANN_ROOT}/include)
     set(CANN_LIBRARIES ${CANN_ROOT}/lib64/libopapi.so)
+    # set_env.bash can prepend several OPP roots with ':' separators.  Convert
+    # that environment search path to a CMake list before find_path/library.
+    file(TO_CMAKE_PATH "$ENV{ASCEND_CUSTOM_OPP_PATH}" CUSTOM_OPP_ROOTS)
+    set(SQUARESUMV1_PRIVATE_OPP_ROOT "$ENV{SQUARESUMV1_OPP_ROOT}")
 
     message(STATUS "CANN_ROOT: ${CANN_ROOT}")
 endif()
@@ -45,6 +49,8 @@ if(NOT USE_MOCK)
     find_path(CUSTOM_OP_INCLUDE_DIR
         NAMES aclnn_square_sum_v1.h
         PATHS
+            ${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/include
+            ${CUSTOM_OPP_ROOTS}/op_api/include
             ${CANN_ROOT}/opp/vendors/squaresumv1_custom/op_api/include
             /usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/include
             /usr/local/Ascend/opp/vendors/squaresumv1_custom/op_api/include
@@ -66,6 +72,8 @@ if(NOT USE_MOCK)
     # Find custom operator library (libcust_opapi.so)
     find_library(CUSTOM_OP_LIBRARY cust_opapi
         PATHS
+            ${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/lib
+            ${CUSTOM_OPP_ROOTS}/op_api/lib
             ${CANN_ROOT}/opp/vendors/squaresumv1_custom/op_api/lib
             /usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/lib
             /usr/local/Ascend/opp/vendors/squaresumv1_custom/op_api/lib
@@ -77,10 +85,10 @@ if(NOT USE_MOCK)
     endif()
 
     target_link_libraries(test_aclnn_square_sum_v1
+        ${CUSTOM_OP_LIBRARY}
         ${ASCENDCL_LIBRARIES}
         ${CANN_LIBRARIES}
         ${CANN_ROOT}/lib64/libnnopbase.so
-        ${CUSTOM_OP_LIBRARY}
     )
 endif()
 
