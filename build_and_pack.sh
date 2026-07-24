@@ -59,7 +59,10 @@ echo "===== [3/3] Creating zip with date suffix ====="
 # 清理当前算子同名旧 zip（仅 *.zip，不动带日期后缀的历史版本）
 rm -f "${SCRIPT_DIR}/${OP_NAME}.zip"
 cd "$SCRIPT_DIR"
-zip -r "$ZIP_FILE" "$STAGING"
+# Keep the submission layout portable: zip must contain exactly one staging
+# directory with op_host/, op_kernel/, and the matching .run, never the
+# workstation's absolute path hierarchy.
+zip -r "$ZIP_FILE" "$(basename "$STAGING")"
 
 echo ""
 echo "===== Done ====="

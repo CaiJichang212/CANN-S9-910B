@@ -138,7 +138,13 @@ if [ -z "$KERNEL_O" ]; then
     exit 1
 fi
 
-PKG_PATH=$(ls ${BUILD_PATH}/custom_opp_*.run 2>/dev/null | head -1)
+# CANN 8.5 emits an openEuler package name; older toolchains used euleros.
+# Prefer the package created by this build, rather than an arbitrary stale
+# glob match, so build_out is always the artifact that matches the sources.
+PKG_PATH="${BUILD_PATH}/custom_opp_openEuler_aarch64.run"
+if [ ! -s "${PKG_PATH}" ]; then
+    PKG_PATH="${BUILD_PATH}/custom_opp_euleros_aarch64.run"
+fi
 if [ -z "$PKG_PATH" ] || [ ! -s "$PKG_PATH" ]; then
     echo "[ERROR] Package not found or empty"
     exit 1
@@ -146,10 +152,12 @@ fi
 
 # Copy to build_out
 mkdir -p "${BUILD_OUT_PATH}"
+rm -f "${BUILD_OUT_PATH}/custom_opp_openEuler_aarch64.run" \
+      "${BUILD_OUT_PATH}/custom_opp_euleros_aarch64.run"
 cp "${PKG_PATH}" "${BUILD_OUT_PATH}/"
 
 echo "----------------------------------------------------------------"
 echo "[INFO] Build completed successfully!"
 echo "[INFO] Kernel binary: ${KERNEL_O}"
 echo "[INFO] Package: ${PKG_PATH}"
-echo "[INFO] Package (build_out): ${BUILD_OUT_PATH}/custom_opp_openEuler_aarch64.run"
+echo "[INFO] Package (build_out): ${BUILD_OUT_PATH}/$(basename "${PKG_PATH}")"
