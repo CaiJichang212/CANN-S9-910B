@@ -22,7 +22,6 @@ torch.npu.config.allow_internal_format = False
 
 # 独占指定 NPU (用户要求 4-7); set_device 比 ASCEND_VISIBLE_DEVICES 更可靠
 DEV = int(os.environ.get('GREATER_DEV', '4'))
-torch.npu.set_device(DEV)
 
 # spec -> (xshape, yshape, dtype, note)
 # dtype: np.float16/np.float32/np.int32/np.int8 或 torch.bfloat16
@@ -39,11 +38,20 @@ MATRIX = {
     'f16_5d_bcast':    ([2, 4, 8, 128, 32], [1, 1, 8, 128, 32], np.float16, 'fp16 5D 广播'),
     'f16_tail_same':   ([8192, 1000], [8192, 1000], np.float16, 'fp16 非对齐同形 (退化通用路径)'),
     'f16_tail_bouter': ([8192, 1000], [1, 1000], np.float16, 'fp16 非对齐外维广播 (退化)'),
+    'f16_tail_bouter_rev': ([1, 1000], [8192, 1000], np.float16, 'fp16 非对齐外维广播镜像 (P1)'),
+    'f16_tail_binner': ([8192, 1000], [8192, 1], np.float16, 'fp16 非对齐内维广播 (P2)'),
+    'f16_tail_binner_rev': ([8192, 1], [8192, 1000], np.float16, 'fp16 非对齐内维广播镜像 (P2)'),
+    'f16_p1_rows2': ([2, 1000], [1, 1000], np.float16, 'P1 两行 DataCopyPad 读写 smoke'),
+    'f16_p1_rows2_rev': ([1, 1000], [2, 1000], np.float16, 'P1 两行 DataCopyPad 镜像 smoke'),
+    'f16_p1_partial_tail': ([16, 512, 1000], [16, 1, 1000], np.float16, 'P1 部分外维复用 + 非对齐'),
+    'f16_p2_5d_tail': ([2, 2, 2, 2, 1000], [2, 2, 2, 2, 1], np.float16, 'P2 5D 非对齐'),
     'f16_vec':         ([67108864,], [67108864,], np.float16, 'fp16 1D 向量 64M (纯 flatten)'),
     # ===== fp32 (ComputeT=float, Select/Cast 仍走 half 中转) =====
     'f32_same_big':    ([8192, 8192], [8192, 8192], np.float32, 'fp32 同形大'),
     'f32_bouter':      ([16384, 1024], [1, 1024], np.float32, 'fp32 外维广播'),
     'f32_binner':      ([16384, 1024], [16384, 1], np.float32, 'fp32 内维广播'),
+    'f32_binner_16128': ([16128, 1024], [16128, 1], np.float32, 'fp32 P2 连续 scalar 门限前'),
+    'f32_binner_16129': ([16129, 1024], [16129, 1], np.float32, 'fp32 P2 连续 scalar 原门限点'),
     'f32_tail_same':   ([4096, 1000], [4096, 1000], np.float32, 'fp32 非对齐同形'),
     # ===== bf16 (Cast bf16->float -> Compare) =====
     'bf16_same_big':   ([8192, 4096], [8192, 4096], torch.bfloat16, 'bf16 同形大 (Cast 路径)'),
@@ -63,6 +71,23 @@ MATRIX = {
     'f16_tail_1d':     ([1000,], [1000,], np.float16, 'fp16 1D 非对齐小'),
 }
 
+# 非对齐广播覆盖：所有 dtype 的 P1/P2 正反向、多个行宽与 core 分割边界。
+# 单个 spec 仍可独立执行，避免默认 profiling 意外扩大到这组压力矩阵。
+for _tag, _dtype in [('f16', np.float16), ('f32', np.float32), ('bf16', torch.bfloat16),
+                     ('i32', np.int32), ('i8', np.int8)]:
+    MATRIX.update({
+        f'{_tag}_tail_p1': ([21, 1000], [1, 1000], _dtype, f'{_tag} 非对齐 P1'),
+        f'{_tag}_tail_p1_rev': ([1, 1000], [21, 1000], _dtype, f'{_tag} 非对齐 P1 镜像'),
+        f'{_tag}_tail_p2': ([21, 1000], [21, 1], _dtype, f'{_tag} 非对齐 P2'),
+        f'{_tag}_tail_p2_rev': ([21, 1], [21, 1000], _dtype, f'{_tag} 非对齐 P2 镜像'),
+    })
+for _n in (1, 7, 31, 33, 255, 257, 777, 1000, 10000):
+    MATRIX[f'f16_p1_n{_n}'] = ([21, _n], [1, _n], np.float16, f'P1 行宽 N={_n}')
+    MATRIX[f'f16_p2_n{_n}'] = ([21, _n], [21, 1], np.float16, f'P2 行宽 N={_n}')
+for _outer in (1, 19, 20, 21):
+    MATRIX[f'f16_p2_outer{_outer}'] = ([_outer, 1000], [_outer, 1], np.float16,
+                                        f'P2 core 分割 outer={_outer}')
+
 
 def make(shape, dtype):
     """按 dtype 生成确定性随机数据 (int8 限制在 [-128,127])."""
@@ -78,13 +103,24 @@ def make(shape, dtype):
 
 
 def inject(x):
-    """浮点型随机注入 inf/-inf/nan (15%); 整型跳过."""
+    """注入随机特殊值，并在每个逻辑行尾固定覆盖边界特殊值/整数极值。"""
     if not torch.is_floating_point(x):
+        if x.dtype == torch.int32 and x.numel():
+            flat = x.reshape(-1, x.shape[-1] if x.dim() else 1)
+            flat[:, -1] = torch.iinfo(torch.int32).min
+            if flat.shape[1] > 1:
+                flat[:, -2] = torch.iinfo(torch.int32).max
         return
     r = torch.rand_like(x)
     x.masked_fill_(r < 0.05, float('inf'))
     x.masked_fill_((r >= 0.05) & (r < 0.10), float('-inf'))
     x.masked_fill_((r >= 0.10) & (r < 0.15), float('nan'))
+    flat = x.reshape(-1, x.shape[-1] if x.dim() else 1)
+    flat[:, -1] = float('nan')
+    if flat.shape[1] > 1:
+        flat[:, -2] = float('inf')
+    if flat.shape[1] > 2:
+        flat[:, -3] = float('-inf')
 
 
 def dtype_name(dt):
@@ -94,6 +130,7 @@ def dtype_name(dt):
 
 
 def run(spec):
+    torch.npu.set_device(DEV)
     xs, ys, dt, note = MATRIX[spec]
     x = make(xs, dt)
     y = make(ys, dt)
@@ -113,6 +150,7 @@ def run(spec):
         diff = (out_cpu != golden)
         idx = torch.nonzero(diff)[0]
         print(f"  first mismatch {idx.tolist()}: got={out_cpu[idx].item()} golden={golden[idx].item()}", flush=True)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

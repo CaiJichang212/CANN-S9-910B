@@ -6,7 +6,12 @@
 set -uo pipefail
 JOB_DIR="$(cd "$(dirname "$0")" && pwd)"   # 本脚本所在目录 (perf_test/)
 OP_DIR="$(dirname "$JOB_DIR")"              # Greater/ 测试框架目录
-RUN="$OP_DIR/op_project/custom_greater/build_out/custom_opp_euleros_aarch64.run"
+# CANN 8.5 emits openEuler packages in this container.  Keep a deterministic
+# fallback for Euler-named packages used by older builds.
+RUN="$OP_DIR/op_project/custom_greater/build_out/custom_opp_openEuler_aarch64.run"
+if [ ! -x "$RUN" ]; then
+  RUN="$OP_DIR/op_project/custom_greater/build_out/custom_opp_euleros_aarch64.run"
+fi
 DEVICE="${DEVICE:-4}"
 export GREATER_DEV="$DEVICE"
 export LD_LIBRARY_PATH="${ASCEND_OPP_PATH:-/usr/local/Ascend/cann-8.5.0/opp}/vendors/customize/op_api/lib/:${LD_LIBRARY_PATH}"
