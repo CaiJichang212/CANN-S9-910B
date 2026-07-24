@@ -1,5 +1,11 @@
 # Ascend C Concat 算子在华为昇腾 910B 上的软硬件深度协同优化方案
 
+> **2026-07-22 状态更新（以此节为准）**：本文原先提出的 `FLAT_RANGE` 已完成 A/B 并淘汰；在大非对齐单行代理用例中，P50 从 167.364 us 增至 178.203 us，MTE2 利用率从 93% 降至 64%。因此，后文所有把 `FLAT_RANGE` 作为建议或 P0 的内容仅保留为历史分析，不能据此实现或提交。
+>
+> 新的 P0 假设是“**输入边界对齐分组 + DMA 描述符负载均衡**”：只在输入数不少于 32、输出行 32B 对齐、且存在多个内部输入前缀对齐边界时评估。2026-07-22 的 `MANY_FRAGMENTED` 原型在 `fragmented_256_fp16` 三轮 30-task 采集中得到 P50 279.265 / 280.125 / 281.366 us、Block Dim 37、MTE2 约 91.2%；相对归档安全版 257.400 us 稳定回归，未达到“至少改善 max(5%, 1 us)”门槛，已从正式 Host/Kernel 回退。采集原始文件位于 `Concat/perf_eval/many_fragmented_20260722/`；`round1_retry` 因遗漏 custom OPP 的 `LD_LIBRARY_PATH` 而失败，不参与统计。
+>
+> 当前正式实现仍是安全的整行 / 对齐行列切分 + 64 KiB 双缓冲 DMA。后续实验应一次只改一个变量，要求三轮一致改善、控制组不超过 `max(3%, 1 us)` 回归、并通过逐 bit 正确性后才可保留。
+
 > 目标环境：CANN 8.5.0、Ascend C、`ascend910b`、ND 格式  
 > 算子规格：动态 `tensor_list` 输入，属性 `dim`，支持 `float32/float16/int32/int8`，各维长度可能不满足 32B 对齐  
 > 分析对象：`Concat_20260722_102940.zip` 中的 Host Tiling 与 Kernel 实现  
@@ -11,7 +17,7 @@
 
 当前实现的总体方向正确：它已经把 Concat 识别为**纯数据搬运型 AIV 算子**，使用动态输入描述符、`TQueBind<VECIN, VECOUT>`、`DataCopyPad` 二维搬运、DoubleBuffer，以及运行时获取 AIV 核数。这些设计应当保留。
 
-当前最值得优先解决的不是继续细调固定的 `512B` 列宽，而是以下三个结构性问题：
+（以下为历史设计建议，已被上方状态更新取代。）当前最值得优先解决的不是继续细调固定的 `512B` 列宽，而是以下三个结构性问题：
 
 1. **非 32B 对齐输出行只按整行分核**。当 `beforeDimSize=1`，尤其是 `dim=0` 时，即使输出很大也只能使用 1 个 AIV，形成最明显的性能断崖。
 2. **Shape 乘积、前缀和及核心长度使用 `uint32_t`**。按给定规格，理论乘积可能超过 32 位；即使实际张量受显存限制，超过 4 GiB 的字节偏移也完全可能出现，存在正确性风险。
@@ -849,4 +855,3 @@ op_kernel/
   <https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850/opdevg/Ascendcopdevg/atlas_ascendc_best_practices_10_0027.html>
 - Ascend C API 总览（含 DataCopyPad、Tiling Key、PlatformAscendC）：  
   <https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha002/API/ascendcopapi/atlasascendc_api_07_0003.html>
-
