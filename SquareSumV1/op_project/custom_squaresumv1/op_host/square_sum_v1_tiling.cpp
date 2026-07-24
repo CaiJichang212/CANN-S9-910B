@@ -240,6 +240,8 @@ struct LayerInfo {
     int64_t numA0Tiles;
     int64_t rChunkSize;
     int64_t numRChunks;
+    int64_t outerLength;
+    uint32_t reduceTmpBytes;
 };
 
 static void ComputeLayerSubTiling(
@@ -369,6 +371,22 @@ static void ComputeLayerSubTiling(
         layer.tileA0Len = tileA0Len;
         layer.numA0Tiles = numA0Tiles;
     }
+
+    // The compact multi-axis kernel uses the same vector Reduce APIs as the
+    // single-axis paths.  Reserve the exact per-layer scratch requirement;
+    // AR uses the regular Level-2 helper while ARA uses the documented RA
+    // query.  This keeps all source/destination/tmp regions disjoint.
+    if (layer.isTailReduce) {
+        const int64_t chunk = (layer.subMode == 1) ? layer.chunkCols : layer.rLength;
+        layer.reduceTmpBytes = ComputeTmpBufSize(static_cast<uint32_t>(chunk), sizeof(float));
+    } else {
+        const int64_t rows = (layer.subMode == 3) ? layer.rChunkSize : layer.rLength;
+        ge::Shape reduceShape({rows, layer.tileA0Align});
+        uint32_t minTmp = 0;
+        AscendC::GetReduceSumMaxMinTmpSize(reduceShape, ge::DT_FLOAT,
+                                           AscendC::ReducePattern::RA,
+                                           true, true, layer.reduceTmpBytes, minTmp);
+    }
 }
 
 static std::vector<LayerInfo> ComputeMultiAxisLayers(
@@ -490,6 +508,8 @@ static std::vector<LayerInfo> ComputeMultiAxisLayers(
         layer.numA0Tiles = 0;
         layer.rChunkSize = 0;
         layer.numRChunks = 0;
+        layer.outerLength = totalRows;
+        layer.reduceTmpBytes = 0;
 
         ComputeLayerSubTiling(layer, ubSize, typeSize, fp32Epb, fp32Epr);
 
@@ -601,6 +621,8 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
     int64_t rChunkSize = 0;
     int64_t numRChunks = 0;
     uint32_t reduceTmpBytes = 0;
+    int64_t cooperativeCoreNum = 0;
+    size_t workspaceSize = WS_SYS_SIZE;
 
     // MULTI_AXIS detection: coalesced.totalRows == -1 signals non-contiguous multi-axis
     if (totalRows == -1) {
@@ -612,34 +634,24 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             inputShape, normalizedAxis, ubSize,
             typeSize, fp32ElementsPerBlock, fp32ElementsPerRepeat);
 
-        // Compute workspace offsets (in float32 element count, including
-        // 32B staging slots used by the legacy multi-axis copy primitive).
-        constexpr int64_t WS_PAD = 8;
-        int64_t wsElemOffset = 0;
-        for (size_t li = 0; li < layers.size(); li++) {
-            if (li == 0) {
-                layers[li].workspaceOffset = 0;
-            } else {
-                layers[li].workspaceOffset = wsElemOffset;
-                wsElemOffset += layers[li - 1].outputElemCount * WS_PAD;
-            }
+        // Two dense fp32 stages are enough: layer i writes stage i%2 and the
+        // next layer consumes it.  Each stage is 512B aligned; unlike the
+        // retired implementation, an output element consumes exactly 4B.
+        int64_t stageElems = 0;
+        int64_t maxWorkItems = 1;
+        for (size_t li = 0; li + 1 < layers.size(); ++li) {
+            stageElems = std::max(stageElems, layers[li].outputElemCount);
         }
-
-        // For layer 0: reads from input, writes intermediate to workspace[0..outputElemCount*4]
-        // For layer k (k>0, k<N-1): reads from workspace, writes to workspace at next offset
-        // For layer N-1: reads from workspace (or input if N=1), writes to result GM
-
-        int64_t firstLayerRows = 1;
-        {
-            int64_t firstReducePos = layers[0].reduceAxisInShape;
-            for (int64_t i = 0; i < firstReducePos; i++) {
-                firstLayerRows *= layers[0].shapeBefore[static_cast<size_t>(i)];
-            }
+        stageElems = CeilAlign(std::max(stageElems, static_cast<int64_t>(1)), static_cast<int64_t>(128));
+        for (size_t li = 0; li < layers.size(); ++li) {
+            layers[li].workspaceOffset = (li & 1U) ? stageElems : 0;
+            const int64_t inner = layers[li].isTailReduce ? 1 : layers[li].a0Length;
+            const int64_t tile = layers[li].isTailReduce ? 1 : layers[li].tileA0Len;
+            maxWorkItems = std::max(maxWorkItems, layers[li].outerLength * CeilDiv(inner, tile));
         }
-        // Multi-axis still serializes layers because the legacy workspace
-        // staging format is not safe for cross-core ownership.
-        int64_t usedCoreNum = 1;
-        int64_t rowsPerCore = firstLayerRows;
+        int64_t usedCoreNum = std::min(static_cast<int64_t>(coreNum), maxWorkItems);
+        if (usedCoreNum < 1) usedCoreNum = 1;
+        const int64_t rowsPerCore = CeilDiv(maxWorkItems, usedCoreNum);
 
         // Set TilingData
         SquareSumV1TilingData* tiling = context->GetTilingData<SquareSumV1TilingData>();
@@ -648,10 +660,10 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             memset_s(tiling, sizeof(SquareSumV1TilingData), 0, sizeof(SquareSumV1TilingData)) != EOK,
             OP_LOGE(context, "set tiling data error"), return ge::GRAPH_FAILED);
 
-        tiling->totalRows = firstLayerRows;
-        tiling->totalWorkItems = firstLayerRows;
+        tiling->totalRows = maxWorkItems;
+        tiling->totalWorkItems = maxWorkItems;
         tiling->rowsPerCore = rowsPerCore;
-        tiling->tailRows = firstLayerRows - rowsPerCore * (usedCoreNum - 1);
+        tiling->tailRows = maxWorkItems - rowsPerCore * (usedCoreNum - 1);
         if (tiling->tailRows < 0) tiling->tailRows = rowsPerCore;
         tiling->usedCoreNum = usedCoreNum;
         tiling->tilingMode = 4;
@@ -685,22 +697,25 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             tiling->layerRChunkSize[li] = lyr.rChunkSize;
             tiling->layerNumRChunks[li] = lyr.numRChunks;
             tiling->layerMode[li] = lyr.subMode;
+            tiling->layerOuterLength[li] = lyr.outerLength;
+            tiling->layerRChunkSizeCompact[li] = lyr.isTailReduce
+                ? ((lyr.subMode == 1) ? lyr.chunkCols : lyr.rLength)
+                : ((lyr.subMode == 3) ? lyr.rChunkSize : lyr.rLength);
+            tiling->layerReduceTmpBytes[li] = lyr.reduceTmpBytes;
         }
 
-        // Workspace = sum of all intermediate output sizes, in bytes (stored as float32)
-        // wsElemOffset now holds the total element count needed
-        size_t wsSize = static_cast<size_t>(wsElemOffset) * sizeof(float);
-        // Ensure at least one page and 4K alignment
-        if (wsSize == 0) wsSize = 4096;
+        // Multi-axis always has at least two layers; reserve two compact
+        // stages and align allocation for the runtime workspace contract.
+        size_t wsSize = static_cast<size_t>(stageElems * 2) * sizeof(float);
         wsSize = (wsSize + 4095) & ~static_cast<size_t>(4095);
 
         context->SetBlockDim(static_cast<int32_t>(usedCoreNum));
         ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
         GetWorkspaceSize(context, wsSize);
 
-        OP_LOGD(context, "SquareSumV1 MULTI_AXIS tiling: numLayers=%d, firstLayerRows=%ld, "
-                "usedCoreNum=%ld, wsSize=%zu",
-                numLayers, firstLayerRows, usedCoreNum, wsSize);
+        OP_LOGD(context, "SquareSumV1 MULTI_AXIS_COMPACT: numLayers=%d, maxWorkItems=%ld, "
+                "usedCoreNum=%ld, stageElems=%ld, wsSize=%zu",
+                numLayers, maxWorkItems, usedCoreNum, stageElems, wsSize);
 
         return ge::GRAPH_SUCCESS;
     }
@@ -854,12 +869,31 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         }
     }
 
+    // A single huge output has no A1/A0 ownership to expose.  Split its R
+    // range across AIVs, emit one aligned fp32 partial per core, then merge
+    // after a hard cross-core barrier.  The threshold is algorithmic (enough
+    // work to amortize the second stage), not tied to a benchmark shape.
+    constexpr int64_t COOPERATIVE_REDUCE_THRESHOLD = 64 * 1024;
+    constexpr int64_t COOPERATIVE_CHUNK_COLS = 255 * 64; // ReduceSum repeat bound
+    if (isTailReduce && totalRows == 1 && rLength >= COOPERATIVE_REDUCE_THRESHOLD && coreNum > 1) {
+        tilingMode = 5;
+        chunkCols = std::min(rLength, COOPERATIVE_CHUNK_COLS);
+        numChunks = CeilDiv(rLength, chunkCols);
+        cooperativeCoreNum = std::min(static_cast<int64_t>(coreNum), CeilDiv(rLength, chunkCols));
+        cooperativeCoreNum = std::max(cooperativeCoreNum, static_cast<int64_t>(1));
+        // One float partial per core; allocation is 512B aligned so every
+        // partial path remains naturally DMA-safe.
+        workspaceSize = static_cast<size_t>(CeilAlign(cooperativeCoreNum, static_cast<int64_t>(128))) * sizeof(float);
+        workspaceSize = (workspaceSize + 4095) & ~static_cast<size_t>(4095);
+    }
+
     // 7. Multi-core splitting.  ARA is split over independent (A1, A0-tile)
     // work units, not just A1 rows, which avoids leaving most AIVs idle for
     // axis=0 and other small-A1 reductions.
     const int64_t totalWorkItems = (tilingMode == 2 || tilingMode == 3)
-        ? totalRows * numA0Tiles : totalRows;
-    int64_t usedCoreNum = std::min(static_cast<int64_t>(coreNum), totalWorkItems);
+        ? totalRows * numA0Tiles : ((tilingMode == 5) ? cooperativeCoreNum : totalRows);
+    int64_t usedCoreNum = (tilingMode == 5) ? cooperativeCoreNum
+        : std::min(static_cast<int64_t>(coreNum), totalWorkItems);
     if (usedCoreNum < 1) usedCoreNum = 1;
 
     int64_t rowsPerCore = CeilDiv(totalWorkItems, usedCoreNum);
@@ -890,6 +924,8 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
     tiling->rChunkSize = rChunkSize;
     tiling->numRChunks = numRChunks;
     tiling->reduceTmpBytes = reduceTmpBytes;
+    tiling->cooperativeChunkCols = (tilingMode == 5) ? chunkCols : 0;
+    tiling->cooperativeCoreNum = (tilingMode == 5) ? cooperativeCoreNum : 0;
     tiling->tilingMode = tilingMode;
     tiling->inputDtype = static_cast<uint32_t>(dataType);
     tiling->isAlign32B = isAlign32B;
@@ -900,16 +936,16 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
     ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
 
     // 10. Workspace
-    GetWorkspaceSize(context, WS_SYS_SIZE);
+    GetWorkspaceSize(context, workspaceSize);
 
     OP_LOGD(context, "SquareSumV1 tiling: mode=%u, totalRows=%ld, rLength=%ld, a0Length=%ld, "
             "rowsPerCore=%ld, usedCoreNum=%ld, isAlign32B=%u, "
             "chunkCols=%ld, numChunks=%ld, tileA0Len=%ld, tileA0Align=%ld, "
-            "numA0Tiles=%ld, rChunkSize=%ld, numRChunks=%ld",
+            "numA0Tiles=%ld, rChunkSize=%ld, numRChunks=%ld, cooperativeCores=%ld",
             tilingMode, totalRows, rLength, a0Length,
             rowsPerCore, usedCoreNum, isAlign32B,
             chunkCols, numChunks, tileA0Len, tileA0Align,
-            numA0Tiles, rChunkSize, numRChunks);
+            numA0Tiles, rChunkSize, numRChunks, cooperativeCoreNum);
 
     return ge::GRAPH_SUCCESS;
 }
@@ -921,7 +957,7 @@ static ge::graphStatus TilingParseForSquareSumV1([[maybe_unused]] gert::TilingPa
 
 struct SquareSumV1CompileInfo {};
 
-IMPL_OP_OPTILING(SquareSumV1)
+IMPL_OP_OPTILING(SquareSumV1Custom)
     .Tiling(SquareSumV1TilingFunc)
     .TilingParse<SquareSumV1CompileInfo>(TilingParseForSquareSumV1);
 

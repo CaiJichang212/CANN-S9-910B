@@ -22,12 +22,12 @@ namespace ge {
  * @par Outputs:
  *  result: A ND Tensor of same type as input.
  */
-REG_OP(SquareSumV1)
+REG_OP(SquareSumV1Custom)
     .INPUT(input, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
     .OUTPUT(result, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
     .ATTR(axis, ListInt)
     .ATTR(keep_dims, Bool, false)
-    .OP_END_FACTORY_REG(SquareSumV1)
+    .OP_END_FACTORY_REG(SquareSumV1Custom)
 
 } // namespace ge
 

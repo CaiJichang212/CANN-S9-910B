@@ -7,7 +7,8 @@
  * TilingKey=1: AR_COLSPLIT  - tail axis reduce, column chunk
  * TilingKey=2: ARA_FULLLOAD - non-tail axis reduce, full load (Pattern::Reduce::RA)
  * TilingKey=3: ARA_ROWSPLIT - non-tail axis reduce, row chunk
- * TilingKey=4: MULTI_AXIS   - non-contiguous multi-axis, layer-by-layer reduce
+ * TilingMode=4: MULTI_AXIS_COMPACT - non-contiguous multi-axis, compact fp32 ping-pong stages
+ * TilingMode=5: REDUCE_ALL_COOPERATIVE - large all-reduce, per-core fp32 partials + merge
  */
 
 #ifndef _SQUARE_SUM_V1_TILING_DATA_H_
@@ -46,6 +47,12 @@ struct SquareSumV1TilingData {
     uint32_t reduceTmpBytes;  // Pattern::Reduce::RA temporary space (fp32)
     uint32_t reserved0;
 
+    // === REDUCE_ALL_COOPERATIVE (mode=5) ===
+    // Every participating AIV owns one contiguous input range and writes one
+    // fp32 partial.  The final merge is deterministic and has no atomics.
+    int64_t cooperativeChunkCols;
+    int64_t cooperativeCoreNum;
+
     // === MULTI_AXIS (Key=4) parameters ===
     int32_t  numLayers;                                          // Number of reduce layers (sorted innermost first)
     int32_t  layerAxis[SS_MAX_LAYERS];                           // Original axis index for each layer (sorted ascending)
@@ -66,9 +73,13 @@ struct SquareSumV1TilingData {
     int64_t  layerRChunkSize[SS_MAX_LAYERS];                     // R chunk size for ARA_ROWSPLIT layers
     int64_t  layerNumRChunks[SS_MAX_LAYERS];                     // Number of R chunks for ARA_ROWSPLIT layers
     int64_t  layerMode[SS_MAX_LAYERS];                           // Sub-mode per layer: 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT
+    int64_t  layerOuterLength[SS_MAX_LAYERS];                    // Product of dimensions before R in this layer
+    int64_t  layerRChunkSizeCompact[SS_MAX_LAYERS];              // Valid R rows/elements per compact-stage iteration
+    uint32_t layerReduceTmpBytes[SS_MAX_LAYERS];                 // Pattern::Reduce::RA scratch for this layer
+    uint32_t reserved1[SS_MAX_LAYERS];
 
     // === General parameters ===
-    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT, 4=MULTI_AXIS
+    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT, 4=MULTI_AXIS_COMPACT, 5=REDUCE_ALL_COOPERATIVE
     uint32_t inputDtype;      // Input dtype (ge::DataType value)
     uint32_t isAlign32B;      // Whether rLength data is 32B aligned (0=no, 1=yes)
 };

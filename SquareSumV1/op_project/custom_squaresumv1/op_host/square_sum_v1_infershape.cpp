@@ -72,6 +72,6 @@ static ge::graphStatus InferShape4SquareSumV1(gert::InferShapeContext* context)
     return ge::GRAPH_SUCCESS;
 }
 
-IMPL_OP_INFERSHAPE(SquareSumV1).InferShape(InferShape4SquareSumV1);
+IMPL_OP_INFERSHAPE(SquareSumV1Custom).InferShape(InferShape4SquareSumV1);
 
 } // namespace ops
