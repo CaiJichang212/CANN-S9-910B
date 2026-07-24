@@ -115,3 +115,6 @@ core.*
 # ============================================================
 # 构建产物
 
+# transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
+todo.md
+
