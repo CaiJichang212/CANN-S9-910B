@@ -1,0 +1,31 @@
+[WARNING] msprof is running as root. For security reasons, use a regular user account instead.
+[INFO] Start profiling...
+PROFILE_CASE name=multi_noncontiguous_fp32
+[INFO] Start export data in PROF_000001_20260724081913247_HALDJGOHMQCOQIAA.
+Fri 24 Jul 2026 08:19:25 [INFO] [MSVP] [511540] msprof_common.py: Start analyzing data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/host" ...
+Fri 24 Jul 2026 08:19:25 [INFO] [MSVP] [511540] msprof_common.py: It may take few minutes, please be patient ...
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_common.py: Analysis data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/host" finished.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_common.py: Start analyzing data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0" ...
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_common.py: It may take few minutes, please be patient ...
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_common.py: Analysis data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0" finished.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511540] msprof_export.py: There is no timeline data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/host"
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511719] msprof_export.py: The data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/host" has been analyzed. Parsing phase will be skipped.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511719] msprof_export.py: The data in "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0" has been analyzed. Parsing phase will be skipped.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511719] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0.
+Fri 24 Jul 2026 08:19:26 [INFO] [MSVP] [511719] msprof_export.py: There is no summary data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/host"
+Fri 24 Jul 2026 08:19:27 [INFO] [MSVP] [511719] msprof_export.py: All collected data will be exported, path is: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0.
+Fri 24 Jul 2026 08:19:27 [INFO] [MSVP] [511719] msprof_export.py: There is no summary data to export for "/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/device_0"
+Fri 24 Jul 2026 08:19:27 [INFO] [MSVP] [511719] msprof_common.py: Start exporting summary output_file.
+Fri 24 Jul 2026 08:19:27 [INFO] [MSVP] [511719] msprof_common.py: End exporting summary output_file.The file is stored in the /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA/mindstudio_profiler_output path.
+[INFO] Export all data in PROF_000001_20260724081913247_HALDJGOHMQCOQIAA done.
+[INFO] Start query data in PROF_000001_20260724081913247_HALDJGOHMQCOQIAA.
+Job Info	Device ID	Dir Name	Collection Time           	Model ID	Iteration Number	Top Time Iteration	Rank ID	
+
+NA      	         	host    	2026-07-24 08:19:13.250004	N/A     	N/A             	N/A               	-1     	
+
+NA      	0        	device_0	2026-07-24 08:19:13.974526	N/A     	N/A             	N/A               	-1     	
+
+[INFO] Query all data in PROF_000001_20260724081913247_HALDJGOHMQCOQIAA done.
+[INFO] Profiling finished.
+[INFO] Process profiling data complete. Data is saved in /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260724_2/profiles/key4_fp32_noncontiguous_r3/PROF_000001_20260724081913247_HALDJGOHMQCOQIAA
