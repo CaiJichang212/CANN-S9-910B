@@ -27,6 +27,10 @@ set(package_name squaresumv1_custom)
 npu_op_package(${package_name}
     TYPE RUN
     CONFIG
+        # The dynamic kernel python entry references square_sum_v1.cpp at
+        # install/compile time.  Make source packaging explicit here instead
+        # of relying on a toolchain-default CMake cache value.
+        ENABLE_SOURCE_PACKAGE TRUE
         INSTALL_PATH ${CMAKE_BINARY_DIR}
 )
 

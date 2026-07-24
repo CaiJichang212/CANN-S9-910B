@@ -116,6 +116,10 @@ echo "[INFO] Compile for SoC: ${COMPUTE_UNIT}"
 
 CMAKE_ARGS=""
 CMAKE_ARGS="$CMAKE_ARGS -DASCEND_COMPUTE_UNIT=$COMPUTE_UNIT"
+# Do not rely on a CANN-template default or an inherited CMake cache.  The
+# installed dynamic implementation imports square_sum_v1.cpp, so it must be
+# embedded in the generated custom_opp_*.run package.
+CMAKE_ARGS="$CMAKE_ARGS -DENABLE_SOURCE_PACKAGE=TRUE"
 
 if [ ! -d "${BUILD_PATH}" ]; then
   mkdir -p "${BUILD_PATH}"
@@ -155,6 +159,17 @@ mkdir -p "${BUILD_OUT_PATH}"
 rm -f "${BUILD_OUT_PATH}/custom_opp_openEuler_aarch64.run" \
       "${BUILD_OUT_PATH}/custom_opp_euleros_aarch64.run"
 cp "${PKG_PATH}" "${BUILD_OUT_PATH}/"
+
+# Fail the build before packaging if the run package cannot provide the
+# dynamic kernel source required by the package installer/compiler.
+# Capture the whole listing before searching it.  Piping --list directly into
+# grep -q closes the pipe early on a match, which makes makeself report a
+# misleading decompression failure even though the package is valid.
+PACKAGE_CONTENTS="$(bash "${BUILD_OUT_PATH}/$(basename "${PKG_PATH}")" --list)"
+if ! grep -q '/dynamic/square_sum_v1\.cpp$' <<<"${PACKAGE_CONTENTS}"; then
+    echo "[ERROR] Source package verification failed: square_sum_v1.cpp is missing from the .run package" >&2
+    exit 1
+fi
 
 echo "----------------------------------------------------------------"
 echo "[INFO] Build completed successfully!"

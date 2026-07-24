@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-click build + package for SquareSumV1 operator (Ascend 910B)
+# One-click build + score-rule-compatible package for SquareSumV1 (Ascend 910B)
 # Usage (inside cann850 container):
 #   cd /home/liyc/hw-S9/case_910b_SquareSumV1
 #   bash build_and_pack.sh
@@ -11,8 +11,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # 算子工程实际位于 <worktree>/SquareSumV1/op_project/custom_squaresumv1/
 OP_PROJECT="$SCRIPT_DIR/$OP_NAME/op_project/custom_squaresumv1"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-STAGING="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}_zip"
-ZIP_FILE="${SCRIPT_DIR}/${OP_NAME}_${TIMESTAMP}.zip"
+PACKAGE_NAME="${OP_NAME}_${TIMESTAMP}"
+STAGING="${SCRIPT_DIR}/${PACKAGE_NAME}_zip"
+ZIP_FILE="${SCRIPT_DIR}/${PACKAGE_NAME}.zip"
 
 # 前置检查：避免运行时再因路径错而失败
 if [ ! -d "$OP_PROJECT" ]; then
@@ -43,26 +44,39 @@ else
 fi
 echo ""
 
-echo "===== [2/3] Preparing staging dir ====="
-rm -rf "$STAGING"
-mkdir -p "$STAGING"
-
+echo "===== [2/3] Preparing submission directory ====="
+# Keep the same packaging operations as /home/liyc/hw-S9/zip_op.sh, but make
+# this script self-contained: create <name>_zip, copy only op_host/, 
+# op_kernel/ and build_out/custom_*.run, then zip that one directory.
+rm -rf "$STAGING" "$ZIP_FILE"
+mkdir "$STAGING"
 cp -r "$OP_PROJECT/op_host" "$STAGING/"
 cp -r "$OP_PROJECT/op_kernel" "$STAGING/"
 cp "$OP_PROJECT/build_out/custom_opp_"*.run "$STAGING/"
 
-echo "Staging contents:"
-ls -la "$STAGING/"
+echo "Submission directory contents:"
+find "$STAGING" -maxdepth 2 \( -type f -o -type d \) | sort
 echo ""
 
-echo "===== [3/3] Creating zip with date suffix ====="
-# 清理当前算子同名旧 zip（仅 *.zip，不动带日期后缀的历史版本）
-rm -f "${SCRIPT_DIR}/${OP_NAME}.zip"
+echo "===== [3/3] Creating zip ====="
 cd "$SCRIPT_DIR"
-# Keep the submission layout portable: zip must contain exactly one staging
-# directory with op_host/, op_kernel/, and the matching .run, never the
-# workstation's absolute path hierarchy.
+# Equivalent to: zip -r ${op_name}.zip ${op_name}_zip in zip_op.sh.
 zip -r "$ZIP_FILE" "$(basename "$STAGING")"
+
+if [ ! -f "$ZIP_FILE" ] || [ ! -d "$STAGING" ]; then
+  echo "[ERROR] package creation did not produce the expected submission artifacts" >&2
+  exit 1
+fi
+
+# The scoring rule allows exactly one root directory containing these three
+# entries.  Validate before printing a success path.
+EXPECTED="$(find "$STAGING" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)"
+if [ "$EXPECTED" != $'custom_opp_openEuler_aarch64.run\nop_host\nop_kernel' ] && \
+   [ "$EXPECTED" != $'custom_opp_euleros_aarch64.run\nop_host\nop_kernel' ]; then
+  echo "[ERROR] invalid submission layout in $STAGING:" >&2
+  printf '%s\n' "$EXPECTED" >&2
+  exit 1
+fi
 
 echo ""
 echo "===== Done ====="
