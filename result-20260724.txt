@@ -1,0 +1,9 @@
+hw-S9/case_910b_SquareSumV1/SquareSumV1_20260724_105027_zip
+提交评测结果：
+Case1: Pass, Result: 16.828
+Case2: Pass, Result: 666.288
+Case3: Pass, Result: 223.692
+Case4: Run failed
+Case5: Pass, Result: 3164.468
+
+排行榜top1 性能数据=1934.272us
