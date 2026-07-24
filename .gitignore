@@ -15,3 +15,6 @@ PROF_*/
 **/kernel_meta/
 **/extra-info/
 **/*_profiling_output_record
+
+# transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
+todo.md
