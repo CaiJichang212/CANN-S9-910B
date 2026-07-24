@@ -30,3 +30,17 @@ SquareSumV1/scientific_perf_4_7_20260721/
 
 # docs/perf 下的 profiling CSV 中间汇总（保留 .md 报告，忽略原始 CSV）
 SquareSumV1/docs/perf/
+
+# ============================================================
+# OPP 私有安装产物（由 build.sh / build_and_pack.sh 重新生成，含 .so）
+# ============================================================
+**/.local_opp/
+
+# ============================================================
+# perf_eval 运行副产物：仅保留 results 文本基线（npu_before/after.txt、
+# runner.log、msprof.log、precision_acceptance.log），忽略 PROF_* 原始数据
+# （PROF_* 已由全局 PROF_*/ 覆盖，含 raw/PROF_GROUP_*）
+# ============================================================
+
+# transient task tracker（ascendc-task-focus）；经验已沉淀进 docs/*.md 报告
+todo.md
