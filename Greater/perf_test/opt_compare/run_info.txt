@@ -1,0 +1,12 @@
+Greater 优化前后性能对比评测 — 采集环境
+日期: 2026-07-23
+平台: Ascend 910B4 (物理 NPU 6 -> 逻辑 device 0, 1 卡可见)
+CANN: 8.5.0 社区版 (ASCEND_HOME_PATH=/usr/local/Ascend/cann-8.5.0)
+baseline("前"): HEAD commit 30afc4f (与 Greater算子性能测试与瓶颈分析报告.md 同源)
+optimized("后"): 工作树 greater.cpp 未提交优化 (rowPadded_ + scalarBatchPerCore_)
+方法: 每 spec warmup5 + 30轮×30内层≈1050 样本, msprof --aic-metrics=PipeUtilization,
+      去前20% warmup 取中位; bound=argmax(aiv_ratio); sync_gap=1-aiv_time/Task Duration
+隔离: 每例防御重装 Greater .run (防并行 job 覆盖 vendors/customize); 冲突(device 被
+      并行 perf_run.py 占用致 op_summary 空)自动重试至多5次; 35/35(after) 与 34/35(before)
+      acc=PASS, before 仅 f32_binner_16128 acc=FAIL(64KiB 边界正确性 bug, 见报告)
+脚本: collect_robust.sh / parse_full.py / compare_full.py (job tmp, 见报告附录可复现)

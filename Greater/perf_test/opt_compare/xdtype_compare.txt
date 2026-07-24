@@ -1,0 +1,12 @@
+大尺寸跨 dtype 非对齐广播提速 (镜像 fp16 头条到其他 dtype, innerSize=1000 非对齐)
+spec             dtype                 shape    前µs   后µs    提速    前bd→后bd  前effBW  后effBW
+xd_f32_bouter     fp32[8192, 1000]x[1, 1000]    771    86   9.0   MTE2→SCA      53     478
+xd_f32_binner     fp32[8192, 1000]x[8192, 1]    212    81   2.6    SCA→SCA     194     503
+xd_i8_bouter      int8[8192, 1000]x[1, 1000]   1053    64  16.5   MTE2→VEC      16     257
+xd_i8_binner      int8[8192, 1000]x[8192, 1]    202    61   3.3    SCA→SCA      81     267
+xd_i32_bouter    int32[4096, 1000]x[1, 1000]    528    68   7.8   MTE2→VEC      39     302
+xd_i32_binner    int32[4096, 1000]x[4096, 1]    114    75   1.5    SCA→VEC     180     275
+xd_bf16_bouter    bf16[4096, 1000]x[1, 1000]    455    44  10.3   MTE2→VEC      27     278
+xd_bf16_binner    bf16[4096, 1000]x[4096, 1]    107    51   2.1    SCA→SCA     115     240
+
+8 例合计: 3441µs -> 530µs  整体 6.5x  (外维广播 5 dtype 全部 7.8~16.5x)

@@ -1,0 +1,53 @@
+对比 spec 数=35  (before独有=set() after独有=set())
+
+spec                   before_us  after_us  speedup bd_b bd_a gap_b gap_a  acc
+------------------------------------------------------------------------------------------
+scalar                       2.1       2.1     1.03  SCA  SCA  0.25  0.26 PASS 
+f16_tail_1d                  2.4       2.4     1.01  SCA  SCA  0.30  0.29 PASS 
+f16_same_sml                 2.8       2.8     1.01  SCA  SCA  0.34  0.34 PASS 
+f16_5d_bcast                 4.7       4.7     0.99  SCA  SCA  0.33  0.33 PASS 
+f16_p2_5d_tail               4.7       4.5     1.04  SCA  SCA  0.36  0.37 PASS 
+bf16_bouter                 26.6      26.5     1.00  VEC  VEC  0.06  0.06 PASS 
+f16_same_med                34.3      33.1     1.04 MTE2 MTE2  0.07  0.08 PASS 
+bf16_binner                 34.8      34.7     1.00  SCA  SCA  0.05  0.05 PASS 
+f16_bscalar_x               39.5      39.5     1.00  VEC  SCA  0.05  0.05 PASS 
+f32_tail_same               41.8      41.8     1.00 MTE2 MTE2  0.07  0.07 PASS 
+i32_bouter                  42.2      42.3     1.00  VEC  VEC  0.04  0.04 PASS 
+f16_tail_same               44.1      43.3     1.02 MTE2 MTE2  0.06  0.07 PASS 
+i32_binner                  50.0      50.1     1.00  VEC  VEC  0.03  0.03 PASS 
+f16_bboth                   73.6      75.9     0.97  SCA  SCA  0.03  0.02 PASS 
+f16_binner                  74.0      73.7     1.00  SCA  SCA  0.03  0.03 PASS 
+f16_bouter                  74.5      75.0     0.99  VEC  VEC  0.03  0.03 PASS 
+i8_binner                   75.7      75.2     1.01  SCA  SCA  0.02  0.03 PASS 
+i8_bouter                   79.3      79.4     1.00  VEC  VEC  0.02  0.02 PASS 
+f32_binner_16128            96.1      96.2     1.00  SCA MTE2  0.03  0.05 PASS 
+f32_bouter                  99.7      98.8     1.01 MTE2 MTE2  0.03  0.03 PASS 
+f16_3d_bouter              103.2     104.7     0.99 MTE2 MTE2  0.03  0.03 PASS 
+f16_p1_partial_tail        171.8      80.4     2.14  SCA  VEC  0.02  0.22 PASS ▲
+i32_same_big               173.2     172.8     1.00 MTE2 MTE2  0.03  0.03 PASS 
+bf16_same_big              184.4     184.9     1.00 MTE2 MTE2  0.02  0.02 PASS 
+i8_same_big                203.6     202.2     1.01 MTE2 MTE2  0.02  0.02 PASS 
+f16_tail_binner_rev        211.8      63.5     3.33  SCA  SCA  0.07  0.04 PASS ▲
+f16_tail_binner            212.1      63.2     3.36  SCA  SCA  0.05  0.04 PASS ▲
+f16_bouter_big             289.2     288.9     1.00  VEC  VEC  0.01  0.01 PASS 
+f16_same_big               329.6     330.2     1.00 MTE2 MTE2  0.03  0.03 PASS 
+f16_vec                    330.1     329.6     1.00 MTE2 MTE2  0.03  0.03 PASS 
+f32_binner_16129           405.6      93.1     4.36  SCA MTE2  0.02  0.03 PASS ▲
+f32_binner                 414.5      97.3     4.26  SCA MTE2  0.02  0.03 PASS ▲
+f32_same_big               573.5     575.6     1.00 MTE2 MTE2  0.03  0.04 PASS 
+f16_tail_bouter_rev        919.0      65.3    14.07 MTE2  VEC  0.00  0.04 PASS ▲
+f16_tail_bouter            932.5      65.8    14.17 MTE2  VEC  0.00  0.04 PASS ▲
+------------------------------------------------------------------------------------------
+TOTAL(prof_sum)           6357.0    3619.3     1.76          
+
+加速(>=1.5x): 7  退化(<=0.95x): 0  显著加速(>=2x): 7
+prof_sum: 6357µs -> 3619µs  整体 1.76x  节省 2738µs (43%)
+
+=== 显著加速 (>=2x) ===
+  f16_tail_bouter        932 -> 66 µs  (14.2x)
+  f16_tail_bouter_rev    919 -> 65 µs  (14.1x)
+  f32_binner_16129       406 -> 93 µs  (4.4x)
+  f32_binner             414 -> 97 µs  (4.3x)
+  f16_tail_binner        212 -> 63 µs  (3.4x)
+  f16_tail_binner_rev    212 -> 64 µs  (3.3x)
+  f16_p1_partial_tail    172 -> 80 µs  (2.1x)
