@@ -1,0 +1,80 @@
+=== c01 / custom ===
+[CASE] c01 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-fp32,atomic,aligned,no-cast,dim-head mode=custom
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c02 / custom ===
+[CASE] c02 dtype=float16 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-fp16,atomic,aligned,no-cast,dim-head mode=custom
+[VERIFY] PASS err=1374/2048000 (thr 2048)
+=== c04 / custom ===
+[CASE] c04 dtype=int32 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-int32,atomic,aligned,no-cast,dim-head mode=custom
+[VERIFY] PASS err=0/2048000
+=== c05 / custom ===
+[CASE] c05 dtype=int8 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-int8,atomic,aligned,cast,dim-head mode=custom
+[VERIFY] PASS err=0/2048000
+=== c08 / custom ===
+[CASE] c08 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=unique tags=index-unique,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c09 / custom ===
+[CASE] c09 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=extreme tags=index-extreme,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c10 / custom ===
+[CASE] c10 dtype=float32 shape=[128, 2000, 64] dim=0 M=1000 idx=repeat tags=dim-head,large-vector,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/16384000 (thr 1638)
+=== c11 / custom ===
+[CASE] c11 dtype=float32 shape=[128, 2000, 64] dim=1 M=1000 idx=repeat tags=dim-mid,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/16384000 (thr 1638)
+=== c13 / custom ===
+[CASE] c13 dtype=float32 shape=[200, 512] dim=0 M=500 idx=repeat tags=small,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/102400 (thr 10)
+=== c14 / custom ===
+[CASE] c14 dtype=float32 shape=[5000, 2000] dim=0 M=1000 idx=repeat tags=large-self,copy-bound,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/10000000 (thr 1000)
+=== c15 / custom ===
+[CASE] c15 dtype=float32 shape=[200, 128] dim=0 M=8000 idx=repeat tags=large-M,scatter-bound,atomic,aligned,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/25600 (thr 2)
+=== c18 / custom ===
+[CASE] c18 dtype=int8 shape=[256, 512] dim=0 M=500 idx=unique tags=dtype-int8,atomic,aligned,cast,index-unique mode=custom
+[VERIFY] PASS err=0/131072
+=== c20 / custom ===
+[CASE] c20 dtype=float32 shape=[100, 10000] dim=0 M=1000 idx=repeat tags=large-vector,atomic,aligned,copy-bound,dtype-fp32 mode=custom
+[VERIFY] PASS err=0/1000000 (thr 100)
+=== c01 / builtin ===
+[CASE] c01 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-fp32,atomic,aligned,no-cast,dim-head mode=builtin
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c02 / builtin ===
+[CASE] c02 dtype=float16 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-fp16,atomic,aligned,no-cast,dim-head mode=builtin
+[VERIFY] PASS err=1520/2048000 (thr 2048)
+=== c04 / builtin ===
+[CASE] c04 dtype=int32 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-int32,atomic,aligned,no-cast,dim-head mode=builtin
+[VERIFY] PASS err=0/2048000
+=== c05 / builtin ===
+[CASE] c05 dtype=int8 shape=[2000, 1024] dim=0 M=2000 idx=repeat tags=dtype-int8,atomic,aligned,cast,dim-head mode=builtin
+[VERIFY] PASS err=0/2048000
+=== c08 / builtin ===
+[CASE] c08 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=unique tags=index-unique,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c09 / builtin ===
+[CASE] c09 dtype=float32 shape=[2000, 1024] dim=0 M=2000 idx=extreme tags=index-extreme,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/2048000 (thr 204)
+=== c10 / builtin ===
+[CASE] c10 dtype=float32 shape=[128, 2000, 64] dim=0 M=1000 idx=repeat tags=dim-head,large-vector,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/16384000 (thr 1638)
+=== c11 / builtin ===
+[CASE] c11 dtype=float32 shape=[128, 2000, 64] dim=1 M=1000 idx=repeat tags=dim-mid,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/16384000 (thr 1638)
+=== c13 / builtin ===
+[CASE] c13 dtype=float32 shape=[200, 512] dim=0 M=500 idx=repeat tags=small,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/102400 (thr 10)
+=== c14 / builtin ===
+[CASE] c14 dtype=float32 shape=[5000, 2000] dim=0 M=1000 idx=repeat tags=large-self,copy-bound,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/10000000 (thr 1000)
+=== c15 / builtin ===
+[CASE] c15 dtype=float32 shape=[200, 128] dim=0 M=8000 idx=repeat tags=large-M,scatter-bound,atomic,aligned,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/25600 (thr 2)
+=== c18 / builtin ===
+[CASE] c18 dtype=int8 shape=[256, 512] dim=0 M=500 idx=unique tags=dtype-int8,atomic,aligned,cast,index-unique mode=builtin
+[VERIFY] PASS err=0/131072
+=== c20 / builtin ===
+[CASE] c20 dtype=float32 shape=[100, 10000] dim=0 M=1000 idx=repeat tags=large-vector,atomic,aligned,copy-bound,dtype-fp32 mode=builtin
+[VERIFY] PASS err=0/1000000 (thr 100)
+=== DONE: ./perf_atomic_optimized/results.jsonl ===
+[restore] vendors/customize 已恢复
