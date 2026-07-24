@@ -46,10 +46,13 @@ prepare_private_extension() {
 prepare_private_opp
 prepare_private_extension
 
-# 共享 8 卡服务器：自动选一张空闲 NPU 卡（必须 source，以继承 ASCEND_RT_VISIBLE_DEVICES）
-source "$SCRIPT_DIR/pick_free_npu.sh" || { echo "[run_all] 无空闲 NPU 卡，退出" >&2; exit 1; }
+if [ -n "${TRANSPOSE_NPU_DEVICE:-}" ]; then
+    export ASCEND_RT_VISIBLE_DEVICES="$TRANSPOSE_NPU_DEVICE"
+else
+    source "$SCRIPT_DIR/pick_free_npu.sh" || { echo "[run_all] 无空闲 NPU 卡，退出" >&2; exit 1; }
+fi
 
-NCASE=14
+NCASE=36
 PASS=0
 FAIL=0
 FAILED_CASES=""

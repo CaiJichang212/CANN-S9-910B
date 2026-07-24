@@ -45,8 +45,14 @@ prepare_private_extension() {
 prepare_private_opp
 prepare_private_extension
 
-# 共享 8 卡服务器：自动选一张空闲 NPU 卡（必须 source，以继承 ASCEND_RT_VISIBLE_DEVICES）
-source "$SCRIPT_DIR/pick_free_npu.sh" || { echo "[run] 无空闲 NPU 卡，退出" >&2; exit 1; }
+# `TRANSPOSE_NPU_DEVICE` is useful in containers that expose a renumbered
+# subset of cards (normally only device 0).  Otherwise retain shared-server
+# automatic free-card selection.
+if [ -n "${TRANSPOSE_NPU_DEVICE:-}" ]; then
+   export ASCEND_RT_VISIBLE_DEVICES="$TRANSPOSE_NPU_DEVICE"
+else
+   source "$SCRIPT_DIR/pick_free_npu.sh" || { echo "[run] 无空闲 NPU 卡，退出" >&2; exit 1; }
+fi
 
    rm -rf PROF*
    timeout 180 msprof --application="python3 $SCRIPT_DIR/test_op.py $1"

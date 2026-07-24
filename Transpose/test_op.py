@@ -92,6 +92,30 @@ case_data = {
         'input':np.random.randint(-127, 127, [10000, 1]).astype(np.int8),
         'dims': (1, 0)
     },
+    # 36-case regression/performance matrix: rank 1--6, negative axes,
+    # axis rotations, full reversals, tiny shapes and DMA-count boundaries.
+    'case15': {'input': np.random.uniform(-10, 10, [31]).astype(np.float16), 'dims': (0,)},
+    'case16': {'input': np.random.uniform(-10, 10, [1, 17]).astype(np.float32), 'dims': (-1, -2)},
+    'case17': {'input': np.random.randint(-10000, 10000, [9, 7]).astype(np.int32), 'dims': (-1, -2)},
+    'case18': {'input': np.random.randint(-127, 127, [33, 64]).astype(np.int8), 'dims': (1, 0)},
+    'case19': {'input': np.random.uniform(-10, 10, [2, 3, 5]).astype(np.float16), 'dims': (2, 0, 1)},
+    'case20': {'input': np.random.uniform(-10, 10, [3, 7, 11]).astype(np.float32), 'dims': (1, 2, 0)},
+    'case21': {'input': np.random.randint(-10000, 10000, [2, 5, 8]).astype(np.int32), 'dims': (2, 0, 1)},
+    'case22': {'input': np.random.randint(-127, 127, [3, 7, 33]).astype(np.int8), 'dims': (2, 0, 1)},
+    'case23': {'input': np.random.uniform(-10, 10, [2, 3, 5, 7]).astype(np.float16), 'dims': (0, 2, 3, 1)},
+    'case24': {'input': np.random.uniform(-10, 10, [2, 3, 17, 13]).astype(np.float32), 'dims': (0, 2, 3, 1)},
+    'case25': {'input': np.random.randint(-10000, 10000, [2, 3, 5, 9]).astype(np.int32), 'dims': (0, 2, 3, 1)},
+    'case26': {'input': np.random.randint(-127, 127, [2, 3, 5, 31]).astype(np.int8), 'dims': (3, 2, 1, 0)},
+    'case27': {'input': np.random.uniform(-10, 10, [2, 3, 4, 5, 7]).astype(np.float16), 'dims': (4, 3, 2, 1, 0)},
+    'case28': {'input': np.random.uniform(-10, 10, [2, 3, 4, 5, 7]).astype(np.float32), 'dims': (2, 4, 0, 3, 1)},
+    'case29': {'input': np.random.randint(-10000, 10000, [2, 3, 4, 5, 7]).astype(np.int32), 'dims': (1, 3, 4, 0, 2)},
+    'case30': {'input': np.random.randint(-127, 127, [2, 3, 4, 5, 33]).astype(np.int8), 'dims': (4, 0, 2, 1, 3)},
+    'case31': {'input': np.random.uniform(-10, 10, [2, 2, 3, 4, 5, 7]).astype(np.float16), 'dims': (0, 2, 3, 4, 5, 1)},
+    'case32': {'input': np.random.uniform(-10, 10, [2, 2, 3, 4, 5, 7]).astype(np.float32), 'dims': (-1, -2, -3, -4, -5, -6)},
+    'case33': {'input': np.random.randint(-10000, 10000, [2, 2, 3, 4, 5, 7]).astype(np.int32), 'dims': (5, 0, 2, 4, 1, 3)},
+    'case34': {'input': np.random.randint(-127, 127, [2, 2, 3, 4, 5, 7]).astype(np.int8), 'dims': (3, 5, 1, 4, 0, 2)},
+    'case35': {'input': np.random.uniform(-10, 10, [1, 1, 1, 1, 1]).astype(np.float16), 'dims': (-1, -2, -3, -4, -5)},
+    'case36': {'input': np.random.randint(-127, 127, [4095, 1]).astype(np.int8), 'dims': (1, 0)},
 }
 
 def ensure_tuple(variable):
