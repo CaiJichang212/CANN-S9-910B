@@ -89,9 +89,19 @@ public:
         constexpr uint32_t RES_UB_LIMIT = 96 * 1024;  // bytes; leave room for other bufs
         xResident_ = false;
         yResident_ = false;
-        if (bcastMode_ == 0 && outerDim_ > 0 && (innerSize_ % COMP_ALIGN) == 0
-            && innerSize_ <= TILE) {
-            uint32_t resBytes = (innerSize_ + COMP_ALIGN) * sizeof(InputT);
+        rowElems_ = RoundUpTo(innerSize_, COMP_ALIGN);
+        // Vector Compare requires 256-element alignment, whereas DataCopyPad
+        // only guarantees a 32-byte row boundary.  For a non-aligned logical
+        // row we therefore stage each row in a 256-element slot.  Keep the
+        // expansion bounded: very short rows are better served by the proven
+        // generic path, and >2x padding would waste UB / MTE bandwidth.
+        rowPadded_ = (innerSize_ % COMP_ALIGN) != 0 && innerSize_ <= TILE &&
+                     rowElems_ <= TILE &&
+                     static_cast<uint64_t>(rowElems_) <= static_cast<uint64_t>(innerSize_) * 2;
+        if (bcastMode_ == 0 && outerDim_ > 0 &&
+            ((innerSize_ % COMP_ALIGN) == 0 || rowPadded_) && innerSize_ <= TILE) {
+            uint32_t residentElems = rowPadded_ ? rowElems_ : (innerSize_ + COMP_ALIGN);
+            uint32_t resBytes = residentElems * sizeof(InputT);
             if (resBytes <= RES_UB_LIMIT) {
                 uint32_t xGroups = GetResidentGroupSegs(true);
                 uint32_t yGroups = GetResidentGroupSegs(false);
@@ -100,11 +110,11 @@ public:
                 if (xGroups > yGroups) {
                     xResident_ = true;
                     residentGroupSegs_ = xGroups;
-                    residentElemsX_ = innerSize_ + COMP_ALIGN;
+                    residentElemsX_ = residentElems;
                 } else if (yGroups > 1) {
                     yResident_ = true;
                     residentGroupSegs_ = yGroups;
-                    residentElemsY_ = innerSize_ + COMP_ALIGN;
+                    residentElemsY_ = residentElems;
                 }
             }
         }
@@ -118,18 +128,26 @@ public:
         // broadcast strides, so this also handles mixed outer broadcasts such as
         // [B,1,1] and [1,M,1], not only stride[0] == 0/1 layouts.
         innerBcast_ = false;
-        if ((bcastMode_ == 1 || bcastMode_ == 2) && (innerSize_ % COMP_ALIGN) == 0
-            && innerSize_ <= TILE) {
+        if ((bcastMode_ == 1 || bcastMode_ == 2) &&
+            ((innerSize_ % COMP_ALIGN) == 0 || rowPadded_) && innerSize_ <= TILE) {
             uint64_t maxScalarOffset = 0;
             const uint32_t* scalarStrides = (bcastMode_ == 1) ? xStride_ : yStride_;
             for (uint32_t d = 0; d < outerDim_; ++d) {
                 maxScalarOffset += static_cast<uint64_t>(outerShape_[d] - 1) * scalarStrides[d];
             }
             uint64_t batchCount = maxScalarOffset + 1;
-            uint64_t batchBytes = (batchCount + COMP_ALIGN) * sizeof(InputT);
-            if (batchCount <= UINT32_MAX && batchBytes <= 64 * 1024) {
+            // For scalarIndex(seg)==seg each core only consumes its own
+            // contiguous segment range.  This removes both the 64KiB cliff
+            // (fp32 [16384,1024]x[16384,1]) and redundant all-core reads.
+            scalarBatchPerCore_ = IsScalarIndexContinuous(scalarStrides);
+            uint64_t allocCount = batchCount;
+            if (scalarBatchPerCore_) {
+                allocCount = (static_cast<uint64_t>(outerSize_) + blockDim_ - 1) / blockDim_;
+            }
+            uint64_t batchBytes = (allocCount + COMP_ALIGN) * sizeof(InputT);
+            if (allocCount <= UINT32_MAX && batchBytes <= 64 * 1024) {
                 innerBcast_ = true;
-                scalarBatchCount_ = static_cast<uint32_t>(batchCount);
+                scalarBatchCount_ = static_cast<uint32_t>(allocCount);
                 scalarBatchElems_ = scalarBatchCount_ + COMP_ALIGN;
             }
         }
@@ -191,12 +209,20 @@ public:
         // reuse the resident operand across innerSize sub-tiles (no per-segment
         // HBM read, no small-tile scalar overhead).
         if (xResident_ || yResident_) {
+            if (rowPadded_) {
+                ProcessResidentPadded();
+                return;
+            }
             ProcessResident();
             return;
         }
         // P2: innermost-broadcast (scalar per segment). Batch-load scalars and
         // process big tiles with per-sub-segment materialization.
         if (innerBcast_) {
+            if (rowPadded_) {
+                ProcessInnerBcastPadded();
+                return;
+            }
             ProcessInnerBcast();
             return;
         }
@@ -310,6 +336,104 @@ public:
         }
     }
 
+    // Non-aligned P1.  DataCopyPad lays every GM row into a COMP_ALIGN-sized
+    // UB slot, so the start address of every Compare/Select/Cast is aligned.
+    // The logical rows remain tightly packed in GM; only the UB staging is
+    // padded, and CopyOutRows writes back exactly innerSize bools per row.
+    __aicore__ inline void ProcessResidentPadded()
+    {
+        if (residentGroupSegs_ == outerSize_) {
+            LoadResidentPadded(0);
+            uint64_t segStart = static_cast<uint64_t>(outerSize_) * GetBlockIdx() / blockDim_;
+            uint64_t segEnd = static_cast<uint64_t>(outerSize_) * (GetBlockIdx() + 1) / blockDim_;
+            ProcessResidentPaddedRows(segStart * innerSize_, segStart * innerSize_,
+                                      static_cast<uint32_t>(segEnd - segStart));
+            return;
+        }
+
+        uint64_t totalGroups = outerSize_ / residentGroupSegs_;
+        uint64_t groupStart = totalGroups * GetBlockIdx() / blockDim_;
+        uint64_t groupEnd = totalGroups * (GetBlockIdx() + 1) / blockDim_;
+        for (uint64_t group = groupStart; group < groupEnd; ++group) {
+            uint64_t seg = group * residentGroupSegs_;
+            uint64_t xBase = 0;
+            uint64_t yBase = 0;
+            ComputeBases(seg, xBase, yBase);
+            LoadResidentPadded(xResident_ ? xBase : yBase);
+            uint64_t streamBase = xResident_ ? yBase : xBase;
+            ProcessResidentPaddedRows(seg * innerSize_, streamBase, residentGroupSegs_);
+            SyncVToMte2();  // resident buffer is overwritten by the next group
+        }
+    }
+
+    __aicore__ inline void ProcessResidentPaddedRows(uint64_t zBase, uint64_t streamBase,
+                                                      uint32_t rows)
+    {
+        const uint32_t maxRows = TILE / rowElems_;
+        uint32_t done = 0;
+        while (done < rows) {
+            uint32_t curRows = rows - done;
+            if (curRows > maxRows) {
+                curRows = maxRows;
+            }
+            ProcessResidentPaddedTile(zBase + static_cast<uint64_t>(done) * innerSize_,
+                                      streamBase + static_cast<uint64_t>(done) * innerSize_, curRows);
+            done += curRows;
+        }
+    }
+
+    __aicore__ inline void ProcessResidentPaddedTile(uint64_t zBase, uint64_t streamBase,
+                                                      uint32_t rows)
+    {
+        const uint32_t paddedN = rows * rowElems_;
+        const bool streamX = !xResident_;
+        LocalTensor<InputT> sIn;
+        if (streamX) {
+            LocalTensor<InputT> sLocal = inQueueX.AllocTensor<InputT>();
+            ZeroInput(sLocal, paddedN);
+            SyncVToMte2();
+            CopyInRows(sLocal, xGm, streamBase, rows);
+            inQueueX.EnQue(sLocal);
+            sIn = inQueueX.DeQue<InputT>();
+        } else {
+            LocalTensor<InputT> sLocal = inQueueY.AllocTensor<InputT>();
+            ZeroInput(sLocal, paddedN);
+            SyncVToMte2();
+            CopyInRows(sLocal, yGm, streamBase, rows);
+            inQueueY.EnQue(sLocal);
+            sIn = inQueueY.DeQue<InputT>();
+        }
+
+        LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
+        LocalTensor<ComputeT> sc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            sc = sIn.ReinterpretCast<ComputeT>();
+        } else {
+            sc = xCompBuf.Get<ComputeT>();
+            Cast(sc, sIn, RoundMode::CAST_NONE, paddedN);
+        }
+        LocalTensor<InputT> resRaw = (xResident_ ? residentXBuf : residentYBuf).Get<InputT>();
+        LocalTensor<ComputeT> rc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            rc = resRaw.ReinterpretCast<ComputeT>();
+        } else {
+            rc = yCompBuf.Get<ComputeT>();
+            Cast(rc, resRaw, RoundMode::CAST_NONE, rowElems_);
+        }
+        for (uint32_t row = 0; row < rows; ++row) {
+            uint32_t off = row * rowElems_;
+            LocalTensor<ComputeT> xRow = streamX ? sc[off] : rc;
+            LocalTensor<ComputeT> yRow = streamX ? rc : sc[off];
+            LocalTensor<uint8_t> zRow = zOut[off];
+            ComputeGtT<ComputeT>(zRow, xRow, yRow, rowElems_);
+        }
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        CopyOutRows(zGm, zLocal, zBase, rows);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
     // Process one big TILE tile at output offset `pos` (innerSize-aligned).
     // The streamed operand is loaded once via its queue; the resident operand
     // is reused from UB for every innerSize sub-tile.
@@ -401,11 +525,17 @@ public:
     // streamed-operand queue ops).
     __aicore__ inline void ProcessInnerBcast()
     {
-        LoadScalarBatch();
         uint32_t coreId = GetBlockIdx();
         uint64_t totalSegs = static_cast<uint64_t>(outerSize_);
         uint64_t segStart = totalSegs * coreId / blockDim_;
         uint64_t segEnd = totalSegs * (coreId + 1) / blockDim_;
+        // A small outerSize may leave trailing cores with no whole segment.
+        // DataCopyPad forbids blockLen==0, so they must exit before loading a
+        // per-core scalar batch.
+        if (segStart >= segEnd) {
+            return;
+        }
+        LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
         uint64_t pos = segStart * innerSize_;
         uint64_t coreEnd = segEnd * innerSize_;
         if (coreEnd > totalSize_) {
@@ -426,6 +556,88 @@ public:
             ProcessInnerBcastTile(pos, tileN);
             pos += tileN;
         }
+    }
+
+    // Non-aligned P2 counterpart of ProcessInnerBcast.  The streamed input and
+    // bool output use the same padded row slots as P1; scalar values still come
+    // from a UB batch, so no per-row MTE2 scalar load is reintroduced.
+    __aicore__ inline void ProcessInnerBcastPadded()
+    {
+        uint32_t coreId = GetBlockIdx();
+        uint64_t totalSegs = static_cast<uint64_t>(outerSize_);
+        uint64_t segStart = totalSegs * coreId / blockDim_;
+        uint64_t segEnd = totalSegs * (coreId + 1) / blockDim_;
+        if (segStart >= segEnd) {
+            return;
+        }
+        LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
+        const uint32_t maxRows = TILE / rowElems_;
+        uint64_t seg = segStart;
+        while (seg < segEnd) {
+            uint32_t rows = static_cast<uint32_t>(segEnd - seg);
+            if (rows > maxRows) {
+                rows = maxRows;
+            }
+            ProcessInnerBcastPaddedTile(seg * innerSize_, rows, seg);
+            seg += rows;
+        }
+    }
+
+    __aicore__ inline void ProcessInnerBcastPaddedTile(uint64_t zBase, uint32_t rows,
+                                                        uint64_t firstSeg)
+    {
+        const uint32_t paddedN = rows * rowElems_;
+        const bool streamX = (bcastMode_ != 1);
+        LocalTensor<InputT> sIn;
+        if (streamX) {
+            LocalTensor<InputT> sLocal = inQueueX.AllocTensor<InputT>();
+            ZeroInput(sLocal, paddedN);
+            SyncVToMte2();
+            CopyInRows(sLocal, xGm, zBase, rows);
+            inQueueX.EnQue(sLocal);
+            sIn = inQueueX.DeQue<InputT>();
+        } else {
+            LocalTensor<InputT> sLocal = inQueueY.AllocTensor<InputT>();
+            ZeroInput(sLocal, paddedN);
+            SyncVToMte2();
+            CopyInRows(sLocal, yGm, zBase, rows);
+            inQueueY.EnQue(sLocal);
+            sIn = inQueueY.DeQue<InputT>();
+        }
+
+        LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
+        LocalTensor<ComputeT> sc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            sc = sIn.ReinterpretCast<ComputeT>();
+        } else {
+            sc = (streamX ? xCompBuf : yCompBuf).Get<ComputeT>();
+            Cast(sc, sIn, RoundMode::CAST_NONE, paddedN);
+        }
+        LocalTensor<InputT> batch = scalarBatchBuf.Get<InputT>();
+        for (uint32_t row = 0; row < rows; ++row) {
+            uint32_t off = row * rowElems_;
+            uint64_t seg = firstSeg + row;
+            uint32_t scalarIdx = scalarBatchPerCore_
+                ? static_cast<uint32_t>(seg - scalarBatchBase_)
+                : ScalarIndex(seg);
+            LocalTensor<ComputeT> sRow = sc[off];
+            LocalTensor<uint8_t> zRow = zOut[off];
+            if constexpr (kIsHalf || kIsFloat || kIsInt8) {
+                ComputeT scalar = GetScalarValue<ComputeT>(batch, scalarIdx);
+                ComputeGtScalarT<ComputeT>(zRow, sRow, scalar, streamX, rowElems_);
+            } else {
+                LocalTensor<ComputeT> scalarRow = (streamX ? yCompBuf : xCompBuf).Get<ComputeT>();
+                MaterializeScalar<ComputeT>(scalarRow, batch, scalarIdx, rowElems_);
+                LocalTensor<ComputeT> xc = streamX ? sRow : scalarRow;
+                LocalTensor<ComputeT> yc = streamX ? scalarRow : sRow;
+                ComputeGtT<ComputeT>(zRow, xc, yc, rowElems_);
+            }
+        }
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        CopyOutRows(zGm, zLocal, zBase, rows);
+        outQueueZ.FreeTensor(zLocal);
     }
 
     __aicore__ inline void ProcessInnerBcastTile(uint64_t zBase, uint32_t n)
@@ -476,7 +688,9 @@ public:
             uint32_t subComp = RoundUpTo(subN, COMP_ALIGN);
             LocalTensor<CT> sSub = sc[off];
             LocalTensor<uint8_t> zSub = zOut[off];
-            uint32_t scalarIdx = ScalarIndex(seg);
+            uint32_t scalarIdx = scalarBatchPerCore_
+                ? static_cast<uint32_t>(seg - scalarBatchBase_)
+                : ScalarIndex(seg);
             if constexpr (kIsHalf || kIsFloat || kIsInt8) {
                 // CompareScalar avoids materializing an innerSize-element
                 // Duplicate buffer for the common fp16/fp32/int8 paths.
@@ -513,6 +727,45 @@ public:
     }
 
 private:
+    // True exactly when scalar operand storage advances one element per output
+    // segment.  This is the common [outer, 1] form; mixed outer broadcasts
+    // deliberately keep the conservative ScalarIndex/whole-range path.
+    __aicore__ inline bool IsScalarIndexContinuous(const uint32_t* scalarStrides)
+    {
+        uint64_t expected = 1;
+        for (int d = static_cast<int>(outerDim_) - 1; d >= 0; --d) {
+            if (scalarStrides[d] != expected) {
+                return false;
+            }
+            expected *= outerShape_[d];
+            if (expected > UINT32_MAX) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    __aicore__ inline void SyncVToMte2()
+    {
+        TEventID eid = pipe.AllocEventID<HardEvent::V_MTE2>();
+        SetFlag<HardEvent::V_MTE2>(eid);
+        WaitFlag<HardEvent::V_MTE2>(eid);
+        pipe.ReleaseEventID<HardEvent::V_MTE2>(eid);
+    }
+
+    // Duplicate has no int8 overload on dav_c220.  Reinterpret the byte buffer
+    // as half for initialization; rowElems is a multiple of 256, so its byte
+    // size and the half element count are both naturally aligned.
+    __aicore__ inline void ZeroInput(LocalTensor<InputT>& dst, uint32_t count)
+    {
+        if constexpr (kIsInt8) {
+            LocalTensor<half> asHalf = dst.ReinterpretCast<half>();
+            Duplicate(asHalf, static_cast<half>(0), static_cast<int32_t>(count / 2));
+        } else {
+            Duplicate(dst, static_cast<InputT>(0), static_cast<int32_t>(count));
+        }
+    }
+
     // Return the largest trailing outer-dimension group whose resident operand
     // has zero strides and whose peer is contiguous. A group of one has no
     // reuse value and is intentionally not selected.
@@ -564,13 +817,35 @@ private:
         pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
     }
 
+    __aicore__ inline void LoadResidentPadded(uint64_t base)
+    {
+        if (xResident_) {
+            LocalTensor<InputT> rx = residentXBuf.Get<InputT>();
+            ZeroInput(rx, rowElems_);
+            SyncVToMte2();
+            CopyInRows(rx, xGm, base, 1);
+        }
+        if (yResident_) {
+            LocalTensor<InputT> ry = residentYBuf.Get<InputT>();
+            ZeroInput(ry, rowElems_);
+            SyncVToMte2();
+            CopyInRows(ry, yGm, base, 1);
+        }
+        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
+        SetFlag<HardEvent::MTE2_V>(eid);
+        WaitFlag<HardEvent::MTE2_V>(eid);
+        pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
+    }
+
     // P2: load the complete reachable scalar storage range once. ScalarIndex()
     // maps each output segment back into this batch with broadcast strides.
-    __aicore__ inline void LoadScalarBatch()
+    __aicore__ inline void LoadScalarBatch(uint64_t segStart, uint32_t coreSegs)
     {
+        uint32_t count = scalarBatchPerCore_ ? coreSegs : scalarBatchCount_;
+        scalarBatchBase_ = scalarBatchPerCore_ ? segStart : 0;
         DataCopyExtParams params;
         params.blockCount = 1;
-        params.blockLen = static_cast<uint32_t>(scalarBatchCount_ * sizeof(InputT));
+        params.blockLen = static_cast<uint32_t>(count * sizeof(InputT));
         params.srcStride = 0;
         params.dstStride = 0;
         params.rsv = 0;
@@ -581,11 +856,51 @@ private:
         pad.paddingValue = (InputT)0;
         LocalTensor<InputT> batch = scalarBatchBuf.Get<InputT>();
         GlobalTensor<InputT>& gm = (bcastMode_ == 1) ? xGm : yGm;  // scalar operand
-        DataCopyPad(batch, gm[0], params, pad);
-        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
-        SetFlag<HardEvent::MTE2_V>(eid);
-        WaitFlag<HardEvent::MTE2_V>(eid);
-        pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
+        DataCopyPad(batch, gm[scalarBatchBase_], params, pad);
+        TEventID vEid = pipe.AllocEventID<HardEvent::MTE2_V>();
+        SetFlag<HardEvent::MTE2_V>(vEid);
+        WaitFlag<HardEvent::MTE2_V>(vEid);
+        pipe.ReleaseEventID<HardEvent::MTE2_V>(vEid);
+        // GetValue below runs on the scalar pipe, not vector pipe.
+        TEventID sEid = pipe.AllocEventID<HardEvent::MTE2_S>();
+        SetFlag<HardEvent::MTE2_S>(sEid);
+        WaitFlag<HardEvent::MTE2_S>(sEid);
+        pipe.ReleaseEventID<HardEvent::MTE2_S>(sEid);
+    }
+
+    // Multi-row logical-GM -> padded-UB transfer.  The slot has been zeroed
+    // before this call because DataCopyPad can only explicitly pad <=32 bytes
+    // on either side, while COMP_ALIGN padding can be larger.
+    __aicore__ inline void CopyInRows(LocalTensor<InputT>& dst, GlobalTensor<InputT>& gm,
+                                      uint64_t base, uint32_t rows)
+    {
+        const uint32_t logicalBytes = innerSize_ * sizeof(InputT);
+        const uint32_t roundedBytes = RoundUpTo(logicalBytes, 32);
+        DataCopyExtParams params;
+        params.blockCount = rows;
+        params.blockLen = logicalBytes;
+        params.srcStride = 0;
+        params.dstStride = (rowElems_ * sizeof(InputT) - roundedBytes) / 32;
+        params.rsv = 0;
+        DataCopyPadExtParams<InputT> pad;
+        pad.isPad = true;
+        pad.leftPadding = 0;
+        pad.rightPadding = 0;
+        pad.paddingValue = static_cast<InputT>(0);
+        DataCopyPad(dst, gm[base], params, pad);
+    }
+
+    __aicore__ inline void CopyOutRows(GlobalTensor<uint8_t>& gm, LocalTensor<uint8_t>& src,
+                                       uint64_t base, uint32_t rows)
+    {
+        const uint32_t roundedBytes = RoundUpTo(innerSize_, 32);
+        DataCopyExtParams params;
+        params.blockCount = rows;
+        params.blockLen = innerSize_;
+        params.srcStride = (rowElems_ - roundedBytes) / 32;
+        params.dstStride = 0;
+        params.rsv = 0;
+        DataCopyPad(gm[base], src, params);
     }
 
     __aicore__ inline void ComputeBases(uint64_t seg, uint64_t& xBase, uint64_t& yBase)
@@ -889,7 +1204,11 @@ private:
     bool innerBcast_ = false;
     uint32_t scalarBatchElems_ = 0;
     uint32_t scalarBatchCount_ = 0;    // P2: contiguous scalar storage range
+    bool scalarBatchPerCore_ = false;  // P2: scalarIndex(seg) == seg
+    uint64_t scalarBatchBase_ = 0;     // GM segment represented by batch[0]
     uint32_t residentGroupSegs_ = 1;   // P1: zero-stride reuse run (segments)
+    bool rowPadded_ = false;           // non-aligned broadcast UB staging enabled
+    uint32_t rowElems_ = 0;            // padded row length (COMP_ALIGN multiple)
 };
 
 extern "C" __global__ __aicore__ void greater(GM_ADDR x, GM_ADDR y, GM_ADDR z,
