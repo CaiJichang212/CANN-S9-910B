@@ -75,6 +75,7 @@ private:
     TBuf<TPosition::VECCALC> inQueueXSingle;            // single-buffer input for chunk modes
     TBuf<TPosition::VECCALC> outQueueYSingle;           // single-buffer output for chunk modes
     TBuf<TPosition::VECCALC> accBuf;                    // fp32 accumulator
+    TBuf<TPosition::VECCALC> reduceBuf;                 // fp32 Pattern::Reduce destination
 
     // === Buffers for MULTI_AXIS (Key=4) ===
     TBuf<TPosition::VECCALC> multiInBuf;               // input buffer for layer read
@@ -91,6 +92,7 @@ private:
     // === Parameters ===
     uint32_t tilingMode_ = 0;
     int64_t totalRows_ = 0;
+    int64_t totalWorkItems_ = 0;
     int64_t rowsPerCore_ = 0;
     int64_t rLength_ = 0;
     int64_t rLengthAlign_ = 0;
@@ -109,6 +111,7 @@ private:
     int64_t numA0Tiles_ = 0;
     int64_t rChunkSize_ = 0;
     int64_t numRChunks_ = 0;
+    uint32_t reduceTmpBytes_ = 0;
 
     // MULTI_AXIS params (Key=4)
     int32_t numLayers_ = 0;
@@ -128,6 +131,7 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
 {
     tilingMode_ = tilingData->tilingMode;
     totalRows_ = tilingData->totalRows;
+    totalWorkItems_ = tilingData->totalWorkItems;
     rowsPerCore_ = tilingData->rowsPerCore;
     rLength_ = tilingData->rLength;
     rLengthAlign_ = tilingData->rLengthAlign;
@@ -140,6 +144,7 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
     numA0Tiles_ = tilingData->numA0Tiles;
     rChunkSize_ = tilingData->rChunkSize;
     numRChunks_ = tilingData->numRChunks;
+    reduceTmpBytes_ = tilingData->reduceTmpBytes;
     isAlign32B_ = tilingData->isAlign32B;
 
     numLayers_ = tilingData->numLayers;
@@ -148,7 +153,7 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
     int64_t blockIdx = GetBlockIdx();
     myRowOffset_ = blockIdx * rowsPerCore_;
     if (blockIdx == static_cast<int64_t>(tilingData->usedCoreNum) - 1) {
-        myRows_ = totalRows_ - myRowOffset_;
+        myRows_ = totalWorkItems_ - myRowOffset_;
     } else {
         myRows_ = rowsPerCore_;
     }
@@ -174,6 +179,9 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
             if (finalNeed < epb) finalNeed = epb;
             pipe.InitBuffer(tmpBuf, finalNeed * typeSize);
         }
+        // The low precision path must not use the fp32 reduce destination as
+        // its fp16/bf16 output buffer in-place.
+        pipe.InitBuffer(accBuf, 32);
         pipe.InitBuffer(outQueueY, BUFFER_NUM, 32);
     } else if (tilingMode_ == 1) {
         // AR_COLSPLIT: chunk-based, single buffer
@@ -204,10 +212,11 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
             pipe.InitBuffer(computeBuf, rRows * totalCols * sizeof(float));
         }
         pipe.InitBuffer(accBuf, totalCols * sizeof(float));
+        pipe.InitBuffer(reduceBuf, totalCols * sizeof(float));
         pipe.InitBuffer(outQueueYSingle, totalCols * sizeof(T));
 
         {
-            uint32_t tmpBufBytes = static_cast<uint32_t>(totalCols * sizeof(float));
+            uint32_t tmpBufBytes = reduceTmpBytes_;
             if (tmpBufBytes < 32) tmpBufBytes = 32;
             pipe.InitBuffer(tmpBuf, tmpBufBytes);
         }
@@ -329,12 +338,13 @@ __aicore__ inline void SquareSumV1<T>::ArFullLoadCompute(int64_t rowIdx)
                          static_cast<int32_t>(rLength_));
     } else {
         LocalTensor<float> xFp32 = computeBuf.Get<float>();
+        LocalTensor<float> reduceDst = accBuf.Get<float>();
         Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_);
         Mul(xFp32, xFp32, xFp32, rLength_);
-        ReduceSum<float>(yLocal.template ReinterpretCast<float>(), xFp32, tmpLocal,
+        ReduceSum<float>(reduceDst, xFp32, tmpLocal,
                          static_cast<int32_t>(rLength_));
         PipeBarrier<PIPE_V>();
-        Cast(yLocal, yLocal.template ReinterpretCast<float>(), RoundMode::CAST_NONE, 8);
+        Cast(yLocal, reduceDst, RoundMode::CAST_RINT, 8);
     }
 
     outQueueY.EnQue(yLocal);
@@ -376,11 +386,13 @@ template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
 {
     LocalTensor<float> tmpLocal = tmpBuf.Get<float>();
+    LocalTensor<float> accLocal = accBuf.Get<float>();
+    LocalTensor<T> resultLocal = outQueueYSingle.Get<T>();
 
     for (int64_t i = 0; i < myRows_; i++) {
         int64_t globalRowIdx = myRowOffset_ + i;
-
-        float accVal = 0.0f;
+        Duplicate(accLocal, 0.0f, 8);
+        PipeBarrier<PIPE_V>();
 
         for (int64_t chunkIdx = 0; chunkIdx < numChunks_; chunkIdx++) {
             int64_t chunkStart = chunkIdx * chunkCols_;
@@ -405,7 +417,8 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
             // an MTE2 -> Vector dependency for a raw TBuf.
             PipeBarrier<PIPE_ALL>();
 
-            LocalTensor<float> reduceDst = outQueueYSingle.Get<float>();
+            LocalTensor<float> reduceDst = resultLocal.template ReinterpretCast<float>();
+            Duplicate(reduceDst, 0.0f, 8);
 
             if constexpr (isFloatInput) {
                 Mul(xLocal, xLocal, xLocal, chunkSize);
@@ -420,17 +433,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
                 ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(chunkSize));
             }
 
-            float partial = reduceDst.GetValue(0);
-            accVal += partial;
+            PipeBarrier<PIPE_V>();
+            Add(accLocal, accLocal, reduceDst, 8);
+            PipeBarrier<PIPE_V>();
         }
 
-        LocalTensor<T> yLocal = outQueueYSingle.Get<T>();
-        LocalTensor<float> yFp32 = outQueueYSingle.Get<float>();
-        yFp32.SetValue(0, accVal);
-        PipeBarrier<PIPE_V>();
-
         if constexpr (!isFloatInput) {
-            Cast(yLocal, yFp32, RoundMode::CAST_NONE, 8);
+            Cast(resultLocal, accLocal, RoundMode::CAST_RINT, 8);
+            PipeBarrier<PIPE_V>();
+        } else {
+            LocalTensor<float> resultFp32 = resultLocal.template ReinterpretCast<float>();
+            Duplicate(resultFp32, 0.0f, 8);
+            PipeBarrier<PIPE_V>();
+            Add(resultFp32, resultFp32, accLocal, 8);
             PipeBarrier<PIPE_V>();
         }
 
@@ -442,7 +457,7 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
         copyParamsOut.srcStride = 0;
         copyParamsOut.dstStride = 0;
         copyParamsOut.rsv = 0;
-        DataCopyPad(resultGM[globalRowIdx], yLocal, copyParamsOut);
+        DataCopyPad(resultGM[globalRowIdx], resultLocal, copyParamsOut);
         // outQueueYSingle is reused by the next row; wait for MTE3 before
         // overwriting the raw TBuf source of this non-queued DMA.
         PipeBarrier<PIPE_ALL>();
@@ -459,9 +474,10 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
     LocalTensor<uint8_t> tmpLocal = tmpBuf.Get<uint8_t>();
 
     for (int64_t i = 0; i < myRows_; i++) {
-        int64_t globalRowIdx = myRowOffset_ + i;
-
-        for (int64_t a0TileIdx = 0; a0TileIdx < numA0Tiles_; a0TileIdx++) {
+        const int64_t globalWorkIdx = myRowOffset_ + i;
+        int64_t globalRowIdx = globalWorkIdx / numA0Tiles_;
+        const int64_t a0TileIdx = globalWorkIdx % numA0Tiles_;
+        {
             int64_t a0Start = a0TileIdx * tileA0Len_;
             int64_t a0Len = tileA0Len_;
             if (a0Start + a0Len > a0Length_) {
@@ -492,20 +508,15 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             DataCopyPad(xLocal, inputGM[gmOffset], copyParams, padParams);
             PipeBarrier<PIPE_ALL>();
 
-            // 用 Add 循环沿 R 累加（替代 Pattern::Reduce::RA，避免小 R 的 NPU 行为差异）
-            LocalTensor<float> accLocal = accBuf.Get<float>();
-            Duplicate(accLocal, static_cast<float>(0), static_cast<int32_t>(alignedCols));
-            PipeBarrier<PIPE_V>();
+            LocalTensor<float> reduceDst = reduceBuf.Get<float>();
 
             if constexpr (isFloatInput) {
                 Mul(xLocal, xLocal, xLocal, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
-                for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
-                    Add(accLocal, accLocal,
-                        xLocal.template ReinterpretCast<float>()[static_cast<uint32_t>(rIdx * alignedCols)],
-                        static_cast<int32_t>(alignedCols));
-                    PipeBarrier<PIPE_V>();
-                }
+                uint32_t srcShape[] = {static_cast<uint32_t>(rLength_),
+                                       static_cast<uint32_t>(alignedCols)};
+                ReduceSum<float, Pattern::Reduce::RA, true>(
+                    reduceDst, xLocal.template ReinterpretCast<float>(), tmpLocal, srcShape, true);
             } else {
                 LocalTensor<float> xFp32 = computeBuf.Get<float>();
                 uint32_t castCount = static_cast<uint32_t>(rLength_ * alignedCols);
@@ -513,16 +524,15 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
                 PipeBarrier<PIPE_V>();
                 Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
                 PipeBarrier<PIPE_V>();
-                for (int64_t rIdx = 0; rIdx < rLength_; rIdx++) {
-                    Add(accLocal, accLocal, xFp32[static_cast<uint32_t>(rIdx * alignedCols)],
-                        static_cast<int32_t>(alignedCols));
-                    PipeBarrier<PIPE_V>();
-                }
+                uint32_t srcShape[] = {static_cast<uint32_t>(rLength_),
+                                       static_cast<uint32_t>(alignedCols)};
+                ReduceSum<float, Pattern::Reduce::RA, true>(
+                    reduceDst, xFp32, tmpLocal, srcShape, true);
             }
 
             LocalTensor<T> yLocal = outQueueYSingle.Get<T>();
             if constexpr (!isFloatInput) {
-                Cast(yLocal, accLocal, RoundMode::CAST_NONE, alignedCols);
+                Cast(yLocal, reduceDst, RoundMode::CAST_RINT, alignedCols);
                 PipeBarrier<PIPE_V>();
             }
 
@@ -537,7 +547,7 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             copyParamsOut.rsv = 0;
 
             if constexpr (isFloatInput) {
-                DataCopyPad(resultGM[resultGmOffset], accLocal.template ReinterpretCast<T>(), copyParamsOut);
+                DataCopyPad(resultGM[resultGmOffset], reduceDst.template ReinterpretCast<T>(), copyParamsOut);
             } else {
                 DataCopyPad(resultGM[resultGmOffset], yLocal, copyParamsOut);
             }
@@ -556,11 +566,14 @@ template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
 {
     LocalTensor<float> accLocal = accBuf.Get<float>();
+    LocalTensor<float> reduceDst = reduceBuf.Get<float>();
+    LocalTensor<uint8_t> tmpLocal = tmpBuf.Get<uint8_t>();
 
     for (int64_t i = 0; i < myRows_; i++) {
-        int64_t globalRowIdx = myRowOffset_ + i;
-
-        for (int64_t a0TileIdx = 0; a0TileIdx < numA0Tiles_; a0TileIdx++) {
+        const int64_t globalWorkIdx = myRowOffset_ + i;
+        int64_t globalRowIdx = globalWorkIdx / numA0Tiles_;
+        const int64_t a0TileIdx = globalWorkIdx % numA0Tiles_;
+        {
             int64_t a0Start = a0TileIdx * tileA0Len_;
             int64_t a0Len = tileA0Len_;
             if (a0Start + a0Len > a0Length_) {
@@ -611,12 +624,10 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
                 if constexpr (isFloatInput) {
                     Mul(xLocal, xLocal, xLocal, rSize * alignedCols);
                     PipeBarrier<PIPE_V>();
-                    for (int64_t rIdx = 0; rIdx < rSize; rIdx++) {
-                        Add(accLocal, accLocal,
-                            xLocal.template ReinterpretCast<float>()[static_cast<uint32_t>(rIdx * alignedCols)],
-                            static_cast<int32_t>(alignedCols));
-                        PipeBarrier<PIPE_V>();
-                    }
+                    uint32_t srcShape[] = {static_cast<uint32_t>(rSize),
+                                           static_cast<uint32_t>(alignedCols)};
+                    ReduceSum<float, Pattern::Reduce::RA, true>(
+                        reduceDst, xLocal.template ReinterpretCast<float>(), tmpLocal, srcShape, true);
                 } else {
                     LocalTensor<float> xFp32 = computeBuf.Get<float>();
                     // Do not round castCount up: xFp32 is allocated exactly
@@ -627,17 +638,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
                     PipeBarrier<PIPE_V>();
                     Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
                     PipeBarrier<PIPE_V>();
-                    for (int64_t rIdx = 0; rIdx < rSize; rIdx++) {
-                        Add(accLocal, accLocal, xFp32[static_cast<uint32_t>(rIdx * alignedCols)],
-                            static_cast<int32_t>(alignedCols));
-                        PipeBarrier<PIPE_V>();
-                    }
+                    uint32_t srcShape[] = {static_cast<uint32_t>(rSize),
+                                           static_cast<uint32_t>(alignedCols)};
+                    ReduceSum<float, Pattern::Reduce::RA, true>(
+                        reduceDst, xFp32, tmpLocal, srcShape, true);
                 }
+                PipeBarrier<PIPE_V>();
+                Add(accLocal, accLocal, reduceDst, alignedCols);
+                PipeBarrier<PIPE_V>();
             }
 
             LocalTensor<T> yLocal = outQueueYSingle.Get<T>();
             if constexpr (!isFloatInput) {
-                Cast(yLocal, accLocal, RoundMode::CAST_NONE, alignedCols);
+                Cast(yLocal, accLocal, RoundMode::CAST_RINT, alignedCols);
                 PipeBarrier<PIPE_V>();
             }
 

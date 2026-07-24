@@ -28,6 +28,7 @@ npu_op_code_gen(
     COMPILE_OPTIONS
         -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/include
         -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include/tiling
+        -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include
         -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc
         -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/op_common
         -I$ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/base
@@ -42,6 +43,7 @@ npu_op_library(cust_optiling TILING
 target_include_directories(cust_optiling PRIVATE
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/include
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include/tiling
+    $ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/op_common
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/base
@@ -88,6 +90,7 @@ npu_op_library(cust_op_proto GRAPH
 target_include_directories(cust_op_proto PRIVATE
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/include
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include/tiling
+    $ENV{ASCEND_HOME_PATH}/aarch64-linux/asc/include
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/op_common
     $ENV{ASCEND_HOME_PATH}/aarch64-linux/pkg_inc/base

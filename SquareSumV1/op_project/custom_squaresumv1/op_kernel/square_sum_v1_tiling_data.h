@@ -15,13 +15,14 @@
 
 #include <cstdint>
 
-// Maximum number of reduction layers for MULTI_AXIS mode
-// For up to 5D input, at most 5 reduce axes, but after coalescing max 3 non-contiguous groups
-constexpr int32_t SS_MAX_LAYERS = 5;
+// ACLNN accepts rank <= 8, so an arbitrary axis list can require eight
+// sequential layers in the non-contiguous multi-axis fallback.
+constexpr int32_t SS_MAX_LAYERS = 8;
 
 struct SquareSumV1TilingData {
     // === Multi-core splitting (all modes) ===
     int64_t totalRows;        // Total rows to process (A1 dimension: product of non-reduce outer dims)
+    int64_t totalWorkItems;   // AR: totalRows; ARA: totalRows * numA0Tiles
     int64_t rowsPerCore;      // Rows assigned to each core
     int64_t tailRows;         // Rows for the last core (if different)
     int64_t usedCoreNum;      // Actual number of cores used
@@ -42,6 +43,8 @@ struct SquareSumV1TilingData {
     int64_t numA0Tiles;       // Number of A0 tiles per row
     int64_t rChunkSize;       // R chunk size for ARA_ROWSPLIT mode
     int64_t numRChunks;       // Number of R chunks for ARA_ROWSPLIT mode
+    uint32_t reduceTmpBytes;  // Pattern::Reduce::RA temporary space (fp32)
+    uint32_t reserved0;
 
     // === MULTI_AXIS (Key=4) parameters ===
     int32_t  numLayers;                                          // Number of reduce layers (sorted innermost first)
