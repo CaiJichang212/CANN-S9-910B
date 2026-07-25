@@ -7,6 +7,8 @@
 | v1.0 | 基于 SquareSumV1（Ascend 910B / CANN 8.5.0）的问题定位、修复、上板回归与性能采集沉淀 | 2026-07-21 |
 | v1.1 | 补充私有 L0 注册、提交包闭环、设备映射、证据分级及 910B 多级规约经验 | 2026-07-24 |
 | v1.2 | 补充提交评分器的发布身份契约、源码包验证方法及 SquareSumV1 兼容性回归 | 2026-07-24 |
+| v1.3 | 补充 Case4 复盘：语义分支漏建、短 DMA 伪规约、32B 所有权、全核同步、测试身份与动态源码包漂移的防呆门禁 | 2026-07-25 |
+| v1.4 | 补充已验证的 mode 4/workspace/BF16 修复、mssanitizer 目录 ACL、42 workload 性能口径和可靠性优先的性能决策 | 2026-07-25 |
 
 ## 0. 先建立可复现的证据闭环
 
@@ -80,7 +82,7 @@
 
 - UB 预算要同时包含输入、fp32 Cast/Mul 工作区、累加器、输出、Reduce 临时区和队列的 buffer 倍数。
 - `DataCopyPad` 可能在 UB 侧占用完整的 32B 尾块；输入缓冲和 fp32 工作缓冲都要为这部分容量留余量。
-- fp16/bf16 的平方与累加应提升至 fp32；避免 half 规约中间结果溢出或 bf16 不支持的向量算术。
+- fp16 的平方与累加应提升至 fp32。BF16 不能只写成“转 fp32 后平方”：若框架语义是 `sum(square(bf16_x))`，必须先得到可观察的 BF16 square 再转 fp32 累加。无原生 BF16 Mul 时用“FP32 Mul → Cast BF16 → Cast FP32”显式模拟这一舍入点。
 - `Cast` 的 count 不能为满足“看似对齐”而超过目标 buffer 实际容量。优先按已分配容量传入精确 count；若 API 确有对齐要求，则在 Host 侧同步扩容。
 - 任何 `int64_t → uint32_t/uint16_t` 的 DMA 参数转换都应有显式上界来源，例如 shape 约束、UB 预算或 `4095` 上限。
 
@@ -113,7 +115,7 @@
 
 - 多轴规约应把每一层定义为明确的 `(outer, reduce, inner)` 映射，保证不同核拥有不重叠的输出 tile。
 - 第一层可融合 Cast + square；后续 workspace 层仅做 FP32 规约，最后一层才 Cast 并写用户输出。这样同时避免重复转换和中间精度损失。
-- 中间 workspace 用两个对齐的 FP32 stage ping-pong，而不是 32B/标量 staging 或逐标量 DMA。Host 必须精确计算每个 stage 的元素数、字节数与对齐。
+- 优先使用经验证的 dense FP32 stage/ping-pong；但在多核 workspace 读写或同步协议未证明安全时，先降级到单核、完整 32B slot 的保守 staging。该降级是正确性基线，不应伪装成性能优化；恢复 dense/multi-core 前必须通过 sanitizer 和压力回归。
 - 协作全规约的 partial 数量、每核 tile 与触发阈值应由输出数、规约长度、UB 预算和硬件核数推导；不能对公开 shape 写死条件。跨核同步仅能用于目标架构明确支持的专用路径，普通路径保持 AIV-only。
 
 ## 7. 测试与定位方法
@@ -167,8 +169,141 @@
 - [ ] 解包最终 zip 后，把其中 `.run` 安装到独立目录并重新跑真实 NPU smoke；比较安装包与工作区源码哈希。
 - [ ] 性能结果注明采集口径和 task 数据有效性，不将同类回归或无效 profiler 输出误写成隐藏测评已通过。
 
-## 10. 官方资料入口
+## 10. Case4 复盘：把“反复出现”变成可阻断的工程规则
+
+### 10.1 先区分三件事：错误、重复行为与证据边界
+
+本次 Case4 的经验不是“再加一个 mode”这么简单，而是同一类问题在不同层反复出现：**把语义不同的场景压进通用路径、把逻辑元素当作 DMA/并发所有权单位、用工作区成功替代提交物成功**。它们分别表现为正确性、性能和发布问题。
+
+下表只记录已由源码、构建或包内容证实的事实；评分器隐藏 Case4 的精确 shape、超时阈值和 plog 仍未取得，因此不能把本地已修复路径表述为“已证明覆盖官方 Case4”。
+
+| 类别 | 已证实的重复模式 | 直接后果 | 应固化的规则 |
+| --- | --- | --- | --- |
+| 语义建模 | `axis=[]` 被折叠为 `A1=numel, R=1` 的规约 | 无规约语义退化为逐元素 `ReduceSum(1)` | 属性规范化后先按**数学语义**选模式；`axis=[]`、空规约和普通规约必须是独立分支 |
+| 粒度选择 | 每个元素执行一次 2/4B CopyIn、平方、`ReduceSum(1)`、CopyOut | 循环与 DMA 均为 `O(numel)`，并放大大偏移/MTE 和超时风险 | 先确定最小高效工作单元（这里为 32B block + UB tile），再做多核切分 |
+| 并发所有权 | 多核分别写相邻 4B partial 或共享尾部 DataBlock | 多个 MTE3 短写可能竞争/覆盖同一 32B 块 | GM 写所有权的最小单位是 **32B DataBlock**，不是一个逻辑标量 |
+| 同步协议 | 通用 `myRows_==0` 早退发生在 `SyncAll()` 模式 dispatch 之前 | 部分核提前返回，其余核可能永久等待 | 含全核 barrier 的模式必须先 dispatch；文档中写明参与核数与每核到达次数 |
+| 空值语义 | 将“输入或规约轴为空”统一视为 no-op | 输出元素仍存在时会保持未初始化 | 分别计算 input、reduce 和 output 的元素数；仅 `outputElements==0` 才允许 no-op |
+| 发布链路 | 本地二进制已更新，动态源码 staging/`.run` 却保留旧 header | 安装后动态编译回到旧实现，工作区修复未交付 | 每次打包强制刷新源码 staging，并逐文件比较源码、staging 和最终包 |
+| 测试基础设施 | UT 使用已不再注册的 `SquareSumV1Custom`，而发布身份为 `SquareSumV1` | 所有用例在进入 tiling 前失败，掩盖真实回归结论 | 测试注册名必须由同一发布身份清单生成或校验，不能手写漂移 |
+
+### 10.2 重复执行反模式：不要让“单元素正确”变成“整体可运行”
+
+最危险的重复行为是把通用路径的最小样本操作放进 `numel` 循环。单次操作虽数学正确，但在大 shape 下会变成算法错误。
+
+| 反模式 | 旧行为 | 正确替换 | 设计审查问题 |
+| --- | --- | --- | --- |
+| 伪规约 | 每个元素做一次短 DMA + `ReduceSum(1)` | 一个 UB tile 只做 CopyIn → square → CopyOut | 该分支真的需要 Reduce 吗？规约长度是否可能为 1/0？ |
+| 按元素切核 | 每核按逻辑元素边界写出 | 按 32B block 切核，最后一个有效核独占全局尾块 | 相邻核是否会写同一个 32B GM 块？ |
+| 标量 partial 工作区 | 每核写一个 4B fp32 partial | 每核固定 32B slot，汇总时按 slot stride 读取 | workspace 的地址间距是否至少等于 DMA 最小写粒度？ |
+| 每轮依赖全局停顿 | raw TBuf 复用只依赖偶然时序，或无区分插入 barrier | 明确 MTE2→V、V→MTE3、MTE3→复用依赖；先正确、再细化流水 | 本轮写回尚未完成时，下一轮是否覆盖同一 UB？ |
+| 反复验证错误产物 | 用工作区包、旧 OPP 或不同 OS 包验证，然后外推提交物 | 由最终 `.run` 解包/安装/加载，再跑同一用例 | 日志中的 `.so`、kernel、动态源码和包 SHA 是否来自同一产物？ |
+
+一个实用的复杂度审查公式是：
+
+```text
+总 DMA 次数 = 每 tile 的 DMA 次数 × ceil(totalElements / tileElements)
+总 Vector/Reduce 次数 = 每 tile 的指令次数 × tile 数
+```
+
+若 `tileElements=1` 只是因为把“没有规约”伪装为 `R=1`，应在 Host 分支处消除该路径；不要先尝试用更多核、更多 barrier 或更大的 workspace 掩盖它。
+
+### 10.3 可复用的四份契约
+
+对任意 Ascend C 算子，在实现前写出并在 Host、Kernel、UT 中共享下列契约；它们比零散的 if/else 更能防止问题回归。
+
+1. **语义—算法契约**：每个属性组合映射到唯一算法类别。例如 `axis=[] → elementwise`，`reduceElements=0 && outputElements>0 → zero-fill`，普通规约才进入 AR/ARA/multi-axis。
+2. **单位—范围契约**：所有字段标明单位（元素、字节、32B block、行、tile）；shape 乘法、元素偏移、字节长度和 API 窄类型转换均在 Host 做 checked 64 位计算。
+3. **所有权—同步契约**：每个 GM 输出区间、workspace slot 和全核 barrier 都有唯一写者/参与者定义。短 DMA 的所有权按 32B，而不是按 `float`/`half` 元素。
+4. **源码—产物—运行时契约**：源码、kernel binary、动态源码 staging、`.run`、安装目录和实际加载路径可逐项追溯，并具有可比较的 SHA 或 `cmp` 证据。
+
+建议把这四份契约作为设计评审的固定小节，并把关键字段放入 TilingData 注释。例如 `noReduceTotalElements` 是元素、`noReduceTileElements` 是按 dtype 对齐后的元素数、workspace partial slot 是 32B。
+
+### 10.4 推荐的实现顺序（避免在错误层修补）
+
+1. 读取规格并枚举语义分区：空 axis、全规约、空规约、连续/非连续 axis、keep_dims。
+2. 为每个语义分区估算数据移动与算术复杂度；若无规约路径出现 `ReduceSum(1)`，在此阶段阻断。
+3. 以 DMA 最小粒度规划 GM 所有权，再由所有权推导 `blockDim`、每核 begin/end 和最后尾块归属。
+4. 以实际 `InitBuffer` 总和反推 tile 上限；Host 与 Kernel 不得各自维护不一致的 UB 预算。
+5. 只在数据流和所有权确定后加入队列/事件/barrier；含 `SyncAll()` 的模式单独声明“全核参与”。
+6. 为每个分区创建 Host UT、small NPU 功能用例和一个能暴露规模/对齐问题的边界用例。
+7. 由发布脚本生成包并验证包内动态源码，再进入隔离安装和真机 smoke。
+
+### 10.5 防呆门禁：应自动化，而不是靠记忆
+
+| 阶段 | 必须自动检查 | 失败时应阻断什么 |
+| --- | --- | --- |
+| Tiling UT | `axis=[]` 必为 NO_REDUCE；空规约输出非空必为 zero-fill；超大 shape 乘法溢出必须拒绝 | 语义错路由、未初始化输出、截断偏移 |
+| Kernel 审查 | NO_REDUCE 路径 `ReduceSum` 次数为 0；每个跨核短写有 32B 唯一所有者；每个 raw TBuf 复用有依赖 | 短 DMA/伪规约、workspace 竞争、偶发错误 |
+| Barrier 审查 | 对每个 `SyncAll()` 列出启动核集合、早退条件和到达次数 | 死锁/挂起 |
+| 构建 | 清除 CANN 的 kernel-source copy timestamp；比较 `op_kernel/` 与 dynamic staging 的 `.cpp/.h/tiling_data.h` | 本地 binary 与安装后动态源码不一致 |
+| 包 | 对最终 `.run` 解包或比较 CPack staging；检查动态路径、注册 JSON、vendor 和源码哈希 | 提交包路径错误、旧源码被交付 |
+| 运行 | 日志确认加载的 opapi/opmaster/kernel 来自当前隔离安装目录 | 残留 OPP、同名内置算子或旧包污染 |
+| 性能 | 对每条语义路径记录 tile 数、DMA 次数预估和真实 task 数据 | 把“能跑”误判为“可扩展” |
+
+### 10.6 最小回归矩阵模板
+
+以下矩阵不依赖 SquareSumV1 的具体 shape，可作为“属性语义 × 物理边界 × 发布物”的最小骨架：
+
+| 维度 | 必选用例 | 目标 |
+| --- | --- | --- |
+| 语义 | empty axis、全规约、单轴、非连续多轴、空规约 | 不同数学语义不共用错误路径 |
+| 数据类型 | fp16、fp32、bf16（若声明支持） | Cast、累加精度和 API 覆盖 |
+| DMA | 32B 对齐、非对齐尾块、`blockCount=4095/4096` | 长度/stride/上限正确 |
+| 并发 | 少于核数、非整除分核、仅最后核有尾块、workspace 相邻 slot | 工作所有权和 barrier 协议正确 |
+| 规模 | 最小、UB 临界、地址/元素乘法溢出拒绝、目标大 shape | 防止复杂度或偏移随规模失控 |
+| 发布 | 源码构建、最终 `.run`、隔离安装后的 smoke | 防止工件漂移 |
+
+### 10.7 本次复盘的行动结论
+
+- 对“两个版本都失败”的问题，优先找两版共享的语义分支和发布链路，不要先追逐新增优化路径。
+- 对“单测小 shape 正确、大 shape 失败”，先数 DMA/循环次数并审查 64 位偏移和 32B 所有权，而不是先调精度阈值。
+- 对“报告通过、提交失败”，默认怀疑测试对象不是同一包；先比较 `.run` SHA、动态源码 SHA 和运行时加载路径。
+- 对“所有 UT 同时失败”，先检查测试注册/加载身份；只有测试已真正进入 tiling/kernel，断言结果才可用于判断算法回归。
+
+上述规则的核心是：**语义分支在 Host 一次判定，数据按 tile 批量处理，GM 按 DataBlock 定义所有权，发布物而不是工作区作为验收对象。**
+
+## 11. 官方资料入口
 
 - Ascend C 官方仓库：`/home/liyc/asc-devkit/README.md`
 - DataCopyPad API：`/home/liyc/asc-devkit/docs/api/context/DataCopyPad(ISASI).md`
 - 赛题优化建议：`/home/liyc/hw-S9/S9挑战赛910B软硬件深度协同优化建议.md`
+
+## 12. SquareSumV1 修复与评测闭环（2026-07-25）
+
+### 当前已验证状态与证据边界
+
+- 当前隔离 OPP 下，`npu_acceptance_test.py` 得到 fp16/fp32 评分路径 44/44、BF16 3/3、非法输入 4/4；这证明本地当前包通过，不等同外部平台 Case4 已回归。
+- Key4（mode 4）fp16/fp32 已做直接 1000 次和完整 wrapper 后紧接 Key4 各 100 次压力；mode 5、mode 6 跨 4 GiB、mode 7 空规约均有专项回归。
+- mssanitizer 已覆盖 Key4 三 dtype 和 mode 5，未发现越界、未对齐访问或多核覆盖。工具要求目录不可组写：项目目录已收紧为 0750；profiler/sanitizer 子目录还要处理 inherited default ACL，不能修改共享父目录。
+- 外部历史回执仍是 Case1/2/3/5 Pass、Case4 Run failed。在取得新外部回执前，所有文档只能写“本地修复通过”。
+
+### 当前实现的关键事实
+
+1. mode 4 Host 固定 `usedCoreNum=1` / `SetBlockDim(1)`；workspace 申请包含 16 MiB framework reserve，Kernel 用 `GetUserWorkspace(workspace)` 取用户区。中间 fp32 采用每标量 32B slot，层间使用 `PipeBarrier<PIPE_ALL>()`，不在该单核编译路径中保留 `SyncAll()`。
+2. mode 5 保留多核 `SyncAll()`，但 partial workspace 也按完整 32B ownership slot 规划；含全核 barrier 的分支必须在任何 `myRows==0` 早退之前 dispatch。
+3. `axis=[]` 是 mode 6 的 tiled elementwise square；规约轴长度为零而输出非空是 mode 7 zero-fill。两者按 32B DataBlock 分核并使用 64 位元素/字节范围检查。
+4. `GetPhyAddr(offset)` 的 `offset` 是元素偏移；不要为“修复大地址”将其改成字节偏移。
+
+### 可直接复用的当前验证命令
+
+```bash
+cd /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1
+source /home/ma-user/Ascend/cann-8.5.0/set_env.sh
+source op_project/custom_squaresumv1/npu_opp.F2ERJn/vendors/customize/bin/set_env.bash
+export ASCEND_RT_VISIBLE_DEVICES=0
+python3 npu_acceptance_test.py
+```
+
+性能采集使用同一 wrapper：每例 30 个目标 task，过滤 `aclnnMul`，取第 11–30 个 SquareSumV1 task 的 P50。原始 42 workload 总览在 `perf_eval_20260725_3/score_matrix_pipe/`；深度 profile 归档为 `docs/perf/round_006/`（大 ARA）和 `docs/perf/round_007/`（mode 4）。报告为项目根目录的 `20260725-3算子性能评测和瓶颈分析报告.md`。
+
+### 当前性能基线与下一步
+
+| 口径 | 当前结果 | 决策 |
+|---|---:|---|
+| 42 workload 稳定窗口 P50 合计 | 762.250 µs | 后续回归基线，不能与外部五题总分直接比较 |
+| 大 ARA fp16 `(2024,3000), axis=0` | 50.364 µs，CV 1.64%，38 核 | 无单一 bound，接近 MTE2 主导；优先搜索 tile/流水重叠 |
+| mode 4 fp16 非连续多轴 | 68.774 µs，CV 1.74%，1 核 | MTE2/MTE3/Scalar 混合；先设计可验证多核 stage 协议，再谈恢复性能 |
+| 最大评分风格单例 | ARA row-split fp16 `(4,10000,100), axis=1` 120.284 µs | 优先优化 mode 3 chunk/tile，保持 FP32 累加与 DMA 边界 |
+
+没有修复前后二进制的同机成对三轮基线，因此当前结论是“未证明整体提升”，不是性能回退的严格归因。任何性能候选必须先跑本节正确性/安全门禁，再以同一矩阵至少三轮独立采集决定是否合入。

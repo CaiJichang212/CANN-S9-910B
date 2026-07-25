@@ -2,7 +2,7 @@
 
 本文件服务于后续的 SquareSumV1 优化、调试和交付。以当前源码为准；文档、历史 profile 和旧提交包只可作为证据，不能覆盖源码事实。使用中文思考、执行和答复。
 
-最后按源码同步：2026-07-24。
+最后按源码与 910B 实测同步：2026-07-25。
 
 ## 1. 作用域与源码真值
 
@@ -25,7 +25,7 @@ result = sum(square(input), dim=axis, keepdim=keep_dims)
 - L2 层拒绝私有 format，并验证 input/result dtype 相同；实现通过 `l0op::Contiguous` 处理不连续张量，再调用 L0 `SquareSumV1`，最后 `ViewCopy` 回调用方输出。
 - `square_sum_v1_infershape.cpp` 以 axis/keep_dims 推导输出；全规约且 `keep_dims=false` 产生 0 维 scalar，空 axis 保持输入 shape。
 - L2 API 代码的最大 rank 检查为 8；Host 文件顶部注释仍写 1–5 维。rank 6–8 不应仅凭注释假定可交付，必须补真实回归。
-- 精度路径以 fp32 做平方/累加，再按输出 dtype 写回；优化时不得把 fp16/bf16 的中间累加降回低精度。
+- fp16 路径以 fp32 做平方/累加，再按输出 dtype 写回。BF16 的可观察语义是先做 BF16 `square` 再累加：DAV_C220 无原生 BF16 Mul 时，必须实现 FP32 Mul → Cast BF16 → Cast FP32 累加，不能直接用“FP32 square 后求和”替代。
 
 ## 3. 发布身份：不可拆分的兼容性契约
 
@@ -70,16 +70,20 @@ TilingData 定义在 `op_kernel/square_sum_v1_tiling_data.h`，Host 决策在 `o
 | 1 | AR_COLSPLIT | 单轴尾轴规约但 full-load 超 UB | 按 `chunkCols` 分块，fp32 跨块累加 |
 | 2 | ARA_FULLLOAD | 单轴非尾轴规约，R×A0 tile 能放入 UB 且 `R <= 4095` | 2D DataCopyPad + RA Pattern Reduce；按 `(A1, A0-tile)` 分配 AIV |
 | 3 | ARA_ROWSPLIT | 非尾轴 full-load 不可行，或 `R > 4095` | R 分块、跨块 fp32 累加；`reduceTmpBytes` 必须由 `GetReduceSumMaxMinTmpSize` 得出 |
-| 4 | MULTI_AXIS_COMPACT | 多轴不连续 | 按内到外逐层规约，两个 512B 对齐的 dense fp32 ping-pong workspace stage |
+| 4 | MULTI_AXIS_SAFE_SINGLE_CORE | 多轴不连续 | Host 强制 1 核；第一层 square 后按内到外规约，用户 workspace 用 32B-padded fp32 slot staging；只用本地 PipeBarrier，不发射 SyncAll |
 | 5 | REDUCE_ALL_COOPERATIVE | 尾轴、仅一个输出、`R >= 65536`、有多核 | 每核一个 fp32 partial，`SyncAll()` 后核 0 确定性合并，无 atomic |
+| 6 | NO_REDUCE | `axis=[]` | 32B block 所有权的 UB-tiled elementwise square |
+| 7 | EMPTY_REDUCE | 被规约轴长度为 0 且输出非空 | 32B block 所有权的显式 zero-fill |
 
 关键不变量：
 
 - `DataCopyPad` 的 GM stride 是字节、UB stride 是 32B datablock；尾块 `blockLen` 只能是实际有效字节，不能读过 GM 末尾。
 - ARA 行 pitch 要同时满足输入 dtype 与 fp32 累加路径的 32B 对齐；`blockCount` 上限为 4095。
-- mode 4 的 workspace 偏移单位是 fp32 元素，两个 stage 以 512B/页对齐分配；不要恢复旧的逐标量 workspace staging。
+- mode 4/5 请求的 workspace 大小必须包含 DAV_C220 的 16 MiB framework reserve；Kernel 必须用 `GetUserWorkspace(workspace)`，不能直接把原始 workspace 指针当用户区。
+- mode 4 的 workspace offset 单位是 fp32 元素。当前 32B-per-scalar staging 是安全回退；不要在未验证完整 DataBlock 所有权和全核阶段协议前恢复 dense 多核 workspace。
 - mode 5 使用硬件跨核同步。`op_kernel/square_sum_v1.cpp` 的 `KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0)` 是 `SyncAll` 的前提，不能为“纯 Vector 优化”而删除。
-- `square_sum_v1.h` 中的 `ProcessMultiAxisLayer` 标注为兼容保留；当前 `ProcessMultiAxis` 使用紧凑实现，优化 mode 4 前先确认实际 dispatch 路径。
+- mode 4 不得在运行时死分支中保留 `SyncAll()`：该 MIX lowering 仍可能触及非参与 AIV 状态。若重做多核，使用单独的、经硬件验证的编译路径。
+- mode 6/7 的 `GetPhyAddr(offset)` 参数为元素偏移；元素数和字节数分别做 64 位溢出检查，尾块仅由一个核写入。
 - 所有 raw `TBuf` 复用都必须保持 MTE2 → Vector → MTE3 → 下轮复用的依赖；现有保守 `PipeBarrier<PIPE_ALL>` 不可无证删除。
 
 ## 6. 修改地图
@@ -119,11 +123,14 @@ bash <staging>/custom_opp_euleros_aarch64.run --list \
 # Host tiling 单测
 bash SquareSumV1/tests/ut/run.sh
 
-# PyTorch + msprof smoke / 性能采样；case_data 当前定义 case1、case4～case8
-cd SquareSumV1 && bash run.sh 1
+# 当前隔离 OPP 的完整本地验收（容器逻辑卡 0，不是 npu-smi 的物理卡 7）
+cd SquareSumV1
+source /home/ma-user/Ascend/cann-8.5.0/set_env.sh
+source op_project/custom_squaresumv1/npu_opp.F2ERJn/vendors/customize/bin/set_env.bash
+ASCEND_RT_VISIBLE_DEVICES=0 python3 npu_acceptance_test.py
 ```
 
-性能脚本注意事项：`run.sh` 清理 `PROF*`，`get_time.py` 忽略名含 `aclnnMul` 的行并取第 10–30 项的中位数；`time_base` 目前是极大占位值。因此 “Operator performance and accuracy have passed” 只表示脚本完成且采样非零，不是官方隐藏用例性能验收。优化决策应保存真实 `op_summary*.csv`，确认其中是 SquareSumV1 的 AICore task。
+性能脚本注意事项：`custom_op.cpp` 的每次调用发射 30 个 SquareSumV1 和 30 个 `aclnnMul` 占位 task；解析时过滤 Mul，并从第 11–30 个目标 task 计算 P50/CV。`msprof_perf_summary.py` 的展示行不等同稳定窗口 P50，必须保留并解析原始 `op_summary*.csv`。当前全矩阵基线、深度 profile 和结论见根目录 `20260725-3算子性能评测和瓶颈分析报告.md`；本地通过不等于外部 Case4 已通过。
 
 `tests/st/run.sh` 中仍存在历史 `squaresumv1_custom` 安装目录候选；在把它作为真实 NPU 验收依据前，先核对并改为当前 `vendors/customize` 契约。
 
@@ -134,6 +141,7 @@ cd SquareSumV1 && bash run.sh 1
 3. `git diff --check` 后执行干净 `build_and_pack.sh`，检查三份 dtype binary、源码包和 staging 布局。
 4. 测试必须加载本轮 `vendors/customize/op_api/lib/libcust_opapi.so`；不要用工作区旧 `.run` 或别的 vendor 的库替代。
 5. 性能条件只能从 dtype、shape、UB、DMA 和硬件约束推导；不得为公开样例写死分支。
+6. workspace、SyncAll 或 mode 4/5 改动后，除完整精度矩阵外必须跑 Key4 调用链压力和 mssanitizer；mssanitizer/msprof 输出目录不可组写。若父目录有 default ACL，还需在任务输出目录设置 `setfacl -m d:m::r-x <run_dir>`，不要修改共享父目录。
 
 ## 9. 参考资料
 
@@ -141,3 +149,4 @@ cd SquareSumV1 && bash run.sh 1
 - 可复用工程经验：`SquareSumV1_可复用算子开发工程经验.md`。
 - 赛题打包与评分规则：上级目录的 `评分规则.md`、`调用样例说明.txt`、`zip_op.sh`。
 - 使用外部规则或自动化工作流前，先读取当前任务环境提供的 `AGENTS.md` / skill 指令；不要把本文件中的历史流程描述当作高于实时指令的规则。
+- 本地最新验收状态：评分路径 44/44、BF16 3/3、非法输入 4/4；mssanitizer 已覆盖 Key4 三 dtype 与 mode 5。外部历史记录仍为 Case4 Run failed，未获得新回执前不得写成正式 Case4 Pass。
