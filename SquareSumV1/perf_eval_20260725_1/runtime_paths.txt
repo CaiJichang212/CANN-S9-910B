@@ -1,0 +1,2 @@
+/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/private_opp.eRL0FE
+/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/python.vG3dEF

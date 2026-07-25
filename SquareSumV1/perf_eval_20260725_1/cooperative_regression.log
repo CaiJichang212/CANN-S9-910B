@@ -1,0 +1,1 @@
+CASE=cooperative_reduce_all_fp16 actual= 21840.0 golden= 21840.0 abs= 0.0 ok= True

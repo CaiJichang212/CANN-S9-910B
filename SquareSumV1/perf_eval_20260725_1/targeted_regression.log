@@ -1,0 +1,8 @@
+EXTENSION=/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/custom_ops_lib.cpython-39-aarch64-linux-gnu.so
+CASE=axis_empty_fp16_tail shape=(4, 17) dtype=torch.float16 ok=True max_abs=0.0
+CASE=axis_empty_fp32_tail shape=(3, 9) dtype=torch.float32 ok=True max_abs=0.0
+Traceback (most recent call last):
+  File "<stdin>", line 28, in <module>
+  File "<stdin>", line 13, in run
+RuntimeError: shape '[2, 0, 3]' is invalid for input of size 1
+[ERROR] 2026-07-25-12:43:26 (PID:28308, Device:0, RankID:-1) ERR99999 UNKNOWN applicaiton exception

@@ -1,0 +1,7 @@
+CASE= {'name': 'multi_noncontiguous_fp16', 'shape': (2, 3, 4, 5, 6), 'dtype': torch.float16, 'axis': [1, 3], 'keep_dims': True, 'values': ('uniform', -1.0, 1.0), 'seed': 136}
+REPEAT=0 bad=0/48 max_abs=0.003906 nonnegative=True
+REPEAT=1 bad=0/48 max_abs=0.003906 nonnegative=True
+REPEAT=2 bad=0/48 max_abs=0.003906 nonnegative=True
+REPEAT=3 bad=0/48 max_abs=0.003906 nonnegative=True
+REPEAT=4 bad=0/48 max_abs=0.003906 nonnegative=True
+PAIRWISE_EQUAL=[True, True, True, True]

@@ -1,0 +1,4 @@
+EXTENSION=/home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/custom_ops_lib.cpython-39-aarch64-linux-gnu.so
+CASE=axis_empty_fp16_tail shape=(4, 17) dtype=torch.float16 ok=True max_abs=0.0
+CASE=axis_empty_fp32_tail shape=(3, 9) dtype=torch.float32 ok=True max_abs=0.0
+CASE=empty_reduce_fp16 shape=(2, 3) dtype=torch.float16 ok=False max_abs=12.453125

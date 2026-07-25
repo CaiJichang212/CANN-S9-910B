@@ -1,3 +1,19 @@
+hw-S9/case_910b_SquareSumV1/SquareSumV1_20260725_172638.zip
+第4次提交评测结果：
+Case1: Pass, Result: 18.82
+Case2: Pass, Result: 683.28
+Case3: Pass, Result: 244.792
+Case4: Run failed
+Case5: Pass, Result: 3121.648
+
+hw-S9/case_910b_SquareSumV1/SquareSumV1_20260725_123950_zip
+第3次提交评测结果：
+Case1: Pass, Result: 12.67
+Case2: Pass, Result: 663.4435
+Case3: Pass, Result: 215.314
+Case4: Run failed
+Case5: Pass, Result: 3059.561
+
 hw-S9/case_910b_SquareSumV1/SquareSumV1_20260724_174439_zip
 第2次提交评测结果：
 Case1: Pass, Result: 12.67

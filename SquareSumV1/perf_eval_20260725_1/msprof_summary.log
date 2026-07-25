@@ -1,0 +1,44 @@
+Archived 28 CSV files to: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/docs/perf/round_004
+Summary written to: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/docs/perf/round_004/summary.txt
+
+=== 上板性能统计摘要 (msprof) ===
+Op: aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+Type: SquareSumV1 | TaskType: MIX_AIC | Duration: 58.15us | BlockDim: 0 (mix=0)
+
+[注] msprof 的 op_summary 是 per-op 聚合值（不含逐核 min/avg/max）；
+     如需逐核数据请改用 msprof op (需要 msopprof 二进制)。
+
+--- Pipe ratios (主导核 = aiv) ---
+  aicore_time: 0.000us | aiv_time: 52.653us
+  aiv: vec= 17.10% | scalar=  9.60% | mte2= 65.90% | mte3=  0.70% | icache_miss=  8.50%
+
+--- 头开销 ---
+  Task Duration: 58.15us | 核最长耗时: 52.653us | 头开销: 5.497us (9.5%)
+
+--- Memory 带宽 (aic-metrics=Memory) ---
+  aiv main_mem read: 0.61 GB/s
+  aiv UB read: 23.57 GB/s
+  aiv UB write: 29.17 GB/s
+
+--- MemoryUB ---
+  UB read (vector): 5.89 GB/s
+  UB write (vector): 5.03 GB/s
+  UB read (scalar): 0.04 GB/s
+
+--- ResourceConflict ---
+  vec_bank_cflt=  1.00% | vec_resc_cflt=  0.00%
+
+--- 原始数据位置 ---
+  归档 CSV : /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/docs/perf/round_004/
+  原始 PROF: /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/
+  按 aic-metrics 拆分的 op_summary_<Metric>.csv 均已复制到归档目录，
+  如需逐列查看可直接 Read。
+
+--- Metric 来源 ---
+  PipeUtilization        <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_PipeUtilization/PROF_000001_20260725124849189_DBJLRGPRFFJQBDCB/mindstudio_profiler_output/op_summary_20260725124902.csv
+  ArithmeticUtilization  <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_ArithmeticUtilization/PROF_000001_20260725124910108_ECGDAFQLKFPKHCKA/mindstudio_profiler_output/op_summary_20260725124923.csv
+  Memory                 <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_Memory/PROF_000001_20260725124931273_BEFCGRCKRQJRFJEA/mindstudio_profiler_output/op_summary_20260725124944.csv
+  MemoryL0               <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_MemoryL0/PROF_000001_20260725124952148_QGDNRGPDPHEMCNBA/mindstudio_profiler_output/op_summary_20260725125005.csv
+  MemoryUB               <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_MemoryUB/PROF_000001_20260725125013421_QALOLMMGCOMPOOLB/mindstudio_profiler_output/op_summary_20260725125026.csv
+  L2Cache                <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_L2Cache/PROF_000001_20260725125034525_QBRMLOHPIEMNHJRB/mindstudio_profiler_output/op_summary_20260725125047.csv
+  ResourceConflictRatio  <- /home/liyc/hw-S9/case_910b_SquareSumV1/SquareSumV1/perf_eval_20260725_1/msprof_ara_fp16_large_nontail_complete/PROF_ResourceConflictRatio/PROF_000001_20260725125055276_BRPEBBBFFRAIBBJB/mindstudio_profiler_output/op_summary_20260725125108.csv

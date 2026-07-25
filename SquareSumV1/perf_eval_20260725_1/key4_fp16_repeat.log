@@ -1,0 +1,6 @@
+REPEAT=0 bad=0/48 max_abs=0.003906 min=2.597656 max=8.273438
+REPEAT=1 bad=0/48 max_abs=0.003906 min=2.597656 max=8.273438
+REPEAT=2 bad=0/48 max_abs=0.003906 min=2.597656 max=8.273438
+REPEAT=3 bad=0/48 max_abs=0.003906 min=2.597656 max=8.273438
+REPEAT=4 bad=0/48 max_abs=0.003906 min=2.597656 max=8.273438
+PAIRWISE_EQUAL=[True, True, True, True]
