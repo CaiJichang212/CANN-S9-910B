@@ -48,6 +48,17 @@ at::Tensor my_op_impl_npu(const at::Tensor& input, const at::IntArrayRef& axis,
     return result;
 }
 
+// Test-only direct entry.  It intentionally bypasses the fixed benchmark
+// wrapper (30 launches plus the 4096x4096 Mul) so large-address regressions
+// exercise exactly one SquareSumV1 invocation.  The ACLNN operator ABI is
+// unchanged.
+at::Tensor my_op_impl_npu_once(const at::Tensor& input, const at::IntArrayRef& axis,
+            bool keep_dims, const at::IntArrayRef& result_shape) {
+    at::Tensor result = at::empty(result_shape, input.options());
+    EXEC_NPU_CMD(aclnnSquareSumV1, input, axis, keep_dims, result);
+    return result;
+}
+
 
 
 // 修改my_op的输入输出
@@ -62,5 +73,7 @@ TORCH_LIBRARY_IMPL(myops, PrivateUse1, m) {
 
 // 不修改
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-		m.def("custom_op", &my_op_impl_npu, "torch.sum(torch.square)");
+	m.def("custom_op", &my_op_impl_npu, "torch.sum(torch.square)");
+	m.def("custom_op_once", &my_op_impl_npu_once,
+	      "single-launch test entry for torch.sum(torch.square)");
 }

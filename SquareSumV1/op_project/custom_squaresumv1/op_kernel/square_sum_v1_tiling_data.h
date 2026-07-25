@@ -9,6 +9,8 @@
  * TilingKey=3: ARA_ROWSPLIT - non-tail axis reduce, row chunk
  * TilingMode=4: MULTI_AXIS_COMPACT - non-contiguous multi-axis, compact fp32 ping-pong stages
  * TilingMode=5: REDUCE_ALL_COOPERATIVE - large all-reduce, per-core fp32 partials + merge
+ * TilingMode=6: NO_REDUCE - axis=[] elementwise square
+ * TilingMode=7: EMPTY_REDUCE - reduction over an empty axis, write zeroes
  */
 
 #ifndef _SQUARE_SUM_V1_TILING_DATA_H_
@@ -53,6 +55,14 @@ struct SquareSumV1TilingData {
     int64_t cooperativeChunkCols;
     int64_t cooperativeCoreNum;
 
+    // === NO_REDUCE / EMPTY_REDUCE (modes=6,7) ===
+    // Work is assigned in 32B blocks.  The final valid core owns the only
+    // potentially partial block, preventing cross-core short-DMA writes.
+    uint64_t noReduceTotalElements;
+    int64_t noReduceBlocksPerCore;
+    uint32_t noReduceTileElements;
+    uint32_t noReduceTailElements;
+
     // === MULTI_AXIS (Key=4) parameters ===
     int32_t  numLayers;                                          // Number of reduce layers (sorted innermost first)
     int32_t  layerAxis[SS_MAX_LAYERS];                           // Original axis index for each layer (sorted ascending)
@@ -79,7 +89,7 @@ struct SquareSumV1TilingData {
     uint32_t reserved1[SS_MAX_LAYERS];
 
     // === General parameters ===
-    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT, 4=MULTI_AXIS_COMPACT, 5=REDUCE_ALL_COOPERATIVE
+    uint32_t tilingMode;      // 0=AR_FULLLOAD, 1=AR_COLSPLIT, 2=ARA_FULLLOAD, 3=ARA_ROWSPLIT, 4=MULTI_AXIS_COMPACT, 5=REDUCE_ALL_COOPERATIVE, 6=NO_REDUCE, 7=EMPTY_REDUCE
     uint32_t inputDtype;      // Input dtype (ge::DataType value)
     uint32_t isAlign32B;      // Whether rLength data is 32B aligned (0=no, 1=yes)
 };

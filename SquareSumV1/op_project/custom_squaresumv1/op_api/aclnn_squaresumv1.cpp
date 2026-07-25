@@ -123,11 +123,11 @@ extern "C" aclnnStatus aclnnSquareSumV1GetWorkspaceSize(
     auto ret = CheckParams(input, axis, result, workspaceSize, const_cast<const aclOpExecutor**>(executor));
     CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
-    if (input->IsEmpty()) {
-        *workspaceSize = 0;
-        uniqueExecutor.ReleaseTo(executor);
-        return ACLNN_SUCCESS;
-    }
+    // Do not short-circuit an empty input here.  Reducing a zero-length axis
+    // can still have a non-empty output (for example [2, 0, 3] over axis 1),
+    // whose mathematical value is zero.  The L0 mode-7 kernel owns that
+    // zero-fill; returning an empty executor leaves the caller's output
+    // allocation uninitialized.
 
     auto inputContiguous = l0op::Contiguous(input, uniqueExecutor.get());
     CHECK_RET(inputContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);

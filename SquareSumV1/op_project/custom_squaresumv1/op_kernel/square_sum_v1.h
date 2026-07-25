@@ -8,16 +8,21 @@
  *   Key=1 AR_COLSPLIT:  tail-axis reduce, column chunk + fp32 accumulator
  *   Key=2 ARA_FULLLOAD: non-tail-axis reduce, Pattern::Reduce::RA full load
  *   Key=3 ARA_ROWSPLIT: non-tail-axis reduce, R-chunk + cross-chunk accumulation
- *   Key=4 MULTI_AXIS_COMPACT: non-contiguous multi-axis, compact fp32 ping-pong stages
+ *   Key=4 MULTI_AXIS: non-contiguous multi-axis, one-core padded fp32 staging
  *   Key=5 REDUCE_ALL_COOPERATIVE: large all-reduce, per-core fp32 partials + merge
+ *   Key=6 NO_REDUCE: axis=[] batched elementwise square
+ *   Key=7 EMPTY_REDUCE: zero-fill outputs of reductions over empty axes
  *
- * Data flow (fp16/bf16 input):
- *   DataCopyPad -> Cast(half->float) -> Mul(x,x) -> ReduceSum -> Cast(float->half) -> DataCopyPad
+ * Data flow (fp16 input):
+ *   DataCopyPad -> Cast(fp16->float) -> Mul(x,x) -> ReduceSum -> Cast(float->fp16) -> DataCopyPad
+ * Data flow (bf16 input):
+ *   DataCopyPad -> Cast -> Mul(fp32) -> round-to-bf16 -> Cast(bf16->float)
+ *   -> ReduceSum -> Cast(float->bf16) -> DataCopyPad
  * fp32 input skips all Cast operations.
  *
- * MULTI_AXIS_COMPACT (mode=4) data flow:
- *   Layer 0: inputGM -> UB -> square+reduce -> compact fp32 stage
- *   Layer k: compact fp32 stage -> UB -> reduce -> alternate compact stage
+ * MULTI_AXIS (mode=4) data flow:
+ *   Layer 0: inputGM -> UB -> square+reduce -> padded fp32 workspace stage
+ *   Layer k: padded fp32 workspace stage -> UB -> reduce -> next padded stage
  *   Last layer: -> Cast(float->T) -> resultGM
  */
 
@@ -63,6 +68,8 @@ private:
     __aicore__ inline void ProcessMultiAxis();
     __aicore__ inline void ProcessMultiAxisLayer(int32_t layerIdx);
     __aicore__ inline void ProcessReduceAllCooperative();
+    __aicore__ inline void ProcessNoReduce();
+    __aicore__ inline void ProcessEmptyReduce();
 
 private:
     TPipe pipe;
@@ -80,9 +87,9 @@ private:
     TBuf<TPosition::VECCALC> reduceBuf;                 // fp32 Pattern::Reduce destination
 
     // === Buffers for MULTI_AXIS (Key=4) ===
-    TBuf<TPosition::VECCALC> multiInBuf;               // input buffer for layer read
+    TBuf<TPosition::VECIN> multiInBuf;                 // input buffer for layer read
     TBuf<TPosition::VECCALC> multiComputeBuf;           // compute buffer (Cast/Mul)
-    TBuf<TPosition::VECCALC> multiOutBuf;               // output buffer for layer result
+    TBuf<TPosition::VECOUT> multiOutBuf;                // output buffer for layer result
     TBuf<TPosition::VECCALC> multiAccBuf;               // accumulator for cross-chunk
     TBuf<TPosition::VECCALC> multiTmpBuf;               // tmpBuf for ReduceSum
     TBuf<TPosition::VECCALC> cooperativeBuf;            // compact fp32 partial vector
@@ -122,9 +129,18 @@ private:
     int64_t cooperativeChunkCols_ = 0;
     int64_t cooperativeCoreNum_ = 0;
 
+    // NO_REDUCE / EMPTY_REDUCE parameters.  Work units are 32B blocks.
+    uint64_t noReduceTotalElements_ = 0;
+    int64_t noReduceBlocksPerCore_ = 0;
+    uint32_t noReduceTileElements_ = 0;
+
     uint32_t isAlign32B_ = 0;
 
     static constexpr bool isFloatInput = std::is_same_v<T, float>;
+    // PyTorch evaluates torch.square on a BF16 tensor in BF16 before its
+    // subsequent reduction. DAV_C220 has no BF16 Mul, so each BF16 branch
+    // explicitly rounds the fp32 product to BF16 before accumulating it.
+    static constexpr bool isBf16Input = std::is_same_v<T, bfloat16_t>;
 };
 
 // ============================================================
@@ -152,6 +168,9 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
     reduceTmpBytes_ = tilingData->reduceTmpBytes;
     cooperativeChunkCols_ = tilingData->cooperativeChunkCols;
     cooperativeCoreNum_ = tilingData->cooperativeCoreNum;
+    noReduceTotalElements_ = tilingData->noReduceTotalElements;
+    noReduceBlocksPerCore_ = tilingData->noReduceBlocksPerCore;
+    noReduceTileElements_ = tilingData->noReduceTileElements;
     isAlign32B_ = tilingData->isAlign32B;
 
     numLayers_ = tilingData->numLayers;
@@ -228,9 +247,9 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
             pipe.InitBuffer(tmpBuf, tmpBufBytes);
         }
     } else if (tilingMode_ == 4) {
-        // MULTI_AXIS_COMPACT: both workspace stages are dense fp32 arrays.
-        // Size UB from the largest *actual chunk*, never from full R.
-        workspaceGM.SetGlobalBuffer((__gm__ float*)workspace);
+        // MULTI_AXIS: workspace is padded in GM, while UB is sized from the
+        // largest actual chunk rather than the full reduction length.
+        workspaceGM.SetGlobalBuffer((__gm__ float*)GetUserWorkspace(workspace));
         int64_t maxMatrixElems = 8;
         int64_t maxCols = 8;
         uint32_t maxTmpBytes = 32;
@@ -255,19 +274,26 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
         pipe.InitBuffer(multiOutBuf, colsBytes);
         pipe.InitBuffer(multiTmpBuf, maxTmpBytes);
     } else if (tilingMode_ == 5) {
-        workspaceGM.SetGlobalBuffer((__gm__ float*)workspace);
+        workspaceGM.SetGlobalBuffer((__gm__ float*)GetUserWorkspace(workspace));
         pipe.InitBuffer(inQueueXSingle, cooperativeChunkCols_ * sizeof(T));
         if constexpr (!isFloatInput) {
             pipe.InitBuffer(computeBuf, cooperativeChunkCols_ * sizeof(float));
         }
         pipe.InitBuffer(accBuf, 32);
         pipe.InitBuffer(outQueueYSingle, 32);
-        pipe.InitBuffer(cooperativeBuf,
-            ((cooperativeCoreNum_ + 7) / 8) * 8 * static_cast<int64_t>(sizeof(float)));
+        pipe.InitBuffer(cooperativeBuf, cooperativeCoreNum_ * 8 * static_cast<int64_t>(sizeof(float)));
         // 4 KiB covers the Level-2 fp32 ReduceSum scratch for the bounded
         // 255-repeat cooperative chunk and keeps this device-only header
         // independent from the host tiling helper.
         pipe.InitBuffer(tmpBuf, 4096);
+    } else if (tilingMode_ == 6) {
+        pipe.InitBuffer(inQueueXSingle, noReduceTileElements_ * sizeof(T));
+        if constexpr (!isFloatInput) {
+            pipe.InitBuffer(computeBuf, noReduceTileElements_ * sizeof(float));
+            pipe.InitBuffer(outQueueYSingle, noReduceTileElements_ * sizeof(T));
+        }
+    } else if (tilingMode_ == 7) {
+        pipe.InitBuffer(outQueueYSingle, noReduceTileElements_ * sizeof(T));
     }
 }
 
@@ -278,6 +304,16 @@ __aicore__ inline void SquareSumV1<T>::Init(GM_ADDR input, GM_ADDR result, GM_AD
 template <typename T>
 __aicore__ inline void SquareSumV1<T>::Process()
 {
+    // These handlers contain cross-core barriers.  Every launched core must
+    // enter them, including cores without a local work tile.
+    if (tilingMode_ == 4) {
+        ProcessMultiAxis();
+        return;
+    }
+    if (tilingMode_ == 5) {
+        ProcessReduceAllCooperative();
+        return;
+    }
     if (myRows_ == 0) return;
 
     switch (tilingMode_) {
@@ -285,8 +321,8 @@ __aicore__ inline void SquareSumV1<T>::Process()
         case 1: ProcessArColSplit(); break;
         case 2: ProcessAraFullLoad(); break;
         case 3: ProcessAraRowSplit(); break;
-        case 4: ProcessMultiAxis(); break;
-        case 5: ProcessReduceAllCooperative(); break;
+        case 6: ProcessNoReduce(); break;
+        case 7: ProcessEmptyReduce(); break;
         default: ProcessArFullLoad(); break;
     }
 }
@@ -327,8 +363,21 @@ __aicore__ inline void SquareSumV1<T>::ArFullLoadCompute(int64_t rowIdx)
     } else {
         LocalTensor<float> xFp32 = computeBuf.Get<float>();
         LocalTensor<float> reduceDst = accBuf.Get<float>();
-        Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_);
-        Mul(xFp32, xFp32, xFp32, rLength_);
+        if constexpr (isBf16Input) {
+            Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_);
+            PipeBarrier<PIPE_V>();
+            Mul(xFp32, xFp32, xFp32, rLength_);
+            PipeBarrier<PIPE_V>();
+            Cast(xLocal, xFp32, RoundMode::CAST_RINT, rLength_);
+            PipeBarrier<PIPE_V>();
+            Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_);
+        } else {
+            Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLength_);
+            PipeBarrier<PIPE_V>();
+            Mul(xFp32, xFp32, xFp32, rLength_);
+        }
+        // For BF16 the product has been rounded to BF16 and re-expanded; for
+        // FP16 this is the existing fp32 square. Both paths reduce fp32 values.
         ReduceSum<float>(reduceDst, xFp32, tmpLocal,
                          static_cast<int32_t>(rLength_));
         PipeBarrier<PIPE_V>();
@@ -414,9 +463,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessArColSplit()
                 ReduceSum<float>(reduceDst, xLocal, tmpLocal, static_cast<int32_t>(chunkSize));
             } else {
                 LocalTensor<float> xFp32 = computeBuf.Get<float>();
-                Cast(xFp32, xLocal, RoundMode::CAST_NONE, chunkSize);
-                PipeBarrier<PIPE_V>();
-                Mul(xFp32, xFp32, xFp32, chunkSize);
+                if constexpr (isBf16Input) {
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, chunkSize);
+                    PipeBarrier<PIPE_V>();
+                    Mul(xFp32, xFp32, xFp32, chunkSize);
+                    PipeBarrier<PIPE_V>();
+                    Cast(xLocal, xFp32, RoundMode::CAST_RINT, chunkSize);
+                    PipeBarrier<PIPE_V>();
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, chunkSize);
+                } else {
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, chunkSize);
+                    PipeBarrier<PIPE_V>();
+                    Mul(xFp32, xFp32, xFp32, chunkSize);
+                }
                 PipeBarrier<PIPE_V>();
                 ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(chunkSize));
             }
@@ -508,9 +567,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraFullLoad()
             } else {
                 LocalTensor<float> xFp32 = computeBuf.Get<float>();
                 uint32_t castCount = static_cast<uint32_t>(rLength_ * alignedCols);
-                Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
-                PipeBarrier<PIPE_V>();
-                Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
+                if constexpr (isBf16Input) {
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                    PipeBarrier<PIPE_V>();
+                    Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
+                    PipeBarrier<PIPE_V>();
+                    Cast(xLocal, xFp32, RoundMode::CAST_RINT, castCount);
+                    PipeBarrier<PIPE_V>();
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                } else {
+                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                    PipeBarrier<PIPE_V>();
+                    Mul(xFp32, xFp32, xFp32, rLength_ * alignedCols);
+                }
                 PipeBarrier<PIPE_V>();
                 uint32_t srcShape[] = {static_cast<uint32_t>(rLength_),
                                        static_cast<uint32_t>(alignedCols)};
@@ -622,9 +691,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
                     // rSize * alignedCols elements and the old round-up read
                     // past its end on partial chunks.
                     uint32_t castCount = static_cast<uint32_t>(rSize * alignedCols);
-                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
-                    PipeBarrier<PIPE_V>();
-                    Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
+                    if constexpr (isBf16Input) {
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                        PipeBarrier<PIPE_V>();
+                        Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
+                        PipeBarrier<PIPE_V>();
+                        Cast(xLocal, xFp32, RoundMode::CAST_RINT, castCount);
+                        PipeBarrier<PIPE_V>();
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                    } else {
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, castCount);
+                        PipeBarrier<PIPE_V>();
+                        Mul(xFp32, xFp32, xFp32, rSize * alignedCols);
+                    }
                     PipeBarrier<PIPE_V>();
                     uint32_t srcShape[] = {static_cast<uint32_t>(rSize),
                                            static_cast<uint32_t>(alignedCols)};
@@ -697,9 +776,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessReduceAllCooperative()
             ReduceSum<float>(partial, x, tmp, static_cast<int32_t>(count));
         } else {
             LocalTensor<float> fp32 = computeBuf.Get<float>();
-            Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(count));
-            PipeBarrier<PIPE_V>();
-            Mul(fp32, fp32, fp32, static_cast<int32_t>(count));
+            if constexpr (isBf16Input) {
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(count));
+                PipeBarrier<PIPE_V>();
+                Mul(fp32, fp32, fp32, static_cast<int32_t>(count));
+                PipeBarrier<PIPE_V>();
+                Cast(x, fp32, RoundMode::CAST_RINT, static_cast<int32_t>(count));
+                PipeBarrier<PIPE_V>();
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(count));
+            } else {
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(count));
+                PipeBarrier<PIPE_V>();
+                Mul(fp32, fp32, fp32, static_cast<int32_t>(count));
+            }
             PipeBarrier<PIPE_V>();
             ReduceSum<float>(partial, fp32, tmp, static_cast<int32_t>(count));
         }
@@ -708,17 +797,24 @@ __aicore__ inline void SquareSumV1<T>::ProcessReduceAllCooperative()
         PipeBarrier<PIPE_V>();
     }
 
-    DataCopyExtParams partialOut{1, sizeof(float), 0, 0, 0};
-    DataCopyPad(workspaceGM[blockIdx], acc, partialOut);
-    PipeBarrier<PIPE_ALL>();
+    // One 32B workspace slot per core gives this MTE3 write exclusive
+    // ownership of its GM DataBlock.
+    DataCopyExtParams partialOut{1, 32, 0, 0, 0};
+    DataCopyPad(workspaceGM[blockIdx * 8], acc, partialOut);
     SyncAll();
+    PipeBarrier<PIPE_ALL>();
 
     if (blockIdx != 0) return;
-    DataCopyExtParams partialIn{1, static_cast<uint32_t>(cooperativeCoreNum_ * sizeof(float)), 0, 0, 0};
+    DataCopyExtParams partialIn{1, static_cast<uint32_t>(cooperativeCoreNum_ * 8 * sizeof(float)), 0, 0, 0};
     DataCopyPadExtParams<float> partialPad{false, 0, 0, 0.0f};
     DataCopyPad(partial, workspaceGM[0], partialIn, partialPad);
     PipeBarrier<PIPE_ALL>();
-    ReduceSum<float>(acc, partial, tmp, static_cast<int32_t>(cooperativeCoreNum_));
+    Duplicate(acc, 0.0f, 8);
+    PipeBarrier<PIPE_V>();
+    for (int64_t core = 0; core < cooperativeCoreNum_; ++core) {
+        acc.SetValue(0, acc.GetValue(0) + partial.GetValue(core * 8));
+    }
+    PipeBarrier<PIPE_V>();
     PipeBarrier<PIPE_V>();
     DataCopyExtParams out{1, sizeof(T), 0, 0, 0};
     if constexpr (isFloatInput) {
@@ -732,8 +828,117 @@ __aicore__ inline void SquareSumV1<T>::ProcessReduceAllCooperative()
 }
 
 // ============================================================
-// MULTI_AXIS (Key=4) - legacy layer routine retained for source compatibility.
-// ProcessMultiAxis below uses the compact implementation and never calls it.
+// NO_REDUCE (mode=6) / EMPTY_REDUCE (mode=7)
+//
+// axis=[] is an elementwise square, not a count-one reduction.  Cores own
+// disjoint 32B GM blocks and only the final active core can write a short tail.
+// ============================================================
+
+template <typename T>
+__aicore__ inline void SquareSumV1<T>::ProcessNoReduce()
+{
+    const int64_t elementsPerBlock = 32 / sizeof(T);
+    const uint64_t totalBlocks = noReduceTotalElements_ / elementsPerBlock
+        + ((noReduceTotalElements_ % elementsPerBlock) != 0 ? 1 : 0);
+    const uint64_t usedCores = static_cast<uint64_t>(tilingData_->usedCoreNum);
+    const uint64_t blockIdx = static_cast<uint64_t>(GetBlockIdx());
+    const uint64_t baseBlocks = totalBlocks / usedCores;
+    const uint64_t extraBlockCores = totalBlocks % usedCores;
+    const uint64_t myBlocks = baseBlocks + (blockIdx < extraBlockCores ? 1 : 0);
+    const uint64_t beginBlock = blockIdx * baseBlocks
+        + (blockIdx < extraBlockCores ? blockIdx : extraBlockCores);
+    const uint64_t begin = beginBlock * elementsPerBlock;
+    const uint64_t blockEnd = begin + myBlocks * elementsPerBlock;
+    const uint64_t end = blockEnd < noReduceTotalElements_ ? blockEnd : noReduceTotalElements_;
+
+    for (uint64_t offset = begin; offset < end; offset += noReduceTileElements_) {
+        const uint64_t remaining = end - offset;
+        const int64_t validElements = static_cast<int64_t>(remaining < noReduceTileElements_
+            ? remaining : noReduceTileElements_);
+        const int64_t vectorElements = ((validElements + elementsPerBlock - 1) / elementsPerBlock)
+            * elementsPerBlock;
+        // Do not feed an accumulated element index to GlobalTensor::operator[].
+        // Rebase both GM tensors with GlobalTensor's uint64_t *element*
+        // offset API and keep each tile DMA at local offset zero.  The
+        // resulting physical byte displacement is offset * sizeof(T), whose
+        // representability was checked by Host tiling.
+        GlobalTensor<T> inputTileGM;
+        GlobalTensor<T> resultTileGM;
+        inputTileGM.SetGlobalBuffer((__gm__ T*)inputGM.GetPhyAddr(offset));
+        resultTileGM.SetGlobalBuffer((__gm__ T*)resultGM.GetPhyAddr(offset));
+        LocalTensor<T> x = inQueueXSingle.Get<T>();
+        DataCopyExtParams copyIn{1, static_cast<uint32_t>(validElements * sizeof(T)), 0, 0, 0};
+        DataCopyPadExtParams<T> pad{true, 0, 0, static_cast<T>(0)};
+        DataCopyPad(x, inputTileGM[0], copyIn, pad);
+        PipeBarrier<PIPE_ALL>();
+
+        DataCopyExtParams copyOut{1, static_cast<uint32_t>(validElements * sizeof(T)), 0, 0, 0};
+        if constexpr (isFloatInput) {
+            Mul(x, x, x, static_cast<int32_t>(vectorElements));
+            PipeBarrier<PIPE_V>();
+            DataCopyPad(resultTileGM[0], x, copyOut);
+        } else {
+            LocalTensor<float> fp32 = computeBuf.Get<float>();
+            LocalTensor<T> y = outQueueYSingle.Get<T>();
+            if constexpr (isBf16Input) {
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(vectorElements));
+                PipeBarrier<PIPE_V>();
+                Mul(fp32, fp32, fp32, static_cast<int32_t>(vectorElements));
+                PipeBarrier<PIPE_V>();
+                Cast(x, fp32, RoundMode::CAST_RINT, static_cast<int32_t>(vectorElements));
+                PipeBarrier<PIPE_V>();
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(vectorElements));
+            } else {
+                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(vectorElements));
+                PipeBarrier<PIPE_V>();
+                Mul(fp32, fp32, fp32, static_cast<int32_t>(vectorElements));
+            }
+            PipeBarrier<PIPE_V>();
+            Cast(y, fp32, RoundMode::CAST_RINT, static_cast<int32_t>(vectorElements));
+            PipeBarrier<PIPE_V>();
+            DataCopyPad(resultTileGM[0], y, copyOut);
+        }
+        // The raw TBufs are reused for the next tile, so wait for MTE3.
+        PipeBarrier<PIPE_ALL>();
+    }
+}
+
+template <typename T>
+__aicore__ inline void SquareSumV1<T>::ProcessEmptyReduce()
+{
+    const int64_t elementsPerBlock = 32 / sizeof(T);
+    const uint64_t totalBlocks = noReduceTotalElements_ / elementsPerBlock
+        + ((noReduceTotalElements_ % elementsPerBlock) != 0 ? 1 : 0);
+    const uint64_t usedCores = static_cast<uint64_t>(tilingData_->usedCoreNum);
+    const uint64_t blockIdx = static_cast<uint64_t>(GetBlockIdx());
+    const uint64_t baseBlocks = totalBlocks / usedCores;
+    const uint64_t extraBlockCores = totalBlocks % usedCores;
+    const uint64_t myBlocks = baseBlocks + (blockIdx < extraBlockCores ? 1 : 0);
+    const uint64_t beginBlock = blockIdx * baseBlocks
+        + (blockIdx < extraBlockCores ? blockIdx : extraBlockCores);
+    const uint64_t begin = beginBlock * elementsPerBlock;
+    const uint64_t blockEnd = begin + myBlocks * elementsPerBlock;
+    const uint64_t end = blockEnd < noReduceTotalElements_ ? blockEnd : noReduceTotalElements_;
+    LocalTensor<T> zeroes = outQueueYSingle.Get<T>();
+
+    for (uint64_t offset = begin; offset < end; offset += noReduceTileElements_) {
+        const uint64_t remaining = end - offset;
+        const int64_t validElements = static_cast<int64_t>(remaining < noReduceTileElements_
+            ? remaining : noReduceTileElements_);
+        const int64_t vectorElements = ((validElements + elementsPerBlock - 1) / elementsPerBlock)
+            * elementsPerBlock;
+        GlobalTensor<T> resultTileGM;
+        resultTileGM.SetGlobalBuffer((__gm__ T*)resultGM.GetPhyAddr(offset));
+        Duplicate(zeroes, static_cast<T>(0), static_cast<int32_t>(vectorElements));
+        PipeBarrier<PIPE_V>();
+        DataCopyExtParams copyOut{1, static_cast<uint32_t>(validElements * sizeof(T)), 0, 0, 0};
+        DataCopyPad(resultTileGM[0], zeroes, copyOut);
+        PipeBarrier<PIPE_ALL>();
+    }
+}
+
+// ============================================================
+// MULTI_AXIS (Key=4) single-core staging routine.
 //
 // Workspace I/O convention: every scalar/vector element is stored as
 // a full 32-byte (8 fp32) block. This ensures all DataCopyPad GM
@@ -792,9 +997,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
                     ReduceSum<float>(reduceDst, xLocal, tmpLocal, static_cast<int32_t>(rLen));
                 } else {
                     LocalTensor<float> xFp32 = multiComputeBuf.Get<float>();
-                    Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
-                    PipeBarrier<PIPE_V>();
-                    Mul(xFp32, xFp32, xFp32, rLen);
+                    if constexpr (isBf16Input) {
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
+                        PipeBarrier<PIPE_V>();
+                        Mul(xFp32, xFp32, xFp32, rLen);
+                        PipeBarrier<PIPE_V>();
+                        Cast(xLocal, xFp32, RoundMode::CAST_RINT, rLen);
+                        PipeBarrier<PIPE_V>();
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
+                    } else {
+                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, rLen);
+                        PipeBarrier<PIPE_V>();
+                        Mul(xFp32, xFp32, xFp32, rLen);
+                    }
                     PipeBarrier<PIPE_V>();
                     ReduceSum<float>(reduceDst, xFp32, tmpLocal, static_cast<int32_t>(rLen));
                 }
@@ -888,9 +1103,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
                         Add(accLocal, accLocal, xLocal.template ReinterpretCast<float>(), a0Len);
                         PipeBarrier<PIPE_V>();
                     } else {
-                        Cast(xFp32, xLocal, RoundMode::CAST_NONE, a0Len);
-                        PipeBarrier<PIPE_V>();
-                        Mul(xFp32, xFp32, xFp32, a0Len);
+                        if constexpr (isBf16Input) {
+                            Cast(xFp32, xLocal, RoundMode::CAST_NONE, a0Len);
+                            PipeBarrier<PIPE_V>();
+                            Mul(xFp32, xFp32, xFp32, a0Len);
+                            PipeBarrier<PIPE_V>();
+                            Cast(xLocal, xFp32, RoundMode::CAST_RINT, a0Len);
+                            PipeBarrier<PIPE_V>();
+                            Cast(xFp32, xLocal, RoundMode::CAST_NONE, a0Len);
+                        } else {
+                            Cast(xFp32, xLocal, RoundMode::CAST_NONE, a0Len);
+                            PipeBarrier<PIPE_V>();
+                            Mul(xFp32, xFp32, xFp32, a0Len);
+                        }
                         PipeBarrier<PIPE_V>();
                         Add(accLocal, accLocal, xFp32, a0Len);
                         PipeBarrier<PIPE_V>();
@@ -899,7 +1124,7 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
                     // Read a0Len padded elements from workspace
                     int64_t wsReadBase = tilingData_->layerWorkspaceOffset[layerIdx]
                                         + (rowIdx * rLen + rIdx) * a0Len * PAD;
-                    LocalTensor<float> tmpRead = multiOutBuf.Get<float>();
+                    LocalTensor<float> tmpRead = multiInBuf.Get<float>();
                     for (int64_t ei = 0; ei < a0Len; ei++) {
                         DataCopyExtParams cp;
                         cp.blockCount = 1;
@@ -962,6 +1187,18 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxisLayer(int32_t layerIdx)
 template <typename T>
 __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
 {
+    // The host deliberately selects one core for mode 4. Use the scalar-slot
+    // staging routine in that configuration: every GM workspace transaction
+    // owns a full 32B block and uses the framework's user-workspace base.
+    // The dense multi-core body below remains disabled until separately
+    // validated for cross-core stage synchronization.
+    if (tilingData_->usedCoreNum == 1) {
+        for (int32_t li = 0; li < numLayers_; ++li) {
+            ProcessMultiAxisLayer(li);
+            PipeBarrier<PIPE_ALL>();
+        }
+        return;
+    }
     // Each layer owns disjoint (outer, A0-tile) output ranges.  Intermediate
     // tensors are dense fp32 arrays, so later layers use one 2D DMA per
     // chunk instead of the former 32B-per-scalar staging protocol.
@@ -983,9 +1220,20 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
         const int64_t rChunk = tilingData_->layerRChunkSizeCompact[li];
         const int64_t tileCount = (inner + tileLen - 1) / tileLen;
         const int64_t workCount = outer * tileCount;
-        const int64_t workPerCore = (workCount + usedCores - 1) / usedCores;
-        const int64_t workBegin = blockIdx * workPerCore;
-        const int64_t workEnd = (workBegin + workPerCore < workCount) ? workBegin + workPerCore : workCount;
+        // Dense workspace/output rows can end in the same 32B block as the
+        // next row.  Partition at a group of complete 32B row spans, rather
+        // than at an arbitrary tile, so no two cores issue short MTE3 writes
+        // to the same DataBlock.  The final partial group has one owner.
+        const int64_t innerGcdWithBlock = (inner % 8 == 0) ? 8
+            : ((inner % 4 == 0) ? 4 : ((inner % 2 == 0) ? 2 : 1));
+        const int64_t rowsPerOwnershipGroup = 8 / innerGcdWithBlock;
+        const int64_t ownershipGroups = (outer + rowsPerOwnershipGroup - 1) / rowsPerOwnershipGroup;
+        const int64_t groupsPerCore = (ownershipGroups + usedCores - 1) / usedCores;
+        const int64_t outerBegin = blockIdx * groupsPerCore * rowsPerOwnershipGroup;
+        const int64_t outerEndCandidate = outerBegin + groupsPerCore * rowsPerOwnershipGroup;
+        const int64_t outerEnd = outerEndCandidate < outer ? outerEndCandidate : outer;
+        const int64_t workBegin = outerBegin * tileCount;
+        const int64_t workEnd = outerEnd * tileCount;
 
         LocalTensor<float> acc = multiAccBuf.Get<float>();
         LocalTensor<float> reduced = multiOutBuf.Get<float>();
@@ -1015,9 +1263,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
                             ReduceSum<float>(reduced, x, tmpForAr, static_cast<int32_t>(validRows));
                         } else {
                             LocalTensor<float> fp32 = multiComputeBuf.Get<float>();
-                            Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows));
-                            PipeBarrier<PIPE_V>();
-                            Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows));
+                            if constexpr (isBf16Input) {
+                                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows));
+                                PipeBarrier<PIPE_V>();
+                                Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows));
+                                PipeBarrier<PIPE_V>();
+                                Cast(x, fp32, RoundMode::CAST_RINT, static_cast<int32_t>(validRows));
+                                PipeBarrier<PIPE_V>();
+                                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows));
+                            } else {
+                                Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows));
+                                PipeBarrier<PIPE_V>();
+                                Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows));
+                            }
                             PipeBarrier<PIPE_V>();
                             ReduceSum<float>(reduced, fp32, tmpForAr, static_cast<int32_t>(validRows));
                         }
@@ -1063,9 +1321,19 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
                         ReduceSum<float, Pattern::Reduce::RA, true>(reduced, x, tmp, shape, true);
                     } else {
                         LocalTensor<float> fp32 = multiComputeBuf.Get<float>();
-                        Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows * tileAlign));
-                        PipeBarrier<PIPE_V>();
-                        Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows * tileAlign));
+                        if constexpr (isBf16Input) {
+                            Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows * tileAlign));
+                            PipeBarrier<PIPE_V>();
+                            Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows * tileAlign));
+                            PipeBarrier<PIPE_V>();
+                            Cast(x, fp32, RoundMode::CAST_RINT, static_cast<int32_t>(validRows * tileAlign));
+                            PipeBarrier<PIPE_V>();
+                            Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows * tileAlign));
+                        } else {
+                            Cast(fp32, x, RoundMode::CAST_NONE, static_cast<int32_t>(validRows * tileAlign));
+                            PipeBarrier<PIPE_V>();
+                            Mul(fp32, fp32, fp32, static_cast<int32_t>(validRows * tileAlign));
+                        }
                         PipeBarrier<PIPE_V>();
                         ReduceSum<float, Pattern::Reduce::RA, true>(reduced, fp32, tmp, shape, true);
                     }
@@ -1104,9 +1372,13 @@ __aicore__ inline void SquareSumV1<T>::ProcessMultiAxis()
             }
             PipeBarrier<PIPE_ALL>();
         }
-        // Every launched core, including cores with no tile in this layer,
-        // reaches the same hard barrier before the next stage swaps buffers.
-        SyncAll();
+        // mode 4 is currently single-core (host tiling enforces it), so a
+        // local pipe fence is sufficient at each workspace-stage boundary.
+        // Do not emit SyncAll in this routine: the MIX kernel's SyncAll
+        // lowering is still active even behind a runtime dead branch and can
+        // address non-participating AIV state. A future multi-core mode must
+        // introduce a separately compiled, hardware-safe sync protocol.
+        PipeBarrier<PIPE_ALL>();
     }
 }
 
