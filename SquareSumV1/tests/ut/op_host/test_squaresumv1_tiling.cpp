@@ -18,7 +18,7 @@
  *  12. ARA edge cases and boundaries
  *  13. MULTI_AXIS (Key=4) detection: non-contiguous axis routing
  *  14. MULTI_AXIS per-layer parameters (numLayers, layerAxis, layerRLength, etc.)
- *  15. MULTI_AXIS workspace size (2*inputElems*sizeof(float), 4096-aligned)
+ *  15. MULTI_AXIS padded user-workspace size plus the DAV_C220 reserve
  *  16. MULTI_AXIS boundaries (full reduction, degenerate dims, single core)
  */
 
@@ -27,6 +27,7 @@
 #include <memory>
 #include <cstring>
 #include <cmath>
+#include <limits>
 
 #include "tiling_context_faker.h"
 #include "tiling_case_executor.h"
@@ -37,10 +38,11 @@ using namespace std;
 using namespace ge;
 using namespace gert;
 
-// SquareSumV1 is a CANN built-in L0 name.  The submitted public ACLNN API
-// dispatches the isolated implementation-only type below, so tiling UTs must
-// resolve the same registry entry as the packaged operator.
-static const std::string OP_NAME = "SquareSumV1Custom";
+// Tiling UTs must use the same public registry identity as the packaged
+// operator.  The previous SquareSumV1Custom test-only name is no longer
+// registered by op_host and made every case fail before tiling was invoked.
+static const std::string OP_NAME = "SquareSumV1";
+constexpr size_t DAV_C220_USER_WORKSPACE_OFFSET = 16U * 1024U * 1024U;
 
 // CompileInfo struct (matches tiling.cpp)
 struct SquareSumV1CompileInfo {};
@@ -142,6 +144,128 @@ protected:
         std::cout << "SquareSumV1TilingTest TearDown." << std::endl;
     }
 };
+
+// =============================================================================
+// Case4 regression: axis=[] is an elementwise square, never ReduceSum(count=1)
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_empty_axis_uses_no_reduce_fp16)
+{
+    auto r = RunTiling({168, 165, 64, 192, 103}, ge::DT_FLOAT16, {});
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    constexpr uint64_t kElements = 168ULL * 165 * 64 * 192 * 103;
+    EXPECT_EQ(td->tilingMode, 6u);
+    EXPECT_EQ(td->noReduceTotalElements, kElements);
+    EXPECT_EQ(td->totalWorkItems, static_cast<int64_t>((kElements + 15) / 16));
+    EXPECT_EQ(td->usedCoreNum, 20);
+    EXPECT_GT(td->noReduceTileElements, 16u);
+    EXPECT_EQ(td->noReduceTileElements % 16, 0u);
+    EXPECT_EQ(r.info.workspaceSizes[0], 0u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_empty_axis_uses_no_reduce_fp32_and_owns_tail_block)
+{
+    // 161 fp32 elements occupy 21 32B blocks.  The 20th core is the sole
+    // owner of the final one-element tail block.
+    auto r = RunTiling({161}, ge::DT_FLOAT, {}, false, 20);
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 6u);
+    EXPECT_EQ(td->noReduceTotalElements, 161u);
+    EXPECT_EQ(td->totalWorkItems, 21);
+    EXPECT_EQ(td->usedCoreNum, 20);
+    EXPECT_EQ(td->rowsPerCore, 1);
+    EXPECT_EQ(td->tailRows, 1);
+    EXPECT_EQ(td->noReduceTailElements, 1u);
+    EXPECT_EQ(td->noReduceTileElements % 8, 0u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_empty_axis_rejects_element_count_overflow)
+{
+    EXPECT_FALSE(RunTiling({std::numeric_limits<int64_t>::max(), 2}, ge::DT_FLOAT, {}).success);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_empty_axis_rejects_fp32_byte_address_overflow)
+{
+    // The element count itself fits int64_t, but multiplying by four would
+    // overflow the byte-address range that an fp32 GM view ultimately needs.
+    const int64_t elements = std::numeric_limits<int64_t>::max() / 2 + 1;
+    EXPECT_FALSE(RunTiling({elements}, ge::DT_FLOAT, {}).success);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_empty_axis_crosses_4gib_with_unique_block_ownership)
+{
+    constexpr uint64_t kFourGiB = 1ULL << 32;
+    const auto verify = [&](ge::DataType dtype, uint32_t typeSize) {
+        const uint64_t elements = kFourGiB / typeSize + 32;
+        auto r = RunTiling({static_cast<int64_t>(elements)}, dtype, {}, false, 20);
+        ASSERT_TRUE(r.success);
+        const auto* td = AsTilingData(r.info);
+        ASSERT_NE(td, nullptr);
+        ASSERT_EQ(td->tilingMode, 6u);
+        ASSERT_EQ(td->noReduceTotalElements, elements);
+
+        const uint64_t elementsPerBlock = 32 / typeSize;
+        const uint64_t totalBlocks = (elements + elementsPerBlock - 1) / elementsPerBlock;
+        ASSERT_EQ(td->totalWorkItems, static_cast<int64_t>(totalBlocks));
+        ASSERT_EQ(td->usedCoreNum, 20);
+
+        const uint64_t baseBlocks = totalBlocks / td->usedCoreNum;
+        const uint64_t extraBlockCores = totalBlocks % td->usedCoreNum;
+        uint64_t previousEnd = 0;
+        for (uint64_t core = 0; core < static_cast<uint64_t>(td->usedCoreNum); ++core) {
+            const uint64_t coreBlocks = baseBlocks + (core < extraBlockCores ? 1 : 0);
+            const uint64_t beginBlock = core * baseBlocks + (core < extraBlockCores ? core : extraBlockCores);
+            EXPECT_EQ(beginBlock, previousEnd);
+            previousEnd = beginBlock + coreBlocks;
+            // Every core range is expressed in 32B blocks, so the byte start
+            // and end are independently representable beyond the 4GiB mark.
+            EXPECT_EQ((beginBlock * 32) % 32, 0u);
+            EXPECT_EQ((previousEnd * 32) % 32, 0u);
+        }
+        EXPECT_EQ(previousEnd, totalBlocks);
+        EXPECT_GT(elements * static_cast<uint64_t>(typeSize), kFourGiB);
+    };
+
+    verify(ge::DT_FLOAT16, 2);
+    verify(ge::DT_FLOAT, 4);
+}
+
+// =============================================================================
+// Empty-reduction semantics: sum over an empty set is zero for every output.
+// =============================================================================
+TEST_F(SquareSumV1TilingTest, tiling_empty_reduce_uses_zero_fill)
+{
+    auto r = RunTiling({2, 0}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 7u);
+    EXPECT_EQ(td->noReduceTotalElements, 2u);
+    EXPECT_EQ(td->totalWorkItems, 1);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(td->noReduceTailElements, 2u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_empty_reduce_with_empty_output_is_noop)
+{
+    // The surviving axis is also empty, therefore there is no output storage
+    // to initialize even though the reduced axis has length zero.
+    auto r = RunTiling({0, 0, 2}, ge::DT_FLOAT, {1});
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 7u);
+    EXPECT_EQ(td->noReduceTotalElements, 0u);
+    EXPECT_EQ(td->totalWorkItems, 0);
+    EXPECT_EQ(td->usedCoreNum, 1);
+}
 
 // The ACLNN front end rejects these too; exercising tiling directly prevents
 // malformed graph attributes from reaching CoalesceAxis/Kernel dispatch.
@@ -1668,14 +1792,14 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_3d_workspace_offset)
 // -----------------------------------------------------------------------------
 
 // =============================================================================
-// 68. Workspace size: Key=4 = 2*inputElems*sizeof(float), 4096-aligned
+// 68. Workspace size: Key=4 padded scalar slots + DAV_C220 user reserve
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
 {
     // shape=[4, 100, 64], axis=[0, 2], fp32
-    // totalInputElems = 4*100*64 = 25600
-    // wsSize = 25600 * 4 * 2 = 204800
-    // Aligned to 4096: 204800 is already 4096-aligned (204800 / 4096 = 50)
+    // The first layer produces 4*100=400 fp32 values. The safe one-core
+    // protocol assigns each value one 32B slot, then requests the 16MiB
+    // framework reserve before its user workspace.
     auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
     ASSERT_TRUE(r.success);
 
@@ -1684,20 +1808,19 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    size_t expectedWs = static_cast<size_t>(512) * sizeof(float) * 2;
+    size_t expectedWs = static_cast<size_t>(400) * 8 * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
 
 // =============================================================================
-// 69. Workspace size: Key=4 fp16 same formula (uses sizeof(float) not typeSize)
+// 69. Workspace size: Key=4 fp16 uses the same fp32 scalar-slot staging
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
 {
     // shape=[2, 50, 32], axis=[0, 2], fp16
-    // totalInputElems = 2*50*32 = 3200
-    // wsSize = 3200 * 4 * 2 = 25600, aligned to 4096 = 25600 (already aligned)
-    // Wait: 25600 / 4096 = 6.25 → not aligned. CeilAlign = 28672
+    // Layer 0 produces 2*50=100 values, each in an eight-float slot.
     auto r = RunTiling({2, 50, 32}, ge::DT_FLOAT16, {0, 2});
     ASSERT_TRUE(r.success);
 
@@ -1706,8 +1829,9 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    size_t expectedWs = static_cast<size_t>(512) * sizeof(float) * 2;
+    size_t expectedWs = static_cast<size_t>(100) * 8 * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
 
@@ -1866,11 +1990,13 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_all_dtypes)
         auto* td = AsTilingData(r.info);
         ASSERT_NE(td, nullptr);
         EXPECT_EQ(td->tilingMode, 4u) << "Expected MULTI_AXIS for dtype: " << c.name;
+        EXPECT_EQ(td->usedCoreNum, 1) << "mode 4 must use its safe single-core path for dtype: " << c.name;
+        EXPECT_EQ(r.info.blockNum, 1u) << "mode 4 blockDim must match usedCoreNum for dtype: " << c.name;
     }
 }
 
 // =============================================================================
-// 77. MULTI_AXIS: verify blockDim uses firstLayerRows
+// 77. MULTI_AXIS: verify blockDim is fixed to the safe single-core fallback
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_blockdim)
 {
@@ -1887,22 +2013,20 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_blockdim)
 
     // firstLayerRows = 4 * 100 = 400 (dims before axis 2 in original shape)
     EXPECT_EQ(td->totalRows, 400);
-    EXPECT_EQ(td->usedCoreNum, 20);  // min(20, 400) = 20
-    EXPECT_EQ(r.info.blockNum, 20u);
-    // rowsPerCore = ceil(400/20) = 20
-    EXPECT_EQ(td->rowsPerCore, 20);
-    // tailRows = 400 - 20*19 = 400 - 380 = 20
-    EXPECT_EQ(td->tailRows, 20);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(r.info.blockNum, 1u);
+    EXPECT_EQ(td->rowsPerCore, 400);
+    EXPECT_EQ(td->tailRows, 400);
 }
 
 // =============================================================================
-// 78. MULTI_AXIS: single core when firstLayerRows=1
+// 78. MULTI_AXIS: safe single core also applies when many first-layer rows exist
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_single_core)
 {
     // shape=[1, 100, 64], axis=[0, 2]
     // firstLayerRows = product of dims before axis 2 = 1*100 = 100
-    // usedCoreNum = min(20, 100) = 20
+    // mode 4 is deliberately single core regardless of available AIVs.
     auto r = RunTiling({1, 100, 64}, ge::DT_FLOAT, {0, 2}, false, 20);
     ASSERT_TRUE(r.success);
 
@@ -1913,8 +2037,10 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_single_core)
     // Layer 0 (axis=2): shape [1,100,64], reduceAxisInShape=2
     // firstLayerRows = 1*100 = 100
     EXPECT_EQ(td->totalRows, 100);
-    EXPECT_EQ(td->usedCoreNum, 20);
-    EXPECT_EQ(r.info.blockNum, 20u);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(r.info.blockNum, 1u);
+    EXPECT_EQ(td->rowsPerCore, 100);
+    EXPECT_EQ(td->tailRows, 100);
 }
 
 // =============================================================================
@@ -2068,11 +2194,14 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_max_dim)
     // firstLayerRows = product of dims before axis 4 (processOrder[0]=4)
     // = 2*3*100*4 = 2400
     EXPECT_EQ(td->totalRows, 2400);
-    EXPECT_EQ(td->usedCoreNum, 20);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(r.info.blockNum, 1u);
 
-    // Two 512B-aligned compact stages, sized by the largest intermediate.
-    size_t expectedWs = static_cast<size_t>(2432) * sizeof(float) * 2;
+    // Two intermediate stages are stored as one 32B slot per fp32 scalar:
+    // 2400 values after axis 4 and 24 after axis 2.
+    size_t expectedWs = static_cast<size_t>(2400 + 24) * 8 * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
+    expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
 
@@ -2139,10 +2268,10 @@ TEST_F(SquareSumV1TilingTest, tiling_reduce_all_cooperative_uses_partial_workspa
     EXPECT_EQ(td->usedCoreNum, 5);
     EXPECT_EQ(r.info.blockNum, 5u);
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    EXPECT_GE(r.info.workspaceSizes[0], 4096u);
+    EXPECT_EQ(r.info.workspaceSizes[0], DAV_C220_USER_WORKSPACE_OFFSET + 4096u);
 }
 
-TEST_F(SquareSumV1TilingTest, tiling_multi_axis_compact_stages_are_dense_and_aligned)
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_stages_use_padded_scalar_slots)
 {
     auto r = RunTiling({2, 3, 5}, ge::DT_BF16, {0, 2}, false, 20);
     ASSERT_TRUE(r.success);
@@ -2151,13 +2280,13 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_compact_stages_are_dense_and_ali
     ASSERT_EQ(td->tilingMode, 4u);
     ASSERT_EQ(td->numLayers, 2);
 
-    // Layer 0 output is [2,3] = 6 fp32 values, not six 32B scalar slots.
+    // Layer 0 output is [2,3] = 6 fp32 values, each stored in a 32B slot.
     EXPECT_EQ(td->layerOutputElemCount[0], 6);
     EXPECT_EQ(td->layerWorkspaceOffset[0], 0);
-    EXPECT_EQ(td->layerWorkspaceOffset[1], 128);
+    EXPECT_EQ(td->layerWorkspaceOffset[1], 0);
     EXPECT_GT(td->layerRChunkSizeCompact[0], 0);
     EXPECT_GT(td->layerReduceTmpBytes[0], 0u);
-    EXPECT_EQ(r.info.workspaceSizes[0], 4096u);
+    EXPECT_EQ(r.info.workspaceSizes[0], DAV_C220_USER_WORKSPACE_OFFSET + 4096u);
 }
 
 TEST_F(SquareSumV1TilingTest, tiling_key4_fp16_regression_noncontiguous_keepdims)

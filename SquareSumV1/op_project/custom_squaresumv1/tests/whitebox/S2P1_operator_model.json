@@ -20,7 +20,7 @@
           "最多 5 维 (...,N4,N3,N2,N)",
           "各维度范围: N∈[1,10000], N2∈[1,10000], N3∈[1,1000], N4∈[1,200]",
           "任意维度可能不对齐 32B 边界（需要 tail/非对齐路径）",
-          "支持空 tensor（input->IsEmpty() 为 true 时直接返回 workspaceSize=0）",
+          "支持空 tensor；规约轴为空但输出非空时必须写出全零",
           "aclnn 层强制 rank <= 8 (ACLNN_MAX_SHAPE_RANK=8)，但算子语义规约限制最多 5D"
         ]
       }
