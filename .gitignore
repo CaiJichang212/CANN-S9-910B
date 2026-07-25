@@ -37,11 +37,26 @@ SquareSumV1/docs/perf/
 **/local_opp/
 **/.submit_opp_*/
 
+# OPP 安装产物随机后缀目录（build.sh / msprof / perf_eval 生成，含 .so/.o/.json）
+**/npu_opp.*/
+**/private_opp.*/
+**/final_opp/
+**/.final_opp.*/
+
+# 编译扩展（Python 版本无关）
+*.cpython-*.so
+
 # ============================================================
 # perf_eval 运行副产物：仅保留 results 文本基线（npu_before/after.txt、
 # runner.log、msprof.log、precision_acceptance.log），忽略 PROF_* 原始数据
 # （PROF_* 已由全局 PROF_*/ 覆盖，含 raw/PROF_GROUP_*）
 # ============================================================
+
+# MindStudio sanitizer 原始日志（可由 msprof 重新生成）
+**/mindstudio_sanitizer_log/
+
+# 顶层散落 sanitizer / 运行日志（保留 perf_eval_*/ 下被引用的基线 .log）
+/SquareSumV1/*_mssanitizer.log
 
 # transient task tracker（ascendc-task-focus）；经验已沉淀进 docs/*.md 报告
 todo.md
