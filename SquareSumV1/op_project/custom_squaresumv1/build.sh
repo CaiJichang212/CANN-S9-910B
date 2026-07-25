@@ -131,6 +131,12 @@ echo "[INFO] Configuring project..."
 echo "[INFO] CMAKE_ARGS: ${CMAKE_ARGS}"
 cd "${BASE_PATH}" && cmake ${CMAKE_ARGS}
 
+# CANN's source-package copy target is guarded only by this timestamp, not by
+# the kernel header dependencies.  Remove it for every release build so the
+# dynamically compiled source shipped in the .run package cannot lag behind
+# the source used for the local binary build.
+rm -f "${BUILD_PATH}/autogen/copy_kernel_src.timestamp"
+
 # A preset typed as BOOL produces a typed cache entry.  Do not allow a build
 # to continue if a caller or toolchain unexpectedly disabled source packing.
 if ! grep -Eiq '^ENABLE_SOURCE_PACKAGE:BOOL=(TRUE|ON|1)$' "${BUILD_PATH}/CMakeCache.txt"; then
@@ -142,6 +148,17 @@ cd "${BUILD_PATH}"
 echo "----------------------------------------------------------------"
 echo "[INFO] Building project with ${THREAD_NUM} threads..."
 cmake --build . --target all binary package -- -j ${THREAD_NUM}
+
+# The installed dynamic sources are copied from this staging directory.  Make
+# a stale copy a hard build failure: otherwise a package can contain an old
+# kernel header even when the local AscendC binary was rebuilt successfully.
+DYNAMIC_STAGE_DIR="${BUILD_PATH}/op_kernel/ascendc_kernels/binary/dynamic"
+for SRC_NAME in square_sum_v1.cpp square_sum_v1.h square_sum_v1_tiling_data.h square_sum_v1_tiling_key.h; do
+    if ! cmp -s "${BASE_PATH}/op_kernel/${SRC_NAME}" "${DYNAMIC_STAGE_DIR}/${SRC_NAME}"; then
+        echo "[ERROR] Dynamic source staging is stale: ${SRC_NAME}" >&2
+        exit 1
+    fi
+done
 
 KERNEL_O=$(find ${BUILD_PATH}/op_kernel/ascendc_kernels/binary/${COMPUTE_UNIT} -name "*.o" 2>/dev/null | head -1)
 if [ -z "$KERNEL_O" ]; then
