@@ -1,0 +1,2 @@
+case,round,baseline_p50_us,p0_p50_us,speedup,delta_us,baseline_block_dim,p0_block_dim
+rank1_int32_exact,round_01,5.534,3.883,1.4251867113056915,-1.6509999999999998,1,1

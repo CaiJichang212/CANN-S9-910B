@@ -1,0 +1,2 @@
+case,rounds,baseline_p50_us,p0_p50_us,speedup,faster_rounds
+rank1_int32_exact,1,5.534,3.883,1.4251867113056915,1
