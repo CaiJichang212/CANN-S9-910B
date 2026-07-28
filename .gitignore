@@ -148,3 +148,36 @@ Concat/perf_eval/current_20260723/smoke_0910/
 
 # transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
 todo.md
+
+# ============================================================
+# 20260728_p0 P0 头开销优化 A/B 评测（仅跟踪脚本/汇总/correctness/sha256 metadata）
+# ============================================================
+# 打包/安装产物（.run、OPP、源码快照含 .git）
+Concat/perf_eval/20260728_p0/p0/
+Concat/perf_eval/20260728_p0/baseline/
+
+# profiling 原始数据与 per-round device 副产物（可重新生成）
+Concat/perf_eval/20260728_p0/deep/
+Concat/perf_eval/20260728_p0/latency/
+Concat/perf_eval/20260728_p0/latency_batched/
+
+# Python 运行缓存
+Concat/perf_eval/20260728_p0/__pycache__/
+
+# metadata：仅保留 sha256/runtime_env/package_contents（小且不可重建），
+# 忽略 profiling 原始日志与被否决/废弃的 latency 副产物目录
+Concat/perf_eval/20260728_p0/metadata/*_profile.log
+Concat/perf_eval/20260728_p0/metadata/p0_ld_debug.txt
+Concat/perf_eval/20260728_p0/metadata/partial_independent_latency/
+Concat/perf_eval/20260728_p0/metadata/rejected_latency_*/
+Concat/perf_eval/20260728_p0/metadata/stray_build_install_path/
+
+# 例外：correctness/*.log 是小里程碑基线（报告显式引用），保留跟踪
+!Concat/perf_eval/20260728_p0/correctness/*.log
+
+# 防误纳：打包产物（即使 .run 被解压也忽略）
+*.run
+**/opp/
+
+# 防误纳：源码快照内置 .git 子目录
+Concat/perf_eval/**/src/.git
