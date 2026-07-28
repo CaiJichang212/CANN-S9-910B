@@ -17,7 +17,7 @@ Examples:
 import argparse
 import random
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Optional
 
 import torch
 import torch_npu  # noqa: F401 - registers the NPU backend
@@ -43,7 +43,7 @@ def alternating_splits() -> tuple[int, ...]:
 
 
 def repeated_fragment_splits(parts: int, low: int, high: int,
-                             zero_index: int | None = None) -> tuple[int, ...]:
+                             zero_index: Optional[int] = None) -> tuple[int, ...]:
     """Alternating short pieces, optionally moving one piece into its neighbour.
 
     The sum is unchanged when a zero is introduced, so these cases isolate
@@ -136,6 +136,14 @@ CASES = (
                (17, 17, 17, 17, 17, 17, 17, 17), (-1, 1)),
     ConcatCase("input_count_64_int32", torch.int32, (8, 64), -1,
                (1,) * 64, (1, 10)),
+    # P0 regression boundaries: non-power-of-two TensorList cardinalities and
+    # a single input whose concat length exceeds the old uint16_t proposal.
+    ConcatCase("input_count_9_int8", torch.int8, (2, 90), -1,
+               (10,) * 9, (-100, 100)),
+    ConcatCase("input_count_255_fp16", torch.float16, (1, 255), -1,
+               (1,) * 255, (-1, 1)),
+    ConcatCase("single_piece_over65535_fp32", torch.float32, (2, 70000), -1,
+               (70000,), (-1000, 1000)),
     # Concat 没有数值计算；浮点特殊值应当逐 bit 保留，而不只是满足 rtol/atol。
     ConcatCase("fp16_special_values_bitwise", torch.float16, (3, 33), -1,
                (1, 32), (-1, 1), "special"),

@@ -6,6 +6,7 @@
 
 | 日期 | 版本 | 内容 |
 |---|---|---|
+| 2026-07-28 | v8 | 更新 P0 紧凑 Tiling/Kernel 启动路径实现；归档 39 case × 5 轮本地 A/B 与五个代表 case 的深度采集。 |
 | 2026-07-22 | v7 | 按当前二维切分 + 64 KiB 双缓冲实现，以及 2026-07-21 的 39 用例 profiling 结果更新；移除历史 v6、固定 20 核和未验证的 5 case 预测。 |
 
 ## 1. 项目定位
@@ -20,7 +21,7 @@
 |---|---|
 | CANN | 社区版 8.5.0（`/usr/local/Ascend/cann-8.5.0`） |
 | 计算单元 | `ascend910b`（`op/CustomOp/CMakePresets.json` 与 `AddConfig("ascend910b")`） |
-| 设备 | Ascend 910B4-1 / dav-2201，aarch64，Python 3.11 |
+| 设备 | Ascend 910B4-1 / dav-2201，aarch64；本次验收运行 Python 3.9/Torch NPU |
 | OS | openEuler / Euler 2.10；当前已在 `cann850` 容器内 |
 
 910B4-1 的物理 AICore 数与 AIV 工作核数不能混为一谈。当前 Host 不再写死 `MAX_AIV_NUM`，而是通过 `PlatformAscendC::GetCoreNumAiv()` 获取可用 AIV 数，并将候选方案的 `usedCoreNum` 直接传给 `SetBlockDim`。2026-07-21 的实测 `Block Dim` 多次为 **40**（也会随 shape 降至 1、8、11、32、39 等），所以不要把 `blockDim` 人为限制为 20；若改动核数策略，必须以当前运行时查询结果和 profiling 复验为准。
@@ -42,13 +43,14 @@ case_910b/
 │   ├── test_op.py                    # 官方脚手架模板；当前仅含 case1
 │   ├── test_matrix.py                # 独立的 bitwise 正确性/压力矩阵
 │   ├── run.sh / get_time.py          # 官方样式 msprof 脚手架
-│   └── perf_eval/                    # 2026-07-21 的验收与深度 profiling 产物
+│   └── perf_eval/                    # 历史验收与 `20260728_p0/` 私有 OPP、A/B、深度采集证据
 ├── build_and_pack.sh                 # 重新构建并生成带时间戳的 Concat_*.zip
 └── Greater/ IndexAdd/ Transpose/ SquareSumV1/
 ```
 
 - `op/CustomOp/op_host` 和 `op/CustomOp/op_kernel` 是行为与性能的唯一实现位置；`Concat/` 是调用、验证和采集层，评测时 `test_op.py` 可被替换。
 - `libcust_opapi.so` 位于 `vendors/customize/op_api/lib/`，在 `libopapi.so` 之前解析，故 custom OPP 会覆盖内置 `aclnnConcat`。测内置基线时，移除这段 custom `LD_LIBRARY_PATH`。
+- 2026-07-28 的 baseline/P0 对比均安装在 `Concat/perf_eval/20260728_p0/{baseline,p0}/opp/`；不要把这两个验收包与共享 custom OPP 混用。
 
 ## 4. 公共命名与接口约束
 
@@ -69,13 +71,19 @@ case_910b/
 将第 `i` 个连续输入统一看作 `[beforeDimSize, inputCatLen[i], afterDimSize]`，输出为 `[beforeDimSize, totalCatLen, afterDimSize]`：
 
 - `beforeDimSize`：`dim` 前各维乘积；`afterDimSize`：`dim` 后各维乘积；
-- `inputCatOffset[i]`：沿 concat 维的前缀和；`totalCatLen`：全部输入沿该维的长度之和；
+- Host 在 Tiling 时本地构造 `inputCatOffset[i]` 供切分建模；Kernel 不再接收该数组，而是按 `inputCatLen` 前缀累加。`totalCatLen` 为全部输入沿 concat 维的长度之和；
 - 支持正/负 `dim`、rank 1–7 的本地测试范围、零长度分片和 **1–256** 路动态输入。256 是当前 TensorList/tiling 数组上限，超过即 Host 返回 `GRAPH_FAILED`；
 - pybind 侧在每轮 `aclnnConcat` 前对 `torch.split` 产生的 view 调用 `.contiguous()`，这是 Kernel 按连续地址读取的前提，不能删除。
 
-Host 的 `beforeDimSize`、`afterDimSize`、长度与偏移字段当前为 `uint32_t`；行宽、全局地址偏移及搬运字节数在 Host 的切分模型和 Kernel 中使用 `uint64_t`。扩大 shape 范围时，必须同时检查 Host 字段和 Kernel 地址乘积，不能只改一侧。
+Host 的 shape 乘积、长度累加和字节量先以 checked `uint64_t` 计算，超出 Kernel 的 `uint32_t` 表示范围或发生乘法溢出时返回 `GRAPH_FAILED`。Tiling 中的 `beforeDimSize`、`afterDimSize`、`totalCatLen`、`inputCatLen[256]` 仍为 `uint32_t`；行宽、全局地址偏移及搬运字节数在 Host 模型和 Kernel 中使用 `uint64_t`。扩大 shape 范围时，必须同时检查 Host 字段、Kernel 地址乘积及溢出回退，不能只改一侧。
 
-### 5.2 核切分策略
+### 5.2 P0 紧凑 Tiling 与启动路径
+
+`ConcatCustomTilingData` 仅传递 Kernel 消费的数据：`uint16_t inputNum`、`uint8_t dtypeSize`、`uint8_t splitMode`、三个基础 `uint32_t` 标量、`uint32_t inputCatLen[256]` 与二维切分字段 `rowSliceNum/colCoreNum/colBlockBytes`。不再序列化 `dim`、`dimNum`、`inputCatOffset`、`usedCoreNum`、`rowPeriod`，字段量由约 2 KiB 降至约 1 KiB。
+
+Kernel 以 `GetBlockNum()` 获取实际 blockDim，入口栈上创建 `TPipe` 并以指针注入 `KernelConcat`；头文件前定义 `K_MAX_SHAPE_DIM=0`。不要改回 Kernel 成员 `TPipe`、`usedCoreNum` tiling 字段或 offset 数组，除非同时完成 256 路碎片化路径的 A/B 复测。
+
+### 5.3 核切分策略
 
 `ChooseSplit` 以运行时 AIV 数、行数、输出行字节数、输入片段和 DMA 建模选择切分：
 
@@ -84,7 +92,7 @@ Host 的 `beforeDimSize`、`afterDimSize`、长度与偏移字段当前为 `uint
 3. 非 32B 对齐输出行回退整行路径，避免两个核写入同一个 32B 数据块。不要为并行度强行打开列切分，否则可能产生核间写冲突。
 4. Host 使用 `EstimateColumnCost` 估算 DMA setup 与字节成本，选择最小最坏列成本；相同成本时偏好 512B 列方案。
 
-### 5.3 DMA 与 UB 流水
+### 5.4 DMA 与 UB 流水
 
 - `TQueBind<VECIN, VECOUT, 1>` 以两个 **64 KiB** slot 初始化，双缓冲总计 128 KiB。不要按历史 32 KiB tile 或四队列描述当前版本。
 - 每个输入的相交片段优先用 `DataCopyPad` 二维搬运；单片段超过 tile、字节/stride 超过 `uint32_t` 时回退为逐行线性块。每次二维搬运的行数同时受 `64 KiB / AlignUp32(rowBytes)` 与 `blockCount <= 4095` 限制。
@@ -119,6 +127,8 @@ python3 test_matrix.py --case fragmented_256_fp16 --repeat 10
 
 该矩阵覆盖 4 个注册 dtype、正/负轴、rank 1–7、零长度、1/8/64/256 输入、非对齐行、超大行与确定性随机组合。浮点以位模式比较（含 `+0/-0/Inf/-Inf/NaN`），比题目 rtol/atol 更严格。
 
+P0 额外覆盖 9/255/256 路、零长度、单片段长度 70000；若环境实际只有 Python 3.9，`test_matrix.py` 必须保留 `Optional[int]` 注解写法，不能恢复 `int | None`。
+
 ### 6.2 打包提交
 
 ```bash
@@ -132,7 +142,7 @@ bash build_and_pack.sh
 - 提交前必须从当前源码重建 `.run`，并检查包内有 `aclnn_concat.h`、`kernel/config/ascend910b/concat.json` 和 `kernel/ascend910b/concat/Concat_*.o`。
 - Tiling 必须由运行时 shape、dtype 字节数、输入数和平台核数决定；针对已知 benchmark shape 硬编码会使提交失去泛化资格。
 
-## 7. 已归档验证与性能结果（2026-07-21）
+## 7. 已归档验证与性能结果
 
 证据目录为 `Concat/perf_eval/s9_scientific_20260721/`，完整结论见项目根目录的 `S9_Concat_验收与性能分析报告.md`，逐 case 数据见 `latency_summary.csv` 与 `deep_summary.csv`。
 
@@ -151,9 +161,21 @@ bash build_and_pack.sh
 
 这些是本地绝对时延，不是官方 5 case 成绩：官方隐藏形状、基线与总分尚未在仓库中出现，当前不能声称已达标、排名或已通过全部官方 case。
 
+### 7.2 P0 本地 A/B 验收（2026-07-28）
+
+证据根目录为 `Concat/perf_eval/20260728_p0/`，结论和口径见项目根目录 `20260728-1-Concat算子性能评测报告.md`。
+
+- **正确性**：baseline/P0 各通过 53 个 bitwise 用例，另有 9 次 P0 边界重复；覆盖 9/255/256 输入、零长度、单片段 70000、宽行、非对齐、rank 1–7 和四种注册 dtype。
+- **性能口径**：5 轮、39 case、baseline/P0 交替。每个 case group 固定 30 条 Concat task，剔除首条后统计 29 条。为避免约 15 秒/次的 msprof 导出开销，最终每版本/轮次合并为一个 1170-task batch CSV，解析器按固定顺序的 30-task 边界严格切组；不要把它误述为 390 个独立 msprof 进程。
+- **总结果**：五轮总和中位数从 **674.200 us** 降至 **632.129 us**，改善 **6.24%**；五轮全部更快，39 个 case 的中位数中 36 个更快，195 个配对中 180 个更快。
+- **已知回退**：`fragmented_256_fp16` +0.89%（+2.314 us）、`fragmented_256_fp32` +2.78%（+1.651 us）、`fragmented_256_int8` +5.39%（+0.986 us）。P0 对本地总和有效，但不是对 256 路碎片化路径的通用优化。
+- **深度采集**：五个代表 case 的七组指标及 sample-based 数据已归档。小任务 `rank1_int32_exact` 的 Scalar ratio 86.1%→73.6%；大行和碎片路径仍是 MTE2 bound（例如 `score_shape_2024x3000_fp32` 为 86.4%→89.2%，`fragmented_256_fp16` 为 87.5%→88.3%），Vector conflict 均为 0。sample `task_cyc` 导出为 0，不能用于逐核时长/负载均衡结论。
+
+本节仍是公开矩阵的本地 A/B 证据，**不**代表官方 5 个隐藏 case、官方基线、500 us 门槛或排名。
+
 ## 8. 后续优化与排障优先级
 
-1. **256 路、非对齐 fp16 路径优先级最高。** 它是归档结果中唯一超过 250 us 的用例，且已由 profiling 证明为 MTE2 bound。任何聚合片段、tile 或切分实验都要保留 15/17 分片、零长度和 256 路回归。
+1. **256 路碎片化路径优先级最高。** P0 的线性前缀扫描换取更小 tiling，却使 256 路 fp16/fp32/int8 局部回退；该路径仍是 MTE2 bound。后续若增加 checkpoint/二分定位或聚合片段，必须回归 15/17 分片、零长度和 256 路，并同时检查总收益是否覆盖局部回退。
 2. **保持二维切分的安全条件。** 先检查输出行 32B 对齐、列边界和每核列范围；非对齐行只能走整行路径。性能下降时同时比较 `Block Dim`、任务中位数与每核负载，而不是只看单次最小值。
 3. **大行与参数边界。** 重点覆盖 `pieceBytes > 64 KiB`、`blockCount > 4095`、`piece/gap > uint32_t` 和尾块；对应代码会转线性/逐行搬运，修改后需核对 64 位地址递增。
 4. **精度异常先查输入连续性和 DMA 参数。** `torch.split` view 未 contiguous、输入/输出 gap 算错、非对齐尾部及核间 32B 写冲突，比 dtype 算术问题更可能导致纯 Copy 算子错误。
@@ -163,15 +185,8 @@ bash build_and_pack.sh
 
 - [ ] `ASCEND_COMPUTE_UNIT=ascend910b`、`AddConfig("ascend910b")`、公开名链均为 `Concat`。
 - [ ] `SetBlockDim` 仍来自 `GetCoreNumAiv()` 的运行时方案，而非历史固定 20/48 常量。
-- [ ] Tiling 的 256 路数组、Host 写入与 Kernel `GET_TILING_DATA` 布局一致；地址乘积与 DMA 参数无窄化。
+- [ ] 紧凑 Tiling 的 256 路 `inputCatLen`、Host 写入与 Kernel `GET_TILING_DATA` 布局一致；不重新引入无消费字段；地址乘积与 DMA 参数无窄化。
 - [ ] 32B 对齐列切分、非对齐整行回退、零长度、256 输入、超大行和 `blockCount=4095` 边界均已复测。
 - [ ] `TQueBind` 双缓冲与 `EnQue/DeQue/FreeTensor` 生命周期未被破坏；无无必要的全局 barrier 或 UB→UB 拷贝。
 - [ ] 官方 5 case 全部通过后，再以官方采集口径确认总时延；不要用本地矩阵代替官方成绩。
 - [ ] `.run` 已由最后源码重新构建，包内包含 Host、kernel config 和 `.o`，再生成最终时间戳 zip。
-
-## 10. 参考资料
-
-- 当前源码：`op/CustomOp/op_host/concat.cpp`、`op/CustomOp/op_kernel/concat.cpp`、`op/CustomOp/op_host/concat_tiling.h`。
-- 可复核验收报告：`S9_Concat_验收与性能分析报告.md`。
-- 官方 910B 实现与头文件：`/home/liyc/asc-devkit/impl/basic_api/dav_c220/`、`/home/liyc/asc-devkit/include/basic_api/kernel_struct_data_copy.h`。
-- 通用经验：`/home/liyc/hw-S9/AscendC算子开发经验教训.md` 与 `Concat算子优化经验.md`。
