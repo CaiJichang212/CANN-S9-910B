@@ -276,24 +276,18 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
                                     inputCatOffsetArr, catUnitBytes);
 
     // 7. 写 tiling
-    tiling.set_inputNum(static_cast<uint32_t>(tensorNum));
-    tiling.set_dim(udim);
-    tiling.set_dimNum(dimNum);
-    tiling.set_dtypeSize(dtypeSize);
+    tiling.set_inputNum(static_cast<uint16_t>(tensorNum));
+    tiling.set_dtypeSize(static_cast<uint8_t>(dtypeSize));
     tiling.set_beforeDimSize(beforeDimSize);
     tiling.set_afterDimSize(afterDimSize);
     tiling.set_totalCatLen(totalCatLen);
-    tiling.set_usedCoreNum(split.usedCoreNum);
-    tiling.set_splitMode(split.splitMode);
-    tiling.set_rowPeriod(split.rowPeriod);
+    tiling.set_splitMode(static_cast<uint8_t>(split.splitMode));
     tiling.set_rowSliceNum(split.rowSliceNum);
     tiling.set_colCoreNum(split.colCoreNum);
     tiling.set_colBlockBytes(split.colBlockBytes);
 
     // 数组字段整体写入（set 方法接收指针，内部 memcpy）
     tiling.set_inputCatLen(inputCatLenArr);
-    tiling.set_inputCatOffset(inputCatOffsetArr);
-
     context->SetBlockDim(split.usedCoreNum);
     tiling.SaveToBuffer(context->GetRawTilingData()->GetData(),
                         context->GetRawTilingData()->GetCapacity());
