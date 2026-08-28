@@ -1,0 +1,19 @@
+package=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260728_p2/p2/custom_opp_euleros_aarch64.run
+vendor=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260728_p2/p2/opp/vendors/customize
+ASCEND_CUSTOM_OPP_PATH=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260728_p2/p2/opp/vendors/customize
+LD_LIBRARY_PATH vendor/op_api/lib precedes libopapi.so
+Python 3.9.10
++------------------------------------------------------------------------------------------------+
+| npu-smi 25.5.1                   Version: 25.5.1                                               |
++---------------------------+---------------+----------------------------------------------------+
+| NPU   Name                | Health        | Power(W)    Temp(C)           Hugepages-Usage(page)|
+| Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
++===========================+===============+====================================================+
+| 7     910B4-1             | OK            | 95.9        40                0    / 0             |
+| 0                         | 0000:42:00.0  | 0           0    / 0          3418 / 65536         |
++===========================+===============+====================================================+
++---------------------------+---------------+----------------------------------------------------+
+| NPU     Chip              | Process id    | Process name             | Process memory(MB)      |
++===========================+===============+====================================================+
+| No running processes found in NPU 7                                                            |
++===========================+===============+====================================================+

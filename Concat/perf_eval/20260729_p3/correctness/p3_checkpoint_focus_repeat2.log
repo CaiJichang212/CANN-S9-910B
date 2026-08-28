@@ -1,0 +1,8 @@
+PASS fragmented_256_fp16: dtype=torch.float16, shape=(2048, 4096), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=2
+PASS fragmented_256_fp32: dtype=torch.float32, shape=(256, 4096), dim=-1, inputs=256, range=(-1000, 1000), pattern=ramp, repeat=2
+PASS checkpoint_256_fp32_zero_boundaries: dtype=torch.float32, shape=(8, 4096), dim=-1, inputs=256, range=(-1000, 1000), pattern=ramp, repeat=2
+PASS fragmented_256_int8: dtype=torch.int8, shape=(256, 4096), dim=-1, inputs=256, range=(-100, 100), pattern=ramp, repeat=2
+PASS fragmented_256_int32_before40: dtype=torch.int32, shape=(40, 4096), dim=-1, inputs=256, range=(1, 10), pattern=ramp, repeat=2
+PASS input_count_255_fp16: dtype=torch.float16, shape=(1, 255), dim=-1, inputs=255, range=(-1, 1), pattern=ramp, repeat=2
+PASS single_piece_over65535_fp32: dtype=torch.float32, shape=(2, 70000), dim=-1, inputs=1, range=(-1000, 1000), pattern=ramp, repeat=2
+PASS wide_non_aligned_256_zero_fp16: dtype=torch.float16, shape=(1, 262144), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=2

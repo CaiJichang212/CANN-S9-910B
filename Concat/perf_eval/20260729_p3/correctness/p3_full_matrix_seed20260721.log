@@ -1,0 +1,61 @@
+PASS rank1_fp16_dim0_zero: dtype=torch.float16, shape=(97,), dim=0, inputs=3, range=(-1, 1), pattern=ramp, repeat=1
+PASS rank1_int32_exact: dtype=torch.int32, shape=(4,), dim=-1, inputs=3, range=(1, 10), pattern=ramp, repeat=1
+PASS rank2_fp32_dim0_zero: dtype=torch.float32, shape=(17, 31), dim=0, inputs=3, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS rank2_int8_last_unaligned: dtype=torch.int8, shape=(13, 64), dim=-1, inputs=4, range=(-100, 100), pattern=ramp, repeat=1
+PASS rank3_int32_middle: dtype=torch.int32, shape=(4, 9, 13), dim=1, inputs=3, range=(1, 10), pattern=ramp, repeat=1
+PASS rank3_fp16_last_zero: dtype=torch.float16, shape=(3, 5, 17), dim=-1, inputs=3, range=(-1, 1), pattern=ramp, repeat=1
+PASS rank3_int32_middle_aligned: dtype=torch.int32, shape=(8, 4, 16), dim=1, inputs=2, range=(1, 10), pattern=ramp, repeat=1
+PASS fp16_boundary_lengths_unaligned_row: dtype=torch.float16, shape=(11, 97), dim=-1, inputs=5, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS fp16_middle_axis_2d: dtype=torch.float16, shape=(9, 256, 17), dim=1, inputs=4, range=(-1, 1), pattern=ramp, repeat=1
+PASS fp32_before_dim_over_4095: dtype=torch.float32, shape=(5003, 64), dim=-1, inputs=2, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS single_input_large_row_fallback: dtype=torch.float16, shape=(2, 40000), dim=-1, inputs=1, range=(-1, 1), pattern=ramp, repeat=1
+PASS rank6_fp16_dim3: dtype=torch.float16, shape=(2, 3, 4, 5, 6, 7), dim=3, inputs=4, range=(-1, 1), pattern=ramp, repeat=1
+PASS rank6_fp32_negative_axis: dtype=torch.float32, shape=(2, 3, 4, 5, 6, 7), dim=-2, inputs=3, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS rank7_int32_axis0: dtype=torch.int32, shape=(4, 2, 2, 3, 2, 3, 4), dim=0, inputs=3, range=(1, 10), pattern=ramp, repeat=1
+PASS score_shape_2024x3000_fp32: dtype=torch.float32, shape=(2024, 3000), dim=1, inputs=4, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS fragmented_256_fp16: dtype=torch.float16, shape=(2048, 4096), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=1
+PASS fragmented_256_fp32: dtype=torch.float32, shape=(256, 4096), dim=-1, inputs=256, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS checkpoint_256_fp32_zero_boundaries: dtype=torch.float32, shape=(8, 4096), dim=-1, inputs=256, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS fragmented_256_int8: dtype=torch.int8, shape=(256, 4096), dim=-1, inputs=256, range=(-100, 100), pattern=ramp, repeat=1
+PASS fragmented_64_fp16_before1: dtype=torch.float16, shape=(1, 1024), dim=-1, inputs=64, range=(-1, 1), pattern=ramp, repeat=1
+PASS fragmented_128_fp32_zero: dtype=torch.float32, shape=(8, 2048), dim=-1, inputs=128, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS fragmented_256_int32_before40: dtype=torch.int32, shape=(40, 4096), dim=-1, inputs=256, range=(1, 10), pattern=ramp, repeat=1
+PASS fragmented_256_fp16_1_31_32: dtype=torch.float16, shape=(4, 5440), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=1
+PASS fragmented_64_fp16_row_unaligned: dtype=torch.float16, shape=(4, 1025), dim=-1, inputs=64, range=(-1, 1), pattern=ramp, repeat=1
+PASS s9_fp16_last_axis_10000: dtype=torch.float16, shape=(3, 10000), dim=-1, inputs=6, range=(-1, 1), pattern=ramp, repeat=1
+PASS s9_fp32_axis0_10000: dtype=torch.float32, shape=(10000, 3), dim=0, inputs=3, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS s9_int32_rank4_axis1_1000: dtype=torch.int32, shape=(3, 1000, 17, 31), dim=1, inputs=4, range=(1, 10), pattern=ramp, repeat=1
+PASS s9_int8_rank4_axis2_1000: dtype=torch.int8, shape=(2, 17, 1000, 31), dim=2, inputs=4, range=(-100, 100), pattern=ramp, repeat=1
+PASS s9_fp16_rank5_axis3_999: dtype=torch.float16, shape=(2, 3, 17, 999, 31), dim=-2, inputs=4, range=(-1, 1), pattern=ramp, repeat=1
+PASS input_count_8_fp16: dtype=torch.float16, shape=(16, 136), dim=-1, inputs=8, range=(-1, 1), pattern=ramp, repeat=1
+PASS input_count_64_int32: dtype=torch.int32, shape=(8, 64), dim=-1, inputs=64, range=(1, 10), pattern=ramp, repeat=1
+PASS input_count_9_int8: dtype=torch.int8, shape=(2, 90), dim=-1, inputs=9, range=(-100, 100), pattern=ramp, repeat=1
+PASS input_count_255_fp16: dtype=torch.float16, shape=(1, 255), dim=-1, inputs=255, range=(-1, 1), pattern=ramp, repeat=1
+PASS single_piece_over65535_fp32: dtype=torch.float32, shape=(2, 70000), dim=-1, inputs=1, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS fp16_special_values_bitwise: dtype=torch.float16, shape=(3, 33), dim=-1, inputs=2, range=(-1, 1), pattern=special, repeat=1
+PASS fp32_special_values_bitwise: dtype=torch.float32, shape=(2, 65), dim=-1, inputs=3, range=(-1000, 1000), pattern=special, repeat=1
+PASS p2_tiny_64k_boundary_fp16: dtype=torch.float16, shape=(1, 32768), dim=-1, inputs=3, range=(-1, 1), pattern=ramp, repeat=1
+PASS p2_tiny_non_aligned_fp32: dtype=torch.float32, shape=(3, 65), dim=-1, inputs=3, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS p2_identity_tiny_int8: dtype=torch.int8, shape=(1, 65536), dim=-1, inputs=1, range=(-100, 100), pattern=ramp, repeat=1
+PASS p2_identity_large_fp32: dtype=torch.float32, shape=(128, 4096), dim=-1, inputs=1, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS p2_flatspan_256k_boundary_fp16: dtype=torch.float16, shape=(1, 131072), dim=-1, inputs=4, range=(-1, 1), pattern=ramp, repeat=1
+PASS p2_flatspan_before1_tail_int8: dtype=torch.int8, shape=(1, 262657), dim=-1, inputs=4, range=(-100, 100), pattern=ramp, repeat=1
+PASS p2_flatspan_before1_tail_int32: dtype=torch.int32, shape=(1, 65537), dim=-1, inputs=4, range=(1, 10), pattern=ramp, repeat=1
+PASS wide_non_aligned_before1_fp16: dtype=torch.float16, shape=(1, 524289), dim=-1, inputs=5, range=(-1, 1), pattern=ramp, repeat=1
+PASS wide_non_aligned_before1_16m_fp16: dtype=torch.float16, shape=(1, 8388609), dim=-1, inputs=5, range=(-1, 1), pattern=ramp, repeat=1
+PASS wide_non_aligned_before8_fp32: dtype=torch.float32, shape=(8, 131073), dim=-1, inputs=4, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS wide_non_aligned_rank3_axis1_fp16: dtype=torch.float16, shape=(2, 131073, 3), dim=1, inputs=5, range=(-1, 1), pattern=ramp, repeat=1
+PASS wide_non_aligned_axis0_fp16: dtype=torch.float16, shape=(131073, 17), dim=0, inputs=5, range=(-1, 1), pattern=ramp, repeat=1
+PASS wide_non_aligned_256_zero_fp16: dtype=torch.float16, shape=(1, 262144), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=1
+PASS generated_00_rank5_float32: dtype=torch.float32, shape=(3, 7, 7, 1, 5), dim=3, inputs=8, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS generated_01_rank3_int32: dtype=torch.int32, shape=(8, 1, 23), dim=-1, inputs=3, range=(1, 10), pattern=ramp, repeat=1
+PASS generated_02_rank4_float16: dtype=torch.float16, shape=(37, 1, 4, 6), dim=0, inputs=6, range=(-1, 1), pattern=ramp, repeat=1
+PASS generated_03_rank4_int8: dtype=torch.int8, shape=(46, 3, 4, 2), dim=-4, inputs=8, range=(-100, 100), pattern=ramp, repeat=1
+PASS generated_04_rank1_int8: dtype=torch.int8, shape=(31,), dim=0, inputs=6, range=(-100, 100), pattern=ramp, repeat=1
+PASS generated_05_rank6_int32: dtype=torch.int32, shape=(1, 3, 7, 7, 3, 96), dim=-1, inputs=6, range=(1, 10), pattern=ramp, repeat=1
+PASS generated_06_rank7_int8: dtype=torch.int8, shape=(7, 9, 2, 1, 8, 31, 5), dim=5, inputs=4, range=(-100, 100), pattern=ramp, repeat=1
+PASS generated_07_rank2_float32: dtype=torch.float32, shape=(1, 96), dim=-1, inputs=7, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS generated_08_rank1_int8: dtype=torch.int8, shape=(71,), dim=0, inputs=2, range=(-100, 100), pattern=ramp, repeat=1
+PASS generated_09_rank3_float16: dtype=torch.float16, shape=(39, 6, 7), dim=-3, inputs=6, range=(-1, 1), pattern=ramp, repeat=1
+PASS generated_10_rank2_float16: dtype=torch.float16, shape=(1, 77), dim=1, inputs=4, range=(-1, 1), pattern=ramp, repeat=1
+PASS generated_11_rank7_int32: dtype=torch.int32, shape=(8, 9, 35, 4, 1, 8, 4), dim=-5, inputs=7, range=(1, 10), pattern=ramp, repeat=1

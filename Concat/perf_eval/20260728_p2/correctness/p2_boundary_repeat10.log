@@ -1,0 +1,7 @@
+PASS p2_tiny_64k_boundary_fp16: dtype=torch.float16, shape=(1, 32768), dim=-1, inputs=3, range=(-1, 1), pattern=ramp, repeat=10
+PASS p2_tiny_non_aligned_fp32: dtype=torch.float32, shape=(3, 65), dim=-1, inputs=3, range=(-1000, 1000), pattern=ramp, repeat=10
+PASS p2_identity_tiny_int8: dtype=torch.int8, shape=(1, 65536), dim=-1, inputs=1, range=(-100, 100), pattern=ramp, repeat=10
+PASS p2_identity_large_fp32: dtype=torch.float32, shape=(128, 4096), dim=-1, inputs=1, range=(-1000, 1000), pattern=ramp, repeat=10
+PASS p2_flatspan_256k_boundary_fp16: dtype=torch.float16, shape=(1, 131072), dim=-1, inputs=4, range=(-1, 1), pattern=ramp, repeat=10
+PASS p2_flatspan_before1_tail_int8: dtype=torch.int8, shape=(1, 262657), dim=-1, inputs=4, range=(-100, 100), pattern=ramp, repeat=10
+PASS p2_flatspan_before1_tail_int32: dtype=torch.int32, shape=(1, 65537), dim=-1, inputs=4, range=(1, 10), pattern=ramp, repeat=10

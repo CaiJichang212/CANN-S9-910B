@@ -1,0 +1,2 @@
+/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260728_p2/deep/p0/Sample/PROF_000001_20260729000220130_KCFQBFPOIPMHDCRA/device_0/sqlite/aicore.db
+/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260728_p2/deep/p2/Sample/PROF_000001_20260729000532651_QPDQPIJIMEGIJGFB/device_0/sqlite/aicore.db
