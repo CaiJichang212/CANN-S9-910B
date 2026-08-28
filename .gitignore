@@ -172,12 +172,14 @@ Concat/perf_eval/20260728_p0/metadata/partial_independent_latency/
 Concat/perf_eval/20260728_p0/metadata/rejected_latency_*/
 Concat/perf_eval/20260728_p0/metadata/stray_build_install_path/
 
-# 例外：correctness/*.log 是小里程碑基线（报告显式引用），保留跟踪
-!Concat/perf_eval/20260728_p0/correctness/*.log
+# 例外：各轮 correctness/*.log 是小里程碑基线（报告显式引用），保留跟踪
+!Concat/perf_eval/**/correctness/*.log
 
 # 防误纳：打包产物（即使 .run 被解压也忽略）
 *.run
 **/opp/
+# 安装/刷新/拒绝实验留下的 OPP 快照目录
+Concat/perf_eval/**/opp_*/
 
 # 防误纳：源码快照内置 .git 子目录
 Concat/perf_eval/**/src/.git
