@@ -34,6 +34,10 @@ constexpr uint32_t TILE_BYTES = 64 * 1024;
 constexpr uint32_t DATA_BLOCK_BYTES = 32;
 constexpr uint32_t MAX_COPY_BLOCK_COUNT = 4095;
 constexpr uint32_t SPLIT_COLUMNS = 1;
+constexpr uint32_t SPLIT_TINY = 2;
+constexpr uint32_t SPLIT_FLAT_SPAN = 3;
+constexpr uint32_t SPLIT_IDENTITY = 4;
+constexpr uint64_t FLAT_SPAN_UNIT_BYTES = 512;
 
 class KernelConcat {
 public:
@@ -49,9 +53,13 @@ public:
         beforeDimSize_ = tiling.beforeDimSize;
         listDesc_.Init(reinterpret_cast<__gm__ void*>(srcList));
         yGm_.SetGlobalBuffer((__gm__ uint8_t *)dst);
-        // num=2 开启 ping-pong。TQueBind 的 EnQue/DeQue 负责 MTE2→MTE3
-        // 依赖，而 FreeTensor 在 MTE3 完成后才允许 slot 被下一 tile 复用。
-        pipe_->InitBuffer(copyQueue_, 2, TILE_BYTES);
+        const uint64_t totalBytes = static_cast<uint64_t>(beforeDimSize_) *
+                                    static_cast<uint64_t>(totalCatLen_) * afterDimSize_ * dtypeSize_;
+        // Tiny and a <=64KiB Identity have one ordered tile, so a second slot
+        // only consumes UB.  All other paths preserve P0's ping-pong queue.
+        const bool oneSlot = tiling.splitMode == SPLIT_TINY ||
+                             (tiling.splitMode == SPLIT_IDENTITY && totalBytes <= TILE_BYTES);
+        pipe_->InitBuffer(copyQueue_, oneSlot ? 1 : 2, TILE_BYTES);
     }
 
     template <typename TilingT>
@@ -65,6 +73,15 @@ public:
         const uint64_t catUnitBytes = static_cast<uint64_t>(afterDimSize_) * dtypeSize_;
         const uint64_t outputRowBytes = static_cast<uint64_t>(totalCatLen_) * catUnitBytes;
         if (outputRowBytes == 0) return;
+
+        if (tiling.splitMode == SPLIT_IDENTITY) {
+            CopyIdentity(blockNum, coreId, outputRowBytes);
+            return;
+        }
+        if (tiling.splitMode == SPLIT_FLAT_SPAN) {
+            CopyFlatSpan(tiling, blockNum, coreId, catUnitBytes, outputRowBytes);
+            return;
+        }
 
         uint32_t startRow = 0;
         uint32_t endRow = 0;
@@ -90,13 +107,103 @@ public:
     }
 
 private:
+    __aicore__ inline uint64_t SpanOffset(uint64_t totalBytes, uint32_t coreId, uint32_t blockNum)
+    {
+        const uint64_t units = totalBytes / FLAT_SPAN_UNIT_BYTES +
+                               (totalBytes % FLAT_SPAN_UNIT_BYTES != 0);
+        const uint64_t unit = units * coreId / blockNum;
+        const uint64_t offset = unit * FLAT_SPAN_UNIT_BYTES;
+        return offset < totalBytes ? offset : totalBytes;
+    }
+
+    __aicore__ inline void CopyIdentity(uint32_t blockNum, uint32_t coreId, uint64_t outputRowBytes)
+    {
+        const uint64_t totalBytes = static_cast<uint64_t>(beforeDimSize_) * outputRowBytes;
+        if (totalBytes == 0) return;
+        const uint64_t begin = SpanOffset(totalBytes, coreId, blockNum);
+        const uint64_t end = SpanOffset(totalBytes, coreId + 1, blockNum);
+        if (begin >= end) return;
+        GlobalTensor<uint8_t> inputGm;
+        inputGm.SetGlobalBuffer(listDesc_.GetDataPtr<__gm__ uint8_t>(0));
+        SubmitLinearRange(inputGm, begin, begin, end - begin);
+    }
+
+    template <typename TilingT>
+    __aicore__ inline void CopyFlatSpan(const TilingT &tiling, uint32_t blockNum, uint32_t coreId,
+                                        uint64_t catUnitBytes, uint64_t outputRowBytes)
+    {
+        const uint64_t totalBytes = static_cast<uint64_t>(beforeDimSize_) * outputRowBytes;
+        if (totalBytes == 0 || outputRowBytes == 0) return;
+        const uint64_t spanBegin = SpanOffset(totalBytes, coreId, blockNum);
+        const uint64_t spanEnd = SpanOffset(totalBytes, coreId + 1, blockNum);
+        if (spanBegin >= spanEnd) return;
+
+        uint64_t absolute = spanBegin;
+        uint64_t row = absolute / outputRowBytes;
+        uint64_t column = absolute - row * outputRowBytes;
+        uint32_t input = 0;
+        uint64_t inputBegin = 0;
+        // Locate only the first fragment.  At a row boundary the logical
+        // prefix restarts at input zero; otherwise input advances monotonically.
+        while (input < inputNum_) {
+            const uint64_t inputBytes = static_cast<uint64_t>(tiling.inputCatLen[input]) * catUnitBytes;
+            if (inputBytes != 0 && column < inputBegin + inputBytes) break;
+            inputBegin += inputBytes;
+            ++input;
+        }
+        if (input >= inputNum_) return;
+
+        while (absolute < spanEnd && row < beforeDimSize_) {
+            if (input >= inputNum_) {
+                ++row;
+                column = 0;
+                input = 0;
+                inputBegin = 0;
+                while (input < inputNum_ && tiling.inputCatLen[input] == 0) ++input;
+                if (input >= inputNum_) return;
+            }
+            const uint64_t inputBytes = static_cast<uint64_t>(tiling.inputCatLen[input]) * catUnitBytes;
+            if (inputBytes == 0) {
+                ++input;
+                continue;
+            }
+            const uint64_t inputEnd = inputBegin + inputBytes;
+            if (column >= inputEnd) {
+                inputBegin = inputEnd;
+                ++input;
+                continue;
+            }
+            const uint64_t rowRemaining = outputRowBytes - column;
+            const uint64_t inputRemaining = inputEnd - column;
+            const uint64_t spanRemaining = spanEnd - absolute;
+            uint64_t bytes = rowRemaining < inputRemaining ? rowRemaining : inputRemaining;
+            bytes = bytes < spanRemaining ? bytes : spanRemaining;
+            if (bytes == 0) return;
+            GlobalTensor<uint8_t> inputGm;
+            inputGm.SetGlobalBuffer(listDesc_.GetDataPtr<__gm__ uint8_t>(input));
+            const uint64_t srcOffset = row * inputBytes + column - inputBegin;
+            SubmitLinearRange(inputGm, srcOffset, absolute, bytes);
+            absolute += bytes;
+            column += bytes;
+            if (column == inputEnd) {
+                inputBegin = inputEnd;
+                ++input;
+            }
+            if (column == outputRowBytes && absolute < spanEnd) {
+                ++row;
+                column = 0;
+                input = 0;
+                inputBegin = 0;
+                while (input < inputNum_ && tiling.inputCatLen[input] == 0) ++input;
+            }
+        }
+    }
+
     template <typename TilingT>
     __aicore__ inline void CopyColumn(const TilingT &tiling, uint32_t startRow, uint32_t numRows,
                                       uint64_t colBegin, uint64_t colEnd, uint64_t catUnitBytes,
                                       uint64_t outputRowBytes)
     {
-        // Tiling carries only lengths. Reconstruct the sorted prefix in one
-        // forward pass; it removes a full 256-entry offset array from tiling.
         uint64_t inputBegin = 0;
         for (uint32_t input = 0; input < inputNum_; ++input) {
             if (inputBegin >= colEnd) break;

@@ -149,6 +149,23 @@ CASES = (
                (1, 32), (-1, 1), "special"),
     ConcatCase("fp32_special_values_bitwise", torch.float32, (2, 65), -1,
                (1, 31, 33), (-1000, 1000), "special"),
+    # P2 route boundaries.  These are correctness cases, not tuned benchmarks:
+    # they pin the dispatch priority, 512B span tail and the low-row FlatSpan
+    # state machine while retaining bitwise oracle coverage.
+    ConcatCase("p2_tiny_64k_boundary_fp16", torch.float16, (1, 32768), -1,
+               (8192, 8192, 16384), (-1, 1)),
+    ConcatCase("p2_tiny_non_aligned_fp32", torch.float32, (3, 65), -1,
+               (1, 31, 33), (-1000, 1000)),
+    ConcatCase("p2_identity_tiny_int8", torch.int8, (1, 65536), -1,
+               (65536,), (-100, 100)),
+    ConcatCase("p2_identity_large_fp32", torch.float32, (128, 4096), -1,
+               (4096,), (-1000, 1000)),
+    ConcatCase("p2_flatspan_256k_boundary_fp16", torch.float16, (1, 131072), -1,
+               (32768, 32768, 32768, 32768), (-1, 1)),
+    ConcatCase("p2_flatspan_before1_tail_int8", torch.int8, (1, 262657), -1,
+               (65536, 65536, 65536, 66049), (-100, 100)),
+    ConcatCase("p2_flatspan_before1_tail_int32", torch.int32, (1, 65537), -1,
+               (16384, 16384, 16384, 16385), (1, 10)),
 )
 
 # These shapes have few logical rows, large output work, and non-32B-aligned

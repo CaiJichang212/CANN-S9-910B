@@ -30,6 +30,10 @@ constexpr uint32_t TILE_BYTES = 64 * 1024;
 constexpr uint32_t DMA_DESCRIPTOR_COST = 4096;
 constexpr uint32_t SPLIT_ROWS = 0;
 constexpr uint32_t SPLIT_COLUMNS = 1;
+constexpr uint32_t SPLIT_TINY = 2;
+constexpr uint32_t SPLIT_IDENTITY = 4;
+constexpr uint64_t FLAT_SPAN_UNIT_BYTES = 512;
+constexpr uint64_t TINY_TOTAL_BYTES = TILE_BYTES;
 
 static uint32_t Gcd(uint32_t lhs, uint32_t rhs)
 {
@@ -49,6 +53,11 @@ static uint64_t AlignUp(uint64_t value, uint32_t alignment)
 static uint32_t CeilDiv(uint32_t value, uint32_t divisor)
 {
     return (value + divisor - 1) / divisor;
+}
+
+static uint64_t CeilDiv64(uint64_t value, uint64_t divisor)
+{
+    return value / divisor + (value % divisor != 0);
 }
 
 static bool CheckedMul(uint64_t lhs, uint64_t rhs, uint64_t &result)
@@ -271,9 +280,30 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     const uint32_t beforeDimSize = static_cast<uint32_t>(beforeDimSize64);
     const uint32_t afterDimSize = static_cast<uint32_t>(afterDimSize64);
     const uint32_t totalCatLen = static_cast<uint32_t>(totalCatLen64);
-    SplitChoice split = ChooseSplit(availableCores, beforeDimSize, outputRowBytes,
-                                    static_cast<uint32_t>(tensorNum), inputCatLenArr,
-                                    inputCatOffsetArr, catUnitBytes);
+    const uint32_t inputNum = static_cast<uint32_t>(tensorNum);
+    // P2.1 keeps P0's proven row/column choice as the default for every
+    // multi-input request.  Identity is a separate single-input fast path;
+    // Tiny is only safe for a single logical row that P0 would column-split.
+    // Split mode 3 remains an ABI-compatible kernel candidate, but Host
+    // deliberately never emits it until it has a separately validated policy.
+    SplitChoice split;
+    if (inputNum == 1) {
+        split.splitMode = SPLIT_IDENTITY;
+        const uint64_t unitCount = CeilDiv64(totalOutputBytes, FLAT_SPAN_UNIT_BYTES);
+        uint64_t desired = totalOutputBytes / TILE_BYTES;
+        if (desired == 0) desired = 1;
+        desired = std::min<uint64_t>(desired, availableCores);
+        split.usedCoreNum = static_cast<uint32_t>(std::min<uint64_t>(desired, std::max<uint64_t>(1, unitCount)));
+    } else {
+        const SplitChoice p0Choice = ChooseSplit(availableCores, beforeDimSize, outputRowBytes, inputNum,
+                                                  inputCatLenArr, inputCatOffsetArr, catUnitBytes);
+        split = p0Choice;
+        if (totalOutputBytes <= TINY_TOTAL_BYTES && beforeDimSize == 1 &&
+            p0Choice.splitMode == SPLIT_COLUMNS) {
+            split.splitMode = SPLIT_TINY;
+            split.usedCoreNum = 1;
+        }
+    }
 
     // 7. 写 tiling
     tiling.set_inputNum(static_cast<uint16_t>(tensorNum));

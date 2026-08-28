@@ -12,7 +12,7 @@ constexpr uint32_t MAX_CONCAT_INPUT_NUM = 256;
 
 BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   // 仅保留 kernel 消费的数据。inputNum <= 256，dtypeSize <= 4，splitMode
-  // 只有两个取值；紧凑标量让动态 TensorList 的 tiling 从约 2 KiB 降至约 1 KiB。
+  // 为固定的小枚举；紧凑标量让动态 TensorList 的 tiling 从约 2 KiB 降至约 1 KiB。
   TILING_DATA_FIELD_DEF(uint16_t, inputNum);
   TILING_DATA_FIELD_DEF(uint8_t, dtypeSize);
   TILING_DATA_FIELD_DEF(uint8_t, splitMode);
@@ -23,7 +23,8 @@ BEGIN_TILING_DATA_DEF(ConcatCustomTilingData)
   TILING_DATA_FIELD_DEF(uint32_t, totalCatLen);
   // 每个输入沿 dim 维的长度
   TILING_DATA_FIELD_DEF_ARR(uint32_t, MAX_CONCAT_INPUT_NUM, inputCatLen);
-  // 多核切分。splitMode=0 为整行切分，1 为行×输出列切分。
+  // 内部切分：0=整行，1=行×输出列，2=Tiny，3=FlatSpan，4=Identity。
+  // Tiny/FlatSpan/Identity 不读取以下行列字段，保持 tiling 紧凑且 ABI 不变。
   TILING_DATA_FIELD_DEF(uint32_t, rowSliceNum);
   TILING_DATA_FIELD_DEF(uint32_t, colCoreNum);
   TILING_DATA_FIELD_DEF(uint32_t, colBlockBytes);
