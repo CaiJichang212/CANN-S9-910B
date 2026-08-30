@@ -1,0 +1,3 @@
+case,included_cards,cross_card_spread_pct,cross_card_limit_pct,pass,excluded_physical_devices
+rank1_int32_exact,3,8.856019472008985,10.0,1,
+score_shape_2024x3000_fp32,3,3.9560890913503717,5.0,1,

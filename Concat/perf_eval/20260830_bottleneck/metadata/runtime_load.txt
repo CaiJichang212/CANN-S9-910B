@@ -1,0 +1,5 @@
+result=bitwise_pass
+concat_symbol_provider=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp/vendors/customize/op_api/lib/libcust_opapi.so
+expected_root=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp
+ld_library_path_first=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp/vendors/customize/op_api/lib
+loaded_libcust_opapi=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp/vendors/customize/op_api/lib/libcust_opapi.so;/usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_api/lib/libcust_opapi.so;/usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/lib/libcust_opapi.so

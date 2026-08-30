@@ -1,0 +1,59 @@
+2026-08-30T14:33:14,093348732+08:00
+container=concat_bottleneck_20260830
+Id=2d979eebdc29568d9e06704182ff2ec5cdfff4a3e18dfdc1ddc141773c2287bc Image=sha256:3b172f73657c317991dd3cbe5dbfce9607394d6cf575fdaca0ba857a825be8ec Pid=257802 Status=running Started=2026-08-30T06:10:21.116884791Z Devices=[{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci0","PathOnHost":"/dev/davinci5"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci1","PathOnHost":"/dev/davinci6"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci2","PathOnHost":"/dev/davinci7"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci_manager","PathOnHost":"/dev/davinci_manager"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/devmm_svm","PathOnHost":"/dev/devmm_svm"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/hisi_hdc","PathOnHost":"/dev/hisi_hdc"}] Mounts=[{"Destination":"/usr/local/Ascend/driver","Mode":"ro","Propagation":"rprivate","RW":false,"Source":"/usr/local/Ascend/driver","Type":"bind"},{"Destination":"/etc/ascend_install.info","Mode":"ro","Propagation":"rprivate","RW":false,"Source":"/etc/ascend_install.info","Type":"bind"},{"Destination":"/usr/local/sbin/npu-smi","Mode":"ro","Propagation":"rprivate","RW":false,"Source":"/usr/local/sbin/npu-smi","Type":"bind"},{"Destination":"/home/liyc","Mode":"","Propagation":"rprivate","RW":true,"Source":"/home/liyc","Type":"bind"},{"Destination":"/home/ma-user/anaconda3/envs/MindSpore","Driver":"local","Mode":"ro","Name":"concat_py39_20260830","Propagation":"","RW":false,"Source":"/var/lib/docker/volumes/concat_py39_20260830/_data","Type":"volume"}]
+PID                 PPID                USER                COMMAND             COMMAND
+257802              257773              root                sleep               sleep infinity
+mnt:[4026540117]
+pid:[4026540171]
+net:[4026545663]
+excluded_container=jinyr_vllm_new
+Id=7de4b46b37b86791615ab008a2cff2bb480f6cbc3bee67b1c4966ae49568a7d9 Pid=141591 Status=running Devices=[{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci3","PathOnHost":"/dev/davinci3"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci4","PathOnHost":"/dev/davinci4"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/davinci_manager","PathOnHost":"/dev/davinci_manager"},{"CgroupPermissions":"rwm","PathInContainer":"/dev/hisi_hdc","PathOnHost":"/dev/hisi_hdc"}]
++------------------------------------------------------------------------------------------------+
+| npu-smi 25.5.1                   Version: 25.5.1                                               |
++---------------------------+---------------+----------------------------------------------------+
+| NPU   Name                | Health        | Power(W)    Temp(C)           Hugepages-Usage(page)|
+| Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
++===========================+===============+====================================================+
+| 0     910B4-1             | OK            | 95.2        32                0    / 0             |
+| 0                         | 0000:C1:00.0  | 0           0    / 0          59487/ 65536         |
++===========================+===============+====================================================+
+| 1     910B4-1             | OK            | 92.0        32                0    / 0             |
+| 0                         | 0000:C2:00.0  | 0           0    / 0          59493/ 65536         |
++===========================+===============+====================================================+
+| 2     910B4-1             | OK            | 93.2        33                0    / 0             |
+| 0                         | 0000:81:00.0  | 0           0    / 0          61307/ 65536         |
++===========================+===============+====================================================+
+| 3     910B4-1             | OK            | 96.9        33                0    / 0             |
+| 0                         | 0000:82:00.0  | 0           0    / 0          3412 / 65536         |
++===========================+===============+====================================================+
+| 4     910B4-1             | OK            | 93.4        37                0    / 0             |
+| 0                         | 0000:01:00.0  | 0           0    / 0          3431 / 65536         |
++===========================+===============+====================================================+
+| 5     910B4-1             | OK            | 96.7        38                0    / 0             |
+| 0                         | 0000:02:00.0  | 0           0    / 0          3429 / 65536         |
++===========================+===============+====================================================+
+| 6     910B4-1             | OK            | 99.0        38                0    / 0             |
+| 0                         | 0000:41:00.0  | 0           0    / 0          3432 / 65536         |
++===========================+===============+====================================================+
+| 7     910B4-1             | OK            | 95.8        39                0    / 0             |
+| 0                         | 0000:42:00.0  | 0           0    / 0          3435 / 65536         |
++===========================+===============+====================================================+
++---------------------------+---------------+----------------------------------------------------+
+| NPU     Chip              | Process id    | Process name             | Process memory(MB)      |
++===========================+===============+====================================================+
+| 0       0                 | 3463062       | VLLMWorker_TP            | 56125                   |
++===========================+===============+====================================================+
+| 1       0                 | 3463063       | VLLMWorker_TP            | 56125                   |
++===========================+===============+====================================================+
+| 2       0                 | 600685        | VLLMEngineCor            | 57946                   |
++===========================+===============+====================================================+
+| No running processes found in NPU 3                                                            |
++===========================+===============+====================================================+
+| No running processes found in NPU 4                                                            |
++===========================+===============+====================================================+
+| No running processes found in NPU 5                                                            |
++===========================+===============+====================================================+
+| No running processes found in NPU 6                                                            |
++===========================+===============+====================================================+
+| No running processes found in NPU 7                                                            |
++===========================+===============+====================================================+

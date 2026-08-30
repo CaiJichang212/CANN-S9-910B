@@ -1,0 +1,6 @@
+cann_build_uid=0
+npu_execution_uid=0
+msprof_uid=0
+artifact_and_summary_uid=9002
+artifact_and_summary_primary_gid=100
+reason=CANN OPP metadata is root:root mode 750 in the isolated snapshot; permissions were not broadened

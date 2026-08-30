@@ -1,0 +1,17 @@
+python=3.9.10 | packaged by conda-forge | (main, Feb  1 2022, 21:53:27)  [GCC 9.4.0]
+python_executable=/home/ma-user/anaconda3/envs/MindSpore/bin/python3
+platform=Linux-5.10.0-216.0.0.115.oe2203sp4.aarch64-aarch64-with-glibc2.38
+torch=2.5.1
+torch_npu=2.5.1.post1
+torch_npu_path=/home/ma-user/anaconda3/envs/MindSpore/lib/python3.9/site-packages/torch_npu/__init__.py
+device_count=3
+device_0_name=Ascend910B4-1
+device_1_name=Ascend910B4-1
+device_2_name=Ascend910B4-1
+ASCEND_HOME_PATH=/usr/local/Ascend/cann-8.5.0
+ASCEND_AICPU_PATH=/usr/local/Ascend/cann-8.5.0
+ASCEND_OPP_PATH=/usr/local/Ascend/cann-8.5.0/opp
+ASCEND_CUSTOM_OPP_PATH=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp/vendors/customize
+PYTHONPATH=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/wheel_site:/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck:/home/liyc/hw-S9/case_910b/Concat:/usr/local/Ascend/cann-8.5.0/python/site-packages:/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe:/usr/local/Ascend/ascend-toolkit/latest/python/site-packages:/usr/local/Ascend/ascend-toolkit/latest/opp/built-in/op_impl/ai_core/tbe:/usr/local/Ascend/cann-8.5.0/python/site-packages:/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe:
+LD_LIBRARY_PATH=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/private/opp/vendors/customize/op_api/lib:/home/ma-user/anaconda3/envs/MindSpore/lib/python3.9/site-packages/torch/lib:/home/ma-user/anaconda3/envs/MindSpore/lib/python3.9/site-packages/torch_npu/lib:/home/ma-user/anaconda3/envs/MindSpore/lib:/usr/local/Ascend/cann-8.5.0/lib64:/usr/local/Ascend/cann-8.5.0/lib64/plugin/opskernel:/usr/local/Ascend/cann-8.5.0/lib64/plugin/nnengine:/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe/op_tiling:/usr/local/Ascend/driver/lib64:/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_1/lib:/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_1/examples:/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_1/tests/atbopstest:/usr/local/Ascend/ascend-toolkit/latest/tools/aml/lib64:/usr/local/Ascend/ascend-toolkit/latest/tools/aml/lib64/plugin:/usr/local/Ascend/ascend-toolkit/latest/lib64:/usr/local/Ascend/ascend-toolkit/latest/lib64/plugin/opskernel:/usr/local/Ascend/ascend-toolkit/latest/lib64/plugin/nnengine:/usr/local/Ascend/ascend-toolkit/latest/opp/built-in/op_impl/ai_core/tbe/op_tiling:/usr/local/Ascend/cann-8.5.0/tools/aml/lib64:/usr/local/Ascend/cann-8.5.0/tools/aml/lib64/plugin:/usr/local/Ascend/cann-8.5.0/lib64:/usr/local/Ascend/cann-8.5.0/lib64/plugin/opskernel:/usr/local/Ascend/cann-8.5.0/lib64/plugin/nnengine:/usr/local/Ascend/cann-8.5.0/opp/built-in/op_impl/ai_core/tbe/op_tiling:/usr/local/Ascend/driver/lib64:/usr/local/Ascend/driver/lib64/common/:/usr/local/Ascend/driver/lib64/driver/:
+cann_root=/usr/local/Ascend/cann-8.5.0

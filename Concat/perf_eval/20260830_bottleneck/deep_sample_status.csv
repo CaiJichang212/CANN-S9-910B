@@ -1,0 +1,4 @@
+physical_device,aicore_db,rows,nonzero_task_cyc_rows,max_task_cyc,status,used_for_per_core_inference,note
+5,/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/raw/deep/physical_5/Sample/PROF_000001_20260830072008357_IOBFMHQAHRPJBKAC/device_0/sqlite/aicore.db,14580,0,0,unavailable_task_cyc_zero,0,task_cyc is zero in this collection and is not used for per-core timing
+6,/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/raw/deep/physical_6/Sample/PROF_000001_20260830072336679_IADPDGNBOLGDJHRA/device_1/sqlite/aicore.db,15660,0,0,unavailable_task_cyc_zero,0,task_cyc is zero in this collection and is not used for per-core timing
+7,/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_bottleneck/raw/deep/physical_7/Sample/PROF_000001_20260830072704134_JKPCJCDBFJGGMPJA/device_2/sqlite/aicore.db,18760,0,0,unavailable_task_cyc_zero,0,task_cyc is zero in this collection and is not used for per-core timing
