@@ -170,23 +170,31 @@ echo ""
 # ============================================================================
 echo "设置环境变量..."
 
-# 设置 LD_LIBRARY_PATH (Real 模式需要 cust_opapi.so)
+# 设置 LD_LIBRARY_PATH（Real 模式优先使用本轮隔离 OPP）
 CUSTOM_OP_LIB_DIR=""
-for candidate_dir in \
-    "${ASCEND_HOME_PATH}/opp/vendors/squaresumv1_custom/op_api/lib" \
-    "/usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/lib" \
-    "/usr/local/Ascend/opp/vendors/squaresumv1_custom/op_api/lib"; do
+CUSTOM_OP_LIB_CANDIDATES=()
+if [ -n "${SQUARESUMV1_OPP_ROOT:-}" ]; then
+    CUSTOM_OP_LIB_CANDIDATES+=("${SQUARESUMV1_OPP_ROOT}/op_api/lib")
+fi
+IFS=':' read -r -a CUSTOM_OPP_ROOTS <<< "${ASCEND_CUSTOM_OPP_PATH:-}"
+for custom_opp_root in "${CUSTOM_OPP_ROOTS[@]}"; do
+    if [ -n "$custom_opp_root" ]; then
+        CUSTOM_OP_LIB_CANDIDATES+=("${custom_opp_root}/op_api/lib")
+    fi
+done
+for candidate_dir in "${CUSTOM_OP_LIB_CANDIDATES[@]}"; do
     if [ -d "$candidate_dir" ]; then
         CUSTOM_OP_LIB_DIR="$candidate_dir"
         break
     fi
 done
 if [ -n "$CUSTOM_OP_LIB_DIR" ]; then
-    export LD_LIBRARY_PATH=${CUSTOM_OP_LIB_DIR}:${LD_LIBRARY_PATH}
+    export LD_LIBRARY_PATH="${CUSTOM_OP_LIB_DIR}:${LD_LIBRARY_PATH:-}"
     echo "LD_LIBRARY_PATH: ${CUSTOM_OP_LIB_DIR}"
 else
     if [ -z "$USE_MOCK" ]; then
-        echo "警告: 未找到 squaresumv1_custom op_api lib 目录"
+        echo "错误: 未找到本轮 customize/op_api/lib；请设置 SQUARESUMV1_OPP_ROOT" >&2
+        exit 1
     fi
 fi
 

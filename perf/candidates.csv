@@ -1,0 +1,5 @@
+candidate_id,parent_id,status,evidence,package,report
+legacy-20260724-105027,,external-case4-failed,result-20260724.txt,SquareSumV1_20260724_105027_zip/,20260724算子性能测试和瓶颈分析报告.md
+legacy-20260724-174439,,external-case4-failed,result-20260724.txt,SquareSumV1_20260724_174439_zip/,20260724-2算子性能测试和瓶颈分析报告.md
+legacy-20260725-123950,,external-case4-failed,result-20260724.txt,SquareSumV1_20260725_123950_zip/,20260725-1算子性能评测和瓶颈分析报告.md
+b1ab2e04745e,af71c3489175,local-validated_external-case4-failed,20260725-3算子性能评测和瓶颈分析报告.md,SquareSumV1_20260725_172638_zip/,20260725-3算子性能评测和瓶颈分析报告.md

@@ -37,7 +37,18 @@ if(NOT USE_MOCK)
     # that environment search path to a CMake list before find_path/library.
     file(TO_CMAKE_PATH "$ENV{ASCEND_CUSTOM_OPP_PATH}" CUSTOM_OPP_ROOTS)
     set(SQUARESUMV1_PRIVATE_OPP_ROOT "$ENV{SQUARESUMV1_OPP_ROOT}")
-
+    set(CUSTOM_OP_INCLUDE_HINTS)
+    set(CUSTOM_OP_LIBRARY_HINTS)
+    if(SQUARESUMV1_PRIVATE_OPP_ROOT)
+        list(APPEND CUSTOM_OP_INCLUDE_HINTS "${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/include")
+        list(APPEND CUSTOM_OP_LIBRARY_HINTS "${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/lib")
+    endif()
+    foreach(CUSTOM_OPP_ROOT IN LISTS CUSTOM_OPP_ROOTS)
+        if(CUSTOM_OPP_ROOT)
+            list(APPEND CUSTOM_OP_INCLUDE_HINTS "${CUSTOM_OPP_ROOT}/op_api/include")
+            list(APPEND CUSTOM_OP_LIBRARY_HINTS "${CUSTOM_OPP_ROOT}/op_api/lib")
+        endif()
+    endforeach()
     message(STATUS "CANN_ROOT: ${CANN_ROOT}")
 endif()
 
@@ -45,16 +56,12 @@ add_executable(test_aclnn_square_sum_v1 test_aclnn_square_sum_v1.cpp)
 
 # Link Ascend libraries for Real mode
 if(NOT USE_MOCK)
-    # Find custom operator include directory (squaresumv1_custom vendor)
+    # Find the current package identity (vendors/customize), preferring the
+    # isolated OPP selected by SQUARESUMV1_OPP_ROOT.
     find_path(CUSTOM_OP_INCLUDE_DIR
         NAMES aclnn_square_sum_v1.h
-        PATHS
-            ${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/include
-            ${CUSTOM_OPP_ROOTS}/op_api/include
-            ${CANN_ROOT}/opp/vendors/squaresumv1_custom/op_api/include
-            /usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/include
-            /usr/local/Ascend/opp/vendors/squaresumv1_custom/op_api/include
-            $ENV{HOME}/Ascend/opp/vendors/squaresumv1_custom/op_api/include
+        PATHS ${CUSTOM_OP_INCLUDE_HINTS}
+        NO_DEFAULT_PATH
     )
 
     if(CUSTOM_OP_INCLUDE_DIR)
@@ -71,17 +78,12 @@ if(NOT USE_MOCK)
 
     # Find custom operator library (libcust_opapi.so)
     find_library(CUSTOM_OP_LIBRARY cust_opapi
-        PATHS
-            ${SQUARESUMV1_PRIVATE_OPP_ROOT}/op_api/lib
-            ${CUSTOM_OPP_ROOTS}/op_api/lib
-            ${CANN_ROOT}/opp/vendors/squaresumv1_custom/op_api/lib
-            /usr/local/Ascend/cann-8.5.0/opp/vendors/squaresumv1_custom/op_api/lib
-            /usr/local/Ascend/opp/vendors/squaresumv1_custom/op_api/lib
-            $ENV{HOME}/Ascend/opp/vendors/squaresumv1_custom/op_api/lib
+        PATHS ${CUSTOM_OP_LIBRARY_HINTS}
+        NO_DEFAULT_PATH
     )
 
     if(NOT CUSTOM_OP_LIBRARY)
-        message(WARNING "cust_opapi library not found, using default linkage")
+        message(FATAL_ERROR "cust_opapi library not found in the isolated OPP. Set SQUARESUMV1_OPP_ROOT first.")
     endif()
 
     target_link_libraries(test_aclnn_square_sum_v1

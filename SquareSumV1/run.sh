@@ -1,5 +1,11 @@
 #!/bin/bash
-export LD_LIBRARY_PATH=$ASCEND_OPP_PATH/vendors/customize/op_api/lib/:$LD_LIBRARY_PATH
+CUSTOM_OPP_ROOT="${SQUARESUMV1_OPP_ROOT:-${ASCEND_CUSTOM_OPP_PATH%%:*}}"
+CUSTOM_OPAPI_LIB="${CUSTOM_OPP_ROOT}/op_api/lib"
+if [ -z "$CUSTOM_OPP_ROOT" ] || [ ! -d "$CUSTOM_OPAPI_LIB" ]; then
+    echo "[ERROR] Set SQUARESUMV1_OPP_ROOT to this run's vendors/customize directory" >&2
+    exit 1
+fi
+export LD_LIBRARY_PATH="${CUSTOM_OPAPI_LIB}:${LD_LIBRARY_PATH:-}"
   # 清除上次测试性能文件
 #rm -rf ./dist/*
 if [ "x$1" == "x1" ]; then

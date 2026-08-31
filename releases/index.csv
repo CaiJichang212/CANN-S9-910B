@@ -1,0 +1,5 @@
+release_id,commit,artifact,artifact_sha256,run_sha256,status,feedback,manifest
+legacy-20260724-105027,,SquareSumV1_20260724_105027_zip/,,ef787529cb96bb1ec279d9ba2bc61c096a5923ea71879fe4a42fafe48b020862,legacy-staging_external-case4-failed,result-20260724.txt,
+legacy-20260724-174439,,SquareSumV1_20260724_174439_zip/,,1a15e7ba25162c2db2f8dd9438b67bed7a905a6c2532b76a4e835b1a498540f4,legacy-staging_external-case4-failed,result-20260724.txt,
+legacy-20260725-123950,,SquareSumV1_20260725_123950_zip/,,37bd57d080088eabc1ab2aeab53d19964b6c5562be36bd69c60a83a1c944b26f,legacy-staging_external-case4-failed,result-20260724.txt,
+legacy-20260725-172638,b1ab2e04745e6163530027111fc4316adf363371,SquareSumV1_20260725_172638_zip/,,72f7cd44be2eb832136b54d2e45697ff6b3d5818fa4c64b27d5f57fc28896fdb,legacy-staging_external-case4-failed,result-20260724.txt,

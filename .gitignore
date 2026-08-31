@@ -60,3 +60,10 @@ SquareSumV1/docs/perf/
 
 # transient task tracker（ascendc-task-focus）；经验已沉淀进 docs/*.md 报告
 todo.md
+
+# ============================================================
+# 统一性能与发布目录：跟踪 manifest/汇总，忽略可再生成的大文件
+# ============================================================
+/perf/runs/*/raw/
+/perf/runs/**/PROF_*/
+/releases/*/package.zip
