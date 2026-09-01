@@ -1,0 +1,15 @@
+{
+  "eligible_within_noise": [
+    "p1_128"
+  ],
+  "median_identity_sum_us": {
+    "baseline": 50.044,
+    "p1_128": 21.64,
+    "p1_32": 23.46,
+    "p1_64": 22.6
+  },
+  "selection_noise_band_pct": 1.0,
+  "winner": "p1_128",
+  "winner_speedup_vs_baseline": 2.3125693160813308,
+  "winner_threshold_bytes": 131072
+}

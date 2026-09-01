@@ -1,0 +1,2 @@
+round,physical_device,baseline_sum_us,p0_sum_us,speedup,scoring_baseline_sum_us,scoring_p0_sum_us,scoring_speedup
+round_01,5,1741.1380000000006,1838.371,0.9471091526139177,364.97900000000004,372.51499999999993,0.9797699421499808

@@ -1,4 +1,6 @@
-*zip*
+# 提交压缩包与其解包目录（避免误伤名称中仅包含 "zip" 的源码）
+*.zip
+*_zip/
 # ============================================================
 # Python
 # ============================================================
@@ -112,7 +114,6 @@ Concat/.env_libs
 Concat/perf_op.py
 Concat/agg_time.py
 Concat/stress_test.py
-Concat/.env_libs
 Concat_0630.zip
 Concat_0630_zip/
 Concat/extra-info/
@@ -132,8 +133,7 @@ Concat/perf_eval/s9_scientific_20260721/calibration/
 Concat/perf_eval/s9_scientific_20260721/deep/*.exit
 Concat/perf_eval/s9_scientific_20260721/latency/*/
 
-# 单次性能快照（result-20260720.txt 已作为基线跟踪；新快照建议合并到 docs/baseline_results.md）
-result-20260720-2.txt
+# 官方提交原始反馈属于不可重建证据，统一放在 docs/ 并纳入跟踪。
 
 # ============================================================
 # Concat perf_eval 运行副产物（仅跟踪 latency_summary.csv 与采集脚本）
@@ -183,3 +183,18 @@ Concat/perf_eval/**/opp_*/
 
 # 防误纳：源码快照内置 .git 子目录
 Concat/perf_eval/**/src/.git
+
+# ============================================================
+# 统一外围结构（渐进迁移 Phase 2）
+# ============================================================
+# 新 run 只跟踪 manifest、汇总和必要小型证据。
+perf/runs/**/raw/
+perf/runs/**/private/
+perf/runs/**/PROF_*/
+perf/runs/**/profile/
+Concat/perf_eval/**/profile/
+!perf/runs/**/correctness/*.log
+
+# release manifest/index 可跟踪；<release_id>.zip 由全局 *.zip 规则忽略。
+releases/**/private/
+releases/**/extracted/

@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 
 namespace optiling {
 
@@ -25,6 +26,8 @@ constexpr uint32_t DATA_BLOCK_BYTES = 32;
 constexpr uint32_t PREFERRED_COL_BYTES = 512;
 constexpr uint32_t TILE_BYTES = 64 * 1024;
 constexpr uint32_t DMA_SETUP_COST = 4096;
+constexpr uint64_t IDENTITY_MIN_BYTES_PER_CORE = 128 * 1024;
+constexpr uint64_t IDENTITY_TILING_KEY = 2;
 
 static uint32_t Gcd(uint32_t lhs, uint32_t rhs)
 {
@@ -38,12 +41,42 @@ static uint32_t Gcd(uint32_t lhs, uint32_t rhs)
 
 static uint64_t AlignUp(uint64_t value, uint32_t alignment)
 {
-    return (value + alignment - 1) / alignment * alignment;
+    if (value == 0) return 0;
+    return ((value - 1) / alignment + 1) * alignment;
 }
 
 static uint32_t CeilDiv(uint32_t value, uint32_t divisor)
 {
-    return (value + divisor - 1) / divisor;
+    return value / divisor + (value % divisor != 0);
+}
+
+static uint64_t CeilDiv64(uint64_t value, uint64_t divisor)
+{
+    return value / divisor + (value % divisor != 0);
+}
+
+static bool CheckedMul(uint64_t lhs, uint64_t rhs, uint64_t &result)
+{
+    if (lhs != 0 && rhs > std::numeric_limits<uint64_t>::max() / lhs) return false;
+    result = lhs * rhs;
+    return true;
+}
+
+static bool CheckedAdd(uint64_t lhs, uint64_t rhs, uint64_t &result)
+{
+    if (rhs > std::numeric_limits<uint64_t>::max() - lhs) return false;
+    result = lhs + rhs;
+    return true;
+}
+
+static uint32_t SelectIdentityCoreNum(uint64_t totalBytes, uint32_t availableCores)
+{
+    if (totalBytes == 0) return 1;
+    const uint64_t workCores = CeilDiv64(totalBytes, IDENTITY_MIN_BYTES_PER_CORE);
+    const uint64_t ownershipUnits = CeilDiv64(totalBytes, DATA_BLOCK_BYTES);
+    const uint64_t used = std::min<uint64_t>(availableCores,
+                                             std::min<uint64_t>(workCores, ownershipUnits));
+    return static_cast<uint32_t>(std::max<uint64_t>(1, used));
 }
 
 struct SplitChoice {
@@ -56,7 +89,7 @@ struct SplitChoice {
     uint64_t worstCost = ~0ULL;
 };
 
-static uint64_t EstimateColumnCost(uint32_t rows, uint32_t colBegin, uint32_t colEnd,
+static uint64_t EstimateColumnCost(uint32_t rows, uint64_t colBegin, uint64_t colEnd,
                                    uint32_t inputNum, const uint32_t *inputCatLen,
                                    const uint32_t *inputCatOffset, uint64_t catUnitBytes)
 {
@@ -84,12 +117,14 @@ static SplitChoice ChooseSplit(uint32_t availableCores, uint32_t beforeDimSize, 
     SplitChoice best;
     if (beforeDimSize == 0 || rowBytes == 0) return best;
 
+    const uint32_t rowPeriod = DATA_BLOCK_BYTES /
+                               Gcd(static_cast<uint32_t>(rowBytes % DATA_BLOCK_BYTES), DATA_BLOCK_BYTES);
     const uint32_t rowCores = std::max(1U, std::min(availableCores, beforeDimSize));
     const uint32_t rowsPerCore = CeilDiv(beforeDimSize, rowCores);
     best.usedCoreNum = rowCores;
-    best.rowPeriod = DATA_BLOCK_BYTES / Gcd(static_cast<uint32_t>(rowBytes % DATA_BLOCK_BYTES), DATA_BLOCK_BYTES);
+    best.rowPeriod = rowPeriod;
     best.colBlockBytes = rowBytes > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rowBytes);
-    best.worstCost = EstimateColumnCost(rowsPerCore, 0, best.colBlockBytes, inputNum,
+    best.worstCost = EstimateColumnCost(rowsPerCore, 0, rowBytes, inputNum,
                                         inputCatLen, inputCatOffset, catUnitBytes);
 
     // A fixed logical column boundary cannot be 32B aligned for every row when
@@ -136,8 +171,6 @@ static SplitChoice ChooseSplit(uint32_t availableCores, uint32_t beforeDimSize, 
 
 static ge::graphStatus TilingFunc(gert::TilingContext *context)
 {
-    ConcatCustomTilingData tiling;
-
     // 1. 读取属性 dim
     auto attrs = context->GetAttrs();
     if (attrs == nullptr) {
@@ -151,7 +184,13 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
 
     // 2. 获取动态输入张量个数
     auto computeNodeInfoPtr = context->GetComputeNodeInfo();
+    if (computeNodeInfoPtr == nullptr) {
+        return ge::GRAPH_FAILED;
+    }
     auto idxInstanceInfoPtr = computeNodeInfoPtr->GetInputInstanceInfo(0);  // 输入 IR index = 0
+    if (idxInstanceInfoPtr == nullptr) {
+        return ge::GRAPH_FAILED;
+    }
     uint64_t tensorNum = idxInstanceInfoPtr->GetInstanceNum();
     if (tensorNum == 0 || tensorNum > MAX_CONCAT_INPUT_NUM) {
         return ge::GRAPH_FAILED;
@@ -179,37 +218,56 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     uint32_t udim = static_cast<uint32_t>(dim);
 
     // 4. 计算 beforeDimSize / afterDimSize / 各输入 catLen / totalCatLen / offset
-    uint32_t beforeDimSize = 1;
+    uint64_t beforeDimSize64 = 1;
     for (uint32_t i = 0; i < udim; i++) {
-        beforeDimSize *= static_cast<uint32_t>(x0Storage.GetDim(i));
+        const int64_t shapeDim = x0Storage.GetDim(i);
+        if (shapeDim < 0 ||
+            !CheckedMul(beforeDimSize64, static_cast<uint64_t>(shapeDim), beforeDimSize64)) {
+            return ge::GRAPH_FAILED;
+        }
     }
-    uint32_t afterDimSize = 1;
+    uint64_t afterDimSize64 = 1;
     for (uint32_t i = udim + 1; i < dimNum; i++) {
-        afterDimSize *= static_cast<uint32_t>(x0Storage.GetDim(i));
+        const int64_t shapeDim = x0Storage.GetDim(i);
+        if (shapeDim < 0 ||
+            !CheckedMul(afterDimSize64, static_cast<uint64_t>(shapeDim), afterDimSize64)) {
+            return ge::GRAPH_FAILED;
+        }
     }
 
     uint32_t inputCatLenArr[MAX_CONCAT_INPUT_NUM] = {0};
     uint32_t inputCatOffsetArr[MAX_CONCAT_INPUT_NUM] = {0};
-    uint32_t totalCatLen = 0;
+    uint64_t totalCatLen64 = 0;
     for (uint64_t i = 0; i < tensorNum; i++) {
         auto xiShapePtr = context->GetDynamicInputShape(0, i);
         if (xiShapePtr == nullptr) {
             inputCatLenArr[i] = 0;
-            inputCatOffsetArr[i] = totalCatLen;
+            if (totalCatLen64 > UINT32_MAX) return ge::GRAPH_FAILED;
+            inputCatOffsetArr[i] = static_cast<uint32_t>(totalCatLen64);
             continue;
         }
         const auto &xiStorage = xiShapePtr->GetStorageShape();
-        uint32_t catLen = 0;
+        uint64_t catLen64 = 0;
         if (xiStorage.GetDimNum() > udim) {
-            catLen = static_cast<uint32_t>(xiStorage.GetDim(udim));
+            const int64_t shapeDim = xiStorage.GetDim(udim);
+            if (shapeDim < 0) return ge::GRAPH_FAILED;
+            catLen64 = static_cast<uint64_t>(shapeDim);
         }
-        inputCatLenArr[i] = catLen;
-        inputCatOffsetArr[i] = totalCatLen;
-        totalCatLen += catLen;
+        if (catLen64 > UINT32_MAX || totalCatLen64 > UINT32_MAX) {
+            return ge::GRAPH_FAILED;
+        }
+        inputCatLenArr[i] = static_cast<uint32_t>(catLen64);
+        inputCatOffsetArr[i] = static_cast<uint32_t>(totalCatLen64);
+        if (!CheckedAdd(totalCatLen64, catLen64, totalCatLen64) || totalCatLen64 > UINT32_MAX) {
+            return ge::GRAPH_FAILED;
+        }
     }
 
     // 5. 数据类型字节数
     auto x0DescPtr = context->GetDynamicInputDesc(0, 0);
+    if (x0DescPtr == nullptr || beforeDimSize64 > UINT32_MAX || afterDimSize64 > UINT32_MAX) {
+        return ge::GRAPH_FAILED;
+    }
     ge::DataType dtype = x0DescPtr->GetDataType();
     uint32_t dtypeSize = 1;
     switch (dtype) {
@@ -220,15 +278,43 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
         case ge::DT_INT16:   dtypeSize = 2; break;
         case ge::DT_INT8:    dtypeSize = 1; break;
         case ge::DT_UINT8:   dtypeSize = 1; break;
-        default:             dtypeSize = 2; break;
+        default: return ge::GRAPH_FAILED;
     }
+
+    const uint32_t beforeDimSize = static_cast<uint32_t>(beforeDimSize64);
+    const uint32_t afterDimSize = static_cast<uint32_t>(afterDimSize64);
+    const uint32_t totalCatLen = static_cast<uint32_t>(totalCatLen64);
 
     // 6. 用运行时平台核数建模，而不是把具体卡型的核数写死在算子里。
     auto platform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
     int32_t platformAivCores = platform.GetCoreNumAiv();
     uint32_t availableCores = platformAivCores > 0 ? static_cast<uint32_t>(platformAivCores) : 1U;
-    const uint64_t catUnitBytes = static_cast<uint64_t>(afterDimSize) * dtypeSize;
-    const uint64_t outputRowBytes = static_cast<uint64_t>(totalCatLen) * catUnitBytes;
+    uint64_t catUnitBytes = 0;
+    uint64_t outputRowBytes = 0;
+    uint64_t totalOutputBytes = 0;
+    if (!CheckedMul(afterDimSize64, dtypeSize, catUnitBytes) ||
+        !CheckedMul(totalCatLen64, catUnitBytes, outputRowBytes) ||
+        !CheckedMul(beforeDimSize64, outputRowBytes, totalOutputBytes)) {
+        return ge::GRAPH_FAILED;
+    }
+
+    if (tensorNum == 1) {
+        const uint32_t usedCoreNum = SelectIdentityCoreNum(totalOutputBytes, availableCores);
+        ConcatIdentityTilingData identityTiling;
+        identityTiling.set_totalBytes(totalOutputBytes);
+        identityTiling.set_usedCoreNum(usedCoreNum);
+        identityTiling.set_tileBytes(TILE_BYTES);
+        context->SetTilingKey(IDENTITY_TILING_KEY);
+        context->SetBlockDim(usedCoreNum);
+        identityTiling.SaveToBuffer(context->GetRawTilingData()->GetData(),
+                                    context->GetRawTilingData()->GetCapacity());
+        context->GetRawTilingData()->SetDataSize(identityTiling.GetDataSize());
+        size_t *currentWorkspace = context->GetWorkspaceSizes(1);
+        currentWorkspace[0] = 0;
+        return ge::GRAPH_SUCCESS;
+    }
+
+    ConcatCustomTilingData tiling;
     SplitChoice split = ChooseSplit(availableCores, beforeDimSize, outputRowBytes,
                                     static_cast<uint32_t>(tensorNum), inputCatLenArr,
                                     inputCatOffsetArr, catUnitBytes);
@@ -252,6 +338,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     tiling.set_inputCatLen(inputCatLenArr);
     tiling.set_inputCatOffset(inputCatOffsetArr);
 
+    context->SetTilingKey(0);
     context->SetBlockDim(split.usedCoreNum);
     tiling.SaveToBuffer(context->GetRawTilingData()->GetData(),
                         context->GetRawTilingData()->GetCapacity());

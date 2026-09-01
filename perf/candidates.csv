@@ -1,0 +1,8 @@
+candidate_id,parent_id,status,evidence,package,report
+official-20260722,,superseded_official,Concat_20260722_102940_zip/,,docs/result-20260720-2.txt
+p0-row-group,official-20260722,rejected,Concat/perf_eval/20260830_optimize/stages/p0/README.md,,docs/20260830-1-Concat_P1_Identity评测报告.md
+p0-safety,official-20260722,rejected,Concat/perf_eval/20260830_optimize/stages/p0/README.md,,docs/20260830-1-Concat_P1_Identity评测报告.md
+p1-identity,official-20260722,official_accepted,Concat/perf_eval/20260830_optimize/stages/p1/README.md,Concat_20260830_204619.zip,docs/20260830-1-Concat_P1_Identity评测报告.md
+p2-core-launch-cost,p1-identity,rejected,Concat/perf_eval/20260830_optimize/stages/p2/README.md,,docs/20260831-1-Concat_P2_启核成本评测报告.md
+p2.1-one-tile-launch-cost,p1-identity,official_rejected,Concat/perf_eval/20260830_optimize/stages/p2_1/README.md,Concat_20260831_170102.zip,docs/20260831-1-Concat_P2_启核成本评测报告.md
+p3-boundary-column,p1-identity,rejected,perf/runs/p3-boundary-column-20260831_222657/README.md,,perf/runs/p3-boundary-column-20260831_222657/README.md

@@ -1,0 +1,4 @@
+timestamp=2026-08-31T02:59:54.078044+00:00
+exit_code=172
+DrvMngGetConsoleLogLevel failed. (ret=4)
+dcmi model initialized failed, because the device is used. ret is -8020

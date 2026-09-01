@@ -1,0 +1,6 @@
+release_id,candidate_id,package,sha256,status,feedback,manifest
+20260722_102940,official-20260722,Concat_20260722_102940_zip/,,superseded_official,docs/result-20260720-2.txt,
+20260830_204619,p1-identity,Concat_20260830_204619.zip,91d5ef8542be24d89a0a22f99ba1347d5d4e63f844ec8b98b4ea5f06e4c622e4,official_accepted,docs/result-20260720-2.txt,
+20260831_120726,p2.1-one-tile-launch-cost,,a2e996df0e564e7b6714eb3d0e0a05a48725cbc5a276ca8c8e04fffeae5d4b05,official_rejected_packaging,docs/result-20260720-2.txt,
+20260831_170102,p2.1-one-tile-launch-cost,Concat_20260831_170102.zip,0ed7a4787f286243f526d63b3f1399012c067252f8e9b7dd9781f46df04419d3,official_rejected_performance,docs/result-20260720-2.txt,
+Concat-20260831_175344,p2.1-one-tile-launch-cost,releases/Concat-20260831_175344/Concat-20260831_175344.zip,92f47549fe65c6af4fd4381917c08762d61c38c8d2408579f2f7cd48683ed880,superseded_equivalent,docs/result-20260720-2.txt,releases/Concat-20260831_175344/manifest.yaml

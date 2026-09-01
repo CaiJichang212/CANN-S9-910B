@@ -35,6 +35,14 @@ END_TILING_DATA_DEF;
 
 REGISTER_TILING_DATA_CLASS(Concat, ConcatCustomTilingData)
 
+BEGIN_TILING_DATA_DEF(ConcatIdentityTilingData)
+  TILING_DATA_FIELD_DEF(uint64_t, totalBytes);
+  TILING_DATA_FIELD_DEF(uint32_t, usedCoreNum);
+  TILING_DATA_FIELD_DEF(uint32_t, tileBytes);
+END_TILING_DATA_DEF;
+
+REGISTER_TILING_DATA_CLASS(Concat_2, ConcatIdentityTilingData)
+
 }  // namespace optiling
 
 #endif  // CONCAT_TILING_H

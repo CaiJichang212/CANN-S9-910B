@@ -1,0 +1,28 @@
+提交结果：性能数据=599.364us
+hw-S9/case_910b/Concat_20260831_170102_zip
+Case1: Pass, Result: 15.832
+Case2: Pass, Result: 38.852
+Case3: Pass, Result: 23.372
+Case4: Pass, Result: 105.46
+Case5: Pass, Result: 415.848
+prof_sum: 599.364
+
+提交结果：性能数据=562.35us
+hw-S9/case_910b/Concat_20260830_204619_zip
+Case1: Pass, Result: 10.54
+Case2: Pass, Result: 32.32
+Case3: Pass, Result: 17.29
+Case4: Pass, Result: 102.87
+Case5: Pass, Result: 399.33
+prof_sum: 562.35
+
+提交结果：性能数据=564.6515us
+hw-S9/case_910b/Concat_20260722_102940_zip
+Case1: Pass, Result: 10.6
+Case2: Pass, Result: 32.6205
+Case3: Pass, Result: 18.0405
+Case4: Pass, Result: 104.0925
+Case5: Pass, Result: 399.298
+prof_sum: 564.6515
+
+排行榜top1 性能数据=206.6745us

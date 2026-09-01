@@ -1,0 +1,13 @@
+/home/ma-user/anaconda3/envs/MindSpore/lib/python3.9/site-packages/torch_npu/utils/_path_manager.py:67: UserWarning: Permission mismatch: The owner of /home/ma-user/anaconda3/envs/MindSpore/lib/python3.9/site-packages/torch_npu/lib/libop_plugin_atb.so does not match.
+  warnings.warn(f"Permission mismatch: The owner of {path} does not match.")
+PASS p3_inputs_063_fp16: dtype=torch.float16, shape=(64, 4096), dim=-1, inputs=63, range=(-1, 1), pattern=ramp, repeat=1
+PASS p3_inputs_064_fp16: dtype=torch.float16, shape=(64, 4096), dim=-1, inputs=64, range=(-1, 1), pattern=ramp, repeat=1
+PASS p3_inputs_065_fp16: dtype=torch.float16, shape=(64, 4096), dim=-1, inputs=65, range=(-1, 1), pattern=ramp, repeat=1
+PASS p3_zero_prefix_fp32: dtype=torch.float32, shape=(8, 2048), dim=-1, inputs=128, range=(-1000, 1000), pattern=ramp, repeat=1
+PASS p3_input_255_fp16: dtype=torch.float16, shape=(1, 255), dim=-1, inputs=255, range=(-1, 1), pattern=ramp, repeat=1
+PASS p3_input_256_fp16: dtype=torch.float16, shape=(64, 4096), dim=-1, inputs=256, range=(-1, 1), pattern=ramp, repeat=1
+PASS p3_offset_fp16: dtype=torch.float16 offset_elements=1 repeat=10
+PASS p3_offset_fp32: dtype=torch.float32 offset_elements=1 repeat=10
+PASS p3_offset_int32: dtype=torch.int32 offset_elements=1 repeat=10
+PASS p3_offset_int8: dtype=torch.int8 offset_elements=1 repeat=10
+P3_FOCUSED_COMPLETE normal=6 offset=4 offset_repeat=10

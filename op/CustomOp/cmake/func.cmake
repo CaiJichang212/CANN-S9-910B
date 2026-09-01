@@ -152,7 +152,7 @@ function(add_bin_compile_target)
   if (NOT TARGET ${BINCMP_TARGET}_tiling_registry)
     add_custom_target(${BINCMP_TARGET}_tiling_registry
       COMMAND ${CMAKE_COMMAND} -E make_directory ${_TILING_STAGE_DIR}
-      COMMAND ${CMAKE_COMMAND} -E rm -f ${_TILING_STAGE_DIR}/liboptiling.so
+      COMMAND ${CMAKE_COMMAND} -E remove -f ${_TILING_STAGE_DIR}/liboptiling.so
       COMMAND ${CMAKE_COMMAND} -E create_symlink
               ${CMAKE_BINARY_DIR}/op_host/libcust_opmaster_rt2.0.so
               ${_TILING_STAGE_DIR}/liboptiling.so

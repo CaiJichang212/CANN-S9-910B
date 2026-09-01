@@ -1,0 +1,9 @@
+提交结果：性能数据=562.35us
+hw-S9/case_910b/Concat_20260830_204619_zip (使用s8 docker编译打包)
+Case1: Pass, Result: 10.54
+Case2: Pass, Result: 32.32
+Case3: Pass, Result: 17.29
+Case4: Pass, Result: 102.87
+Case5: Pass, Result: 399.33
+prof_sum: 562.35
+

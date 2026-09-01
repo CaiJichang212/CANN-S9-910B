@@ -1,0 +1,17 @@
+{
+  "baseline": "p1_128",
+  "candidate": "p2_1_64k",
+  "full_gate_pass": true,
+  "material_changed_path_regressions": [],
+  "rounds": 6,
+  "scoring_ratio": 0.9249633487232223,
+  "structurally_unchanged_noise_warnings": [],
+  "target_baseline_sum_us": 44.9715,
+  "target_candidate_sum_us": 37.8895,
+  "target_faster_rounds": 6,
+  "target_improvement_pct": 15.747751353635087,
+  "total_baseline_sum_us": 1768.3780000000002,
+  "total_candidate_sum_us": 1709.4545,
+  "total_faster_rounds": 6,
+  "total_ratio": 0.966679352491379
+}

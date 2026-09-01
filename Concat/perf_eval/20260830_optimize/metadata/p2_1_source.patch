@@ -1,0 +1,89 @@
+diff --git a/op/CustomOp/op_host/concat.cpp b/op/CustomOp/op_host/concat.cpp
+index 19d9b7b..fc7995b 100644
+--- a/op/CustomOp/op_host/concat.cpp
++++ b/op/CustomOp/op_host/concat.cpp
+@@ -26,6 +26,8 @@ constexpr uint32_t DATA_BLOCK_BYTES = 32;
+ constexpr uint32_t PREFERRED_COL_BYTES = 512;
+ constexpr uint32_t TILE_BYTES = 64 * 1024;
+ constexpr uint32_t DMA_SETUP_COST = 4096;
++constexpr uint32_t CORE_LAUNCH_COST = 2 * 1024;
++constexpr uint64_t CORE_LAUNCH_TOTAL_BYTES_LIMIT = 64 * 1024;
+ constexpr uint64_t IDENTITY_MIN_BYTES_PER_CORE = 128 * 1024;
+ constexpr uint64_t IDENTITY_TILING_KEY = 2;
+ 
+@@ -87,8 +89,19 @@ struct SplitChoice {
+     uint32_t colCoreNum = 1;
+     uint32_t colBlockBytes = 0;
+     uint64_t worstCost = ~0ULL;
++    uint64_t score = ~0ULL;
+ };
+ 
++static uint64_t ScoreCandidate(uint64_t worstCost, uint32_t usedCoreNum, bool applyLaunchCost)
++{
++    if (!applyLaunchCost) return worstCost;
++    const uint64_t launchCost = static_cast<uint64_t>(usedCoreNum) * CORE_LAUNCH_COST;
++    if (worstCost > std::numeric_limits<uint64_t>::max() - launchCost) {
++        return std::numeric_limits<uint64_t>::max();
++    }
++    return worstCost + launchCost;
++}
++
+ static uint64_t EstimateColumnCost(uint32_t rows, uint64_t colBegin, uint64_t colEnd,
+                                    uint32_t inputNum, const uint32_t *inputCatLen,
+                                    const uint32_t *inputCatOffset, uint64_t catUnitBytes)
+@@ -119,13 +132,27 @@ static SplitChoice ChooseSplit(uint32_t availableCores, uint32_t beforeDimSize,
+ 
+     const uint32_t rowPeriod = DATA_BLOCK_BYTES /
+                                Gcd(static_cast<uint32_t>(rowBytes % DATA_BLOCK_BYTES), DATA_BLOCK_BYTES);
+-    const uint32_t rowCores = std::max(1U, std::min(availableCores, beforeDimSize));
+-    const uint32_t rowsPerCore = CeilDiv(beforeDimSize, rowCores);
+-    best.usedCoreNum = rowCores;
+-    best.rowPeriod = rowPeriod;
+-    best.colBlockBytes = rowBytes > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rowBytes);
+-    best.worstCost = EstimateColumnCost(rowsPerCore, 0, rowBytes, inputNum,
+-                                        inputCatLen, inputCatOffset, catUnitBytes);
++    const uint32_t maxRowCores = std::max(1U, std::min(availableCores, beforeDimSize));
++    uint64_t totalBytes = 0;
++    const bool applyLaunchCost = CheckedMul(beforeDimSize, rowBytes, totalBytes) &&
++                                 totalBytes <= CORE_LAUNCH_TOTAL_BYTES_LIMIT;
++    const uint32_t firstRowCores = applyLaunchCost ? 1 : maxRowCores;
++    for (uint32_t rowCores = firstRowCores; rowCores <= maxRowCores; ++rowCores) {
++        const uint32_t rowsPerCore = CeilDiv(beforeDimSize, rowCores);
++        const uint64_t worst = EstimateColumnCost(rowsPerCore, 0, rowBytes, inputNum,
++                                                  inputCatLen, inputCatOffset, catUnitBytes);
++        const uint64_t score = ScoreCandidate(worst, rowCores, applyLaunchCost);
++        if (score < best.score) {
++            best.usedCoreNum = rowCores;
++            best.splitMode = 0;
++            best.rowPeriod = rowPeriod;
++            best.rowSliceNum = 1;
++            best.colCoreNum = 1;
++            best.colBlockBytes = rowBytes > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rowBytes);
++            best.worstCost = worst;
++            best.score = score;
++        }
++    }
+ 
+     // A fixed logical column boundary cannot be 32B aligned for every row when
+     // rowBytes is not 32B aligned.  Keep those layouts on the race-free row path.
+@@ -146,16 +173,18 @@ static SplitChoice ChooseSplit(uint32_t availableCores, uint32_t beforeDimSize,
+                 worst = std::max(worst, EstimateColumnCost(rows, begin, end, inputNum,
+                                                            inputCatLen, inputCatOffset, catUnitBytes));
+             }
++            const uint64_t score = ScoreCandidate(worst, used, applyLaunchCost);
+             // Prefer 512B boundaries for indistinguishable estimates, while
+             // allowing the 32B candidate to use every AIV when it models faster.
+-            if (worst < best.worstCost ||
+-                (worst == best.worstCost && columnBytes == PREFERRED_COL_BYTES && best.splitMode != 1)) {
++            if (score < best.score ||
++                (score == best.score && columnBytes == PREFERRED_COL_BYTES && best.splitMode != 1)) {
+                 best.usedCoreNum = used;
+                 best.splitMode = 1;
+                 best.rowSliceNum = rowSlices;
+                 best.colCoreNum = colCores;
+                 best.colBlockBytes = columnBytes;
+                 best.worstCost = worst;
++                best.score = score;
+             }
+         }
+     };

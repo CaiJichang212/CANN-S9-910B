@@ -1,0 +1,68 @@
+stage_id: p2-core-launch-cost
+parent: official-p1-562.35us-Concat_20260830_204619_zip
+hypothesis: A unified per-core launch penalty prevents Row/Column tiling from overusing AIV cores on underfilled general-path work.
+patch_scope:
+  files: [op/CustomOp/op_host/concat.cpp]
+  symbols: [SplitChoice, ChooseSplit]
+unchanged:
+  - Identity TilingKey 2 and its 128 KiB policy
+  - all TilingData layouts
+  - op_kernel/concat.cpp
+  - 64 KiB double-buffered DataCopyPad pipeline
+parameters:
+  core_launch_cost_bytes: [2048, 4096, 8192, 16384]
+  tie_break: choose the smaller penalty when target totals are within 1 percent
+target_cohort:
+  - micro_cores_01
+  - micro_cores_02
+  - micro_cores_03
+  - micro_cores_05
+  - micro_cores_07
+  - micro_cores_11
+  - micro_cores_20
+  - micro_cores_40
+control_cohort:
+  - rank1_int32_exact
+  - single_input_large_row_fallback
+  - p2_identity_large_fp32
+  - input_count_8_fp16
+  - input_count_64_int32
+  - input_count_255_fp16
+  - micro_inputs_002
+  - micro_inputs_008
+  - micro_inputs_032
+  - micro_inputs_064
+  - micro_inputs_128
+  - micro_inputs_256
+  - score_shape_2024x3000_fp32
+  - fragmented_256_fp16
+  - fragmented_256_fp32
+  - fragmented_256_int8
+  - fragmented_256_int32_before40
+  - wide_non_aligned_before8_fp32
+  - micro_rows_2048
+  - micro_rows_4096
+screening:
+  rounds: 3
+  physical_devices: [7, 7, 7]
+  environment_note: cards 5 and 6 became reserved by zxc_vllm before profiling; all P2 versions use the same free card 7
+  tasks_per_case: 30
+  discard_first_task: true
+  target_acceptance: median target sum improves at least 5 percent and at least 2 of 3 paired rounds improve
+  global_acceptance: screening total does not regress more than 1 percent
+  regression_material: max(2 us, 2 percent) using paired median delta
+confirmation:
+  reason: initial 3-round screening had no eligible candidate because p2_2k showed a material delta on micro_rows_4096 despite identical kernel hash and identical full route parameters
+  candidate: p2_2k
+  total_rounds: 6
+  rule: keep all original thresholds unchanged; reject P2 if the six-round paired result still fails any screening gate
+full_gate:
+  correctness: 48 fixed/wide plus 300 random plus 4 contracts plus 11 repeated controls
+  target: target cohort improves in at least 5 of 6 rounds and by at least 5 percent
+  global: 92-case total improves in at least 4 of 6 rounds
+  scoring_proxy: median total does not regress more than 1 percent
+  regression_material: no unexplained non-target paired median above max(2 us, 2 percent)
+  structural: every case BlockDim and route matches the P2 software model
+rollback: remove coreLaunchCost scoring and restore P1 ChooseSplit comparison
+package_checkpoint: true
+requires_official_feedback: true

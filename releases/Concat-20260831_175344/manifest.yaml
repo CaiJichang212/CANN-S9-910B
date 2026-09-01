@@ -1,0 +1,37 @@
+schema_version: 1
+release_id: "Concat-20260831_175344"
+operator: "Concat"
+candidate_id: "p2.1-one-tile-launch-cost"
+created_at: "2026-08-31T17:53:44+08:00"
+status: "superseded_equivalent"
+equivalent_to: "Concat_20260831_170102.zip"
+official_result_us: 599.364
+official_result: "5/5 Pass; rejected for performance against P1 562.35 us"
+equivalence: "packaged sources match and self-extracted run payloads are byte-identical"
+git:
+  commit: "2016da6014ea8e1ae326acfc022b20756558bf9c"
+  dirty: true
+build:
+  image: "swr.cn-southwest-2.myhuaweicloud.com/fuyangchenghu/cann8.5:s8"
+  cann_root: "/home/ma-user/Ascend/cann-8.5.0"
+  cann_version: "8.5.0"
+  cmake_version: "3.28.3"
+  compute_unit: "ascend910b"
+sources:
+  op_host_concat_sha256: "7f437f44072d6ab7fcd042480a6d4ef3b420ac3081673e4351149ae9120e823f"
+  op_host_tiling_sha256: "150e2edd93236f919234af6247ee091b5061802d55182d2e24e49539aeb7f3da"
+  op_kernel_concat_sha256: "2cd9b46e51e4b373188ed6f1cfec4a45585e7c705326a2a91b97bd92f3f133a2"
+artifacts:
+  package: "Concat-20260831_175344.zip"
+  package_sha256: "92f47549fe65c6af4fd4381917c08762d61c38c8d2408579f2f7cd48683ed880"
+  run_name: "custom_opp_euleros_aarch64.run"
+  run_sha256: "58355502f88aaa0d2ae0df862ca676447ec9fd63aba12438416d01ff985c94b4"
+validation:
+  static_gate: "pass"
+  runtime_gate: "pass"
+  runtime_image: "swr.cn-south-1.myhuaweicloud.com/ascendhub/cann:8.5.0-910b-openeuler24.03-py3.11"
+  soc: "Ascend 910B4-1 / dav-2201"
+  single_provider: true
+  correctness: "48 fixed + 300 random + 4 contracts + 11 repeat10"
+  smoke: "92 cases / 2760 tasks / 0 BlockDim mismatches"
+  smoke_p50_sum_us: 1716.829

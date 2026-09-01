@@ -1,0 +1,11 @@
+{
+  "baseline": "p1_128",
+  "candidate": "p2_1_64k",
+  "faster_total_rounds": 6,
+  "material_regressions": [],
+  "median_scoring_ratio_candidate_over_baseline": 0.9249633487232223,
+  "median_total_ratio_candidate_over_baseline": 0.966679352491379,
+  "performance_gate_pass": true,
+  "policy": "At least 4/6 total rounds faster; total/scoring within 1%; no case regresses by max(2us,2%)",
+  "rounds": 6
+}

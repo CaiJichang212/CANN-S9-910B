@@ -1,0 +1,7 @@
+# Keep generated tabular evidence stable across platforms.
+*.csv text eol=lf
+**/*.csv text eol=lf
+
+# Patch snapshots are evidence payloads and can contain intentional whitespace.
+*.patch text eol=lf -whitespace
+**/*.patch text eol=lf -whitespace

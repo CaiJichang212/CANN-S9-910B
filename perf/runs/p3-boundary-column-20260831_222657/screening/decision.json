@@ -1,0 +1,21 @@
+{
+  "four_256_dtype_faster": 1,
+  "material_regressions": [
+    "fragmented_256_fp16"
+  ],
+  "physical_devices": [
+    7
+  ],
+  "policy": "Complete only with rounds 1/2/3 on physical 5/6/7; target >=2/3 faster and median gain >=max(2us,2%); four 256-input dtypes >=3/4 faster; no material case regression.",
+  "rounds": [
+    3
+  ],
+  "screening_pass": null,
+  "status": "partial",
+  "target_baseline_sum_us": 387.33200000000005,
+  "target_candidate_sum_us": 412.846,
+  "target_faster_rounds": 0,
+  "target_improvement_pct": -6.587113897121832,
+  "target_improvement_us": -25.513999999999953,
+  "task_count_per_version_round": 300
+}

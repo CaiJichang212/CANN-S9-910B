@@ -1,0 +1,7 @@
+candidate_id,parent_id,hypothesis,patch_scope,local_status,official_status,package,official_total_us,report
+p0-row-group,official-20260722,base-aware row-period ownership,host+kernel,rejected,not_submitted,,,stages/p0/README.md
+p0-safety,official-20260722,checked arithmetic plus base guard,host+kernel,rejected,not_submitted,,,stages/p0/README.md
+p1-identity,official-20260722,single input uses compact contiguous path,host+tiling+kernel,local_accepted,official_accepted,Concat_20260830_204619_zip,562.35,docs/20260830-1-Concat_P1_Identity评测报告.md
+p2-core-launch-cost,official-p1-562.35,penalize overfilled General core counts,host,rejected,not_submitted,,,stages/p2/README.md
+p2.1-one-tile-launch-cost,official-p1-562.35,penalize General core counts only when total output fits 64 KiB,host,local_accepted,official_rejected,Concat_20260831_170102.zip,599.364,docs/20260831-1-Concat_P2_启核成本评测报告.md
+p3-boundary-column,official-p1-562.35,input-prefix minimax column boundaries reduce fragmented SubmitTile,host+tiling+kernel,rejected,not_submitted,,,perf/runs/p3-boundary-column-20260831_222657/README.md

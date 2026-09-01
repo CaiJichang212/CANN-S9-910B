@@ -1,0 +1,31 @@
+{
+  "anchors": {
+    "fragmented_256_fp16": {
+      "p1_submit_tiles": 532,
+      "p3_submit_tiles": 512,
+      "tiling_key": 3
+    },
+    "fragmented_256_fp32": {
+      "p1_submit_tiles": 286,
+      "p3_submit_tiles": 256,
+      "tiling_key": 3
+    },
+    "fragmented_256_int8": {
+      "p1_submit_tiles": 256,
+      "p3_submit_tiles": 256,
+      "tiling_key": 0
+    }
+  },
+  "case_count": 92,
+  "routed_cases": [
+    "fragmented_256_fp16",
+    "fragmented_256_fp16_1_31_32",
+    "fragmented_256_fp32",
+    "fragmented_256_int32_before40",
+    "micro_inputs_064",
+    "micro_inputs_128",
+    "wide_non_aligned_256_zero_fp16"
+  ],
+  "routed_count": 7,
+  "status": "pass"
+}

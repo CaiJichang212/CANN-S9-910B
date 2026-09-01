@@ -30,6 +30,84 @@ constexpr uint32_t TILE_BYTES = 64 * 1024;
 constexpr uint32_t DATA_BLOCK_BYTES = 32;
 constexpr uint32_t MAX_COPY_BLOCK_COUNT = 4095;
 
+class KernelConcatIdentity {
+public:
+    __aicore__ inline KernelConcatIdentity() {}
+
+    template <typename TilingT>
+    __aicore__ inline void Init(GM_ADDR srcList, GM_ADDR dst, const TilingT &tiling)
+    {
+        totalBytes_ = tiling.totalBytes;
+        usedCoreNum_ = tiling.usedCoreNum;
+        tileBytes_ = tiling.tileBytes;
+        listDesc_.Init(reinterpret_cast<__gm__ void *>(srcList));
+        yGm_.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(dst));
+        pipe.InitBuffer(copyQueue_, 2, tileBytes_);
+    }
+
+    __aicore__ inline void Process()
+    {
+        const uint32_t coreId = GetBlockIdx();
+        if (coreId >= usedCoreNum_ || usedCoreNum_ == 0 || totalBytes_ == 0) return;
+
+        const uint64_t dstBase = reinterpret_cast<uint64_t>(yGm_.GetPhyAddr(0));
+        uint64_t headBytes = (DATA_BLOCK_BYTES - (dstBase & (DATA_BLOCK_BYTES - 1))) &
+                             (DATA_BLOCK_BYTES - 1);
+        if (headBytes > totalBytes_) headBytes = totalBytes_;
+        const uint64_t bodyUnits = (totalBytes_ - headBytes) / DATA_BLOCK_BYTES;
+        const uint64_t unitBegin = SplitUnits(bodyUnits, coreId, usedCoreNum_);
+        const uint64_t unitEnd = SplitUnits(bodyUnits, coreId + 1, usedCoreNum_);
+
+        uint64_t begin = headBytes + unitBegin * DATA_BLOCK_BYTES;
+        uint64_t end = headBytes + unitEnd * DATA_BLOCK_BYTES;
+        if (coreId == 0) begin = 0;
+        if (coreId + 1 == usedCoreNum_) end = totalBytes_;
+        if (begin >= end) return;
+
+        GlobalTensor<uint8_t> inputGm;
+        inputGm.SetGlobalBuffer(listDesc_.GetDataPtr<__gm__ uint8_t>(0));
+        SubmitLinearRange(inputGm, begin, begin, end - begin);
+    }
+
+private:
+    static __aicore__ inline uint64_t SplitUnits(uint64_t units, uint32_t part, uint32_t parts)
+    {
+        const uint64_t quotient = units / parts;
+        const uint64_t remainder = units % parts;
+        return quotient * part + remainder * part / parts;
+    }
+
+    __aicore__ inline void SubmitLinearRange(const GlobalTensor<uint8_t> &inputGm, uint64_t srcOff,
+                                             uint64_t dstOff, uint64_t byteLen)
+    {
+        uint64_t remaining = byteLen;
+        while (remaining > 0) {
+            const uint32_t batchBytes = remaining > tileBytes_ ? tileBytes_ : static_cast<uint32_t>(remaining);
+            LocalTensor<uint8_t> local = copyQueue_.AllocTensor<uint8_t>();
+            DataCopyExtParams copyInParams{1, batchBytes, 0, 0, 0};
+            DataCopyPadExtParams<uint8_t> padParams{false, 0, 0, 0};
+            DataCopyPad(local, inputGm[srcOff], copyInParams, padParams);
+            copyQueue_.EnQue(local);
+            LocalTensor<uint8_t> out = copyQueue_.DeQue<uint8_t>();
+            DataCopyExtParams copyOutParams{1, batchBytes, 0, 0, 0};
+            DataCopyPad(yGm_[dstOff], out, copyOutParams);
+            copyQueue_.FreeTensor(out);
+            srcOff += batchBytes;
+            dstOff += batchBytes;
+            remaining -= batchBytes;
+        }
+    }
+
+private:
+    uint64_t totalBytes_;
+    uint32_t usedCoreNum_;
+    uint32_t tileBytes_;
+    AscendC::TPipe pipe;
+    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> copyQueue_;
+    AscendC::ListTensorDesc listDesc_;
+    AscendC::GlobalTensor<uint8_t> yGm_;
+};
+
 class KernelConcat {
 public:
     __aicore__ inline KernelConcat() {}
@@ -213,9 +291,17 @@ extern "C" __global__ __aicore__ void concat(GM_ADDR srcList, GM_ADDR dst,
                                               GM_ADDR workspace, GM_ADDR tiling)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIV_ONLY);
-    GET_TILING_DATA(tiling_data, tiling);
-
-    KernelConcat op;
-    op.Init(srcList, dst, tiling_data);
-    op.Process(tiling_data);
+    if (TILING_KEY_IS(2)) {
+        GET_TILING_DATA_WITH_STRUCT(ConcatIdentityTilingData, identity_tiling, tiling);
+        KernelConcatIdentity op;
+        op.Init(srcList, dst, identity_tiling);
+        op.Process();
+        return;
+    } else if (TILING_KEY_IS(0)) {
+        GET_TILING_DATA(tiling_data, tiling);
+        KernelConcat op;
+        op.Init(srcList, dst, tiling_data);
+        op.Process(tiling_data);
+        return;
+    }
 }

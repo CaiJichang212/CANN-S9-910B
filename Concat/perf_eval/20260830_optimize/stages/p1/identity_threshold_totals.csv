@@ -1,0 +1,13 @@
+round,physical_device,version,identity_sum_us
+round_01,5,baseline,50.74399999999999
+round_01,5,p1_32,23.821999999999996
+round_01,5,p1_64,22.6
+round_01,5,p1_128,20.841
+round_02,6,baseline,48.242999999999995
+round_02,6,p1_32,23.46
+round_02,6,p1_64,22.621000000000002
+round_02,6,p1_128,21.64
+round_03,7,baseline,50.044
+round_03,7,p1_32,22.961000000000002
+round_03,7,p1_64,21.521
+round_03,7,p1_128,22.061

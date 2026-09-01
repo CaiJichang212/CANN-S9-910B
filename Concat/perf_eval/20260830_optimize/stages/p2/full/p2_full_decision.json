@@ -1,0 +1,9 @@
+{
+  "candidate": "p2_2k",
+  "full_gate_pass": false,
+  "generic_gate_pass": false,
+  "target_baseline_sum_us": 45.062,
+  "target_candidate_sum_us": 38.340999999999994,
+  "target_faster_rounds": 6,
+  "target_improvement_pct": 14.915005991744712
+}

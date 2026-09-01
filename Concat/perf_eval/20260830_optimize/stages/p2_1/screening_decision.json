@@ -1,0 +1,17 @@
+{
+  "candidate": "p2_1_64k",
+  "global_baseline_sum_us": 787.6629999999999,
+  "global_candidate_sum_us": 784.0389999999999,
+  "global_ratio": 0.9953990475622189,
+  "material_control_regressions": [],
+  "rounds": 3,
+  "screening_pass": true,
+  "structurally_unchanged_noise_warnings": [
+    "micro_inputs_256",
+    "micro_rows_2048"
+  ],
+  "target_baseline_sum_us": 46.260999999999996,
+  "target_candidate_sum_us": 39.317,
+  "target_faster_rounds": 3,
+  "target_improvement_pct": 15.01048399299625
+}

@@ -1,0 +1,38 @@
+stage_id: p2.1-one-tile-launch-cost
+parent: official-p1-562.35us-Concat_20260830_204619_zip
+hypothesis: The 2 KiB launch penalty is beneficial only for underfilled General requests whose full output fits one 64 KiB tile.
+patch_scope:
+  files: [op/CustomOp/op_host/concat.cpp]
+  symbols: [ChooseSplit, ScoreCandidate]
+parameters:
+  core_launch_cost_bytes: 2048
+  total_output_limit_bytes: 65536
+unchanged:
+  - all requests larger than 64 KiB use the exact P1 Row/Column ranking
+  - Identity TilingKey 2
+  - all TilingData layouts and Kernel code
+target_cohort:
+  - micro_cores_01
+  - micro_cores_02
+  - micro_cores_03
+  - micro_cores_05
+  - micro_cores_07
+  - micro_cores_11
+  - micro_cores_20
+  - micro_cores_40
+screening:
+  rounds: 3
+  physical_devices: [7, 7, 7]
+  target_acceptance: median target sum improves at least 5 percent and at least 2 of 3 rounds improve
+  global_acceptance: fixed 28-case total does not regress more than 1 percent
+  regression_material: max(2 us, 2 percent) using paired median delta
+  structural_equivalence: controls larger than 64 KiB must match every modeled route field and the P1 kernel hash
+full_gate:
+  correctness: complete bitwise suite
+  target: target cohort improves in at least 5 of 6 rounds and by at least 5 percent
+  global: 92-case total improves in at least 4 of 6 rounds
+  scoring_proxy: median total does not regress more than 1 percent
+  regression_material: no changed non-target path exceeds max(2 us, 2 percent)
+rollback: restore official P1 Host source
+package_checkpoint: true
+requires_official_feedback: true

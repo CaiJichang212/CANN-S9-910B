@@ -1,0 +1,5 @@
+candidate,core_launch_cost,target_baseline_sum_us,target_candidate_sum_us,target_improvement_pct,target_faster_rounds,global_baseline_sum_us,global_candidate_sum_us,global_ratio,material_control_regressions,screening_pass
+p2_2k,2048,46.039,39.297000000000004,14.644106083972275,3,803.557,781.6050000000001,0.9726814650360834,micro_rows_4096,0
+p2_4k,4096,46.039,38.391000000000005,16.61200286713438,3,803.557,817.4820000000001,1.017329200044303,fragmented_256_fp32;input_count_8_fp16;micro_inputs_256;micro_rows_2048,0
+p2_8k,8192,46.039,38.532000000000004,16.305740784986632,3,803.557,864.8659999999999,1.076297014399725,fragmented_256_fp32;fragmented_256_int32_before40;fragmented_256_int8;input_count_8_fp16;micro_inputs_128;micro_inputs_256;micro_rows_2048;micro_rows_4096,0
+p2_16k,16384,46.039,37.647999999999996,18.22585199504769,3,803.557,982.073,1.2221572334009907,fragmented_256_fp16;fragmented_256_fp32;fragmented_256_int32_before40;fragmented_256_int8;input_count_8_fp16;micro_inputs_128;micro_inputs_256;micro_rows_2048;micro_rows_4096,0

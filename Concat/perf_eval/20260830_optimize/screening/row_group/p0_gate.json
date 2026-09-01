@@ -1,0 +1,24 @@
+{
+  "faster_total_rounds": 0,
+  "material_regressions": [
+    "fragmented_256_fp16",
+    "micro_inputs_256",
+    "micro_piece_65535b",
+    "micro_piece_65536b",
+    "micro_piece_65537b",
+    "micro_rows_2047",
+    "micro_rows_2049",
+    "micro_rows_4094",
+    "micro_rows_4095",
+    "micro_rows_4096",
+    "s9_fp16_rank5_axis3_999",
+    "wide_non_aligned_before1_16m_fp16",
+    "wide_non_aligned_before8_fp32",
+    "wide_non_aligned_rank3_axis1_fp16"
+  ],
+  "median_scoring_ratio_p0_over_baseline": 1.02064776329597,
+  "median_total_ratio_p0_over_baseline": 1.0558445108888552,
+  "performance_gate_pass": false,
+  "policy": "P0 may be noise-neutral, but total/scoring must stay within 1% and no case may regress by max(2us,2%)",
+  "rounds": 1
+}

@@ -1,0 +1,8 @@
+result=bitwise_pass
+identity_result=bitwise_pass
+concat_symbol_provider=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp/vendors/customize/op_api/lib/libcust_opapi.so
+expected_root=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp
+ld_library_path_first=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp/vendors/customize/op_api/lib
+loaded_libcust_opapi=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp/vendors/customize/op_api/lib/libcust_opapi.so
+loaded_host_tiling=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp/vendors/customize/op_impl/ai_core/tbe/op_tiling/lib/linux/aarch64/libcust_opmaster_rt2.0.so
+loaded_op_proto=/home/liyc/hw-S9/case_910b/Concat/perf_eval/20260830_optimize/private/p3_p1_baseline/opp/vendors/customize/op_proto/lib/linux/aarch64/libcust_opsproto_rt2.0.so

@@ -1,0 +1,13 @@
+{
+  "candidate": "p2_2k",
+  "confirmation_pass": true,
+  "global_baseline_sum_us": 803.6685,
+  "global_candidate_sum_us": 779.1305,
+  "global_ratio": 0.9694675105469481,
+  "material_control_regressions": [],
+  "rounds": 6,
+  "target_baseline_sum_us": 45.896,
+  "target_candidate_sum_us": 39.115,
+  "target_faster_rounds": 6,
+  "target_improvement_pct": 14.774708035558648
+}

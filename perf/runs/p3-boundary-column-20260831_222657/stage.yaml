@@ -1,0 +1,79 @@
+schema_version: 1
+run_id: "p3-boundary-column-20260831_222657"
+stage_id: "p3-boundary-column"
+status: "rejected"
+operator: "Concat"
+finished_at: "2026-08-31T23:54:24+08:00"
+parent:
+  candidate_id: "p1-identity"
+  official_result_us: 562.35
+  source_sha256:
+    op_host_concat: "1b592cf56176c1931b54414e950cd62eae9b95c99586c7b86099baa9584859e0"
+    op_host_tiling: "150e2edd93236f919234af6247ee091b5061802d55182d2e24e49539aeb7f3da"
+    op_kernel_concat: "2cd9b46e51e4b373188ed6f1cfec4a45585e7c705326a2a91b97bd92f3f133a2"
+  private_version: "p3_p1_baseline"
+  private_run_sha256: "e4d75b120487913c93a9e3e14ec3021c15dc55bc71d64f4ec6adabce5316d627"
+hypothesis: >-
+  Input-prefix-aligned minimax column boundaries reduce fragmented-input
+  intersections and SubmitTile calls without changing P1 core topology.
+patch_scope:
+  - "op/CustomOp/op_host/concat.cpp"
+  - "op/CustomOp/op_host/concat_tiling.h"
+  - "op/CustomOp/op_kernel/concat.cpp"
+  - "Concat/extension/custom_op.cpp"
+  - "Concat/perf_eval/20260830_optimize/tiling_model.py"
+target_predicate: >-
+  input_count in [64, 256], P1 route is column, output row is 32-byte
+  aligned, enough unique aligned input-prefix boundaries exist, worst-core
+  cost and UB staging do not increase, and modeled SubmitTile strictly drops.
+control_cohort: >-
+  All non-routed 92-case entries, 63-input boundary, non-32-byte output rows,
+  Identity, and the 256-input int8 SubmitTile lower-bound case.
+expected_structure: >-
+  TilingKey 3 only for routed cases; usedCoreNum, rowSliceNum, colCoreNum and
+  BlockDim remain equal to P1; boundaries are strict aligned input prefixes;
+  no workspace, barrier, UB buffer, or public API change.
+correctness_gate: >-
+  P3 focused boundaries plus four-dtype offset-output repeat10, then existing
+  48 fixed, 300 random, 4 contracts, and 11 repeat10 controls bitwise.
+screening_gate: >-
+  Three physical-card AB/BA rounds; target sum faster in at least 2/3 with
+  median improvement >= max(2 us, 2%); four 256-input dtypes at least 3/4
+  faster; no material single-case regression.
+full_ab_gate: >-
+  Six balanced rounds of 92 cases x 30 tasks per version; target faster in
+  at least 5/6, global faster in at least 4/6, scoring proxy regression <= 1%,
+  and no unexplained non-target regression >= max(2 us, 2%).
+rollback: >-
+  Archive the P3 patch, model, tests, and evidence; remove Key 3 and the
+  offset-output caller from active source; restore the recorded P1 hashes
+  before starting P4 WideSpan.
+candidate:
+  source_sha256:
+    op_host_concat: "c9c9992a4704ba8f4838661b75d9fa8e9a68b5b29f39b5f84b87ba7b04f60ae1"
+    op_host_tiling: "e14095c3172141ac2600b050660ec8f9295d2b11432c3a4f179e63363ab6e9bb"
+    op_kernel_concat: "29acdf68e8d2b4702df3df5d90d45dc75c9a925c25f60a2e2245a9d4f79e3df8"
+    caller: "cf5163865ec5119fbb8bd21ea93658e67cc982733a1ec2f8fdb084ae3c520315"
+    model: "9b1c69ae12e6d77994b84fa6510b751e366679b1bd5c63f2fbe6ab26a9678d48"
+  private_run_sha256: "6065a9be4a8688bf18f29b5dd37398378b2f51b7e8b5f52604f85a9fedb5e127"
+  caller_artifact_sha256: "a3dcd74ab7e087e83b58d90172dcf45ffd131e9dfc123d19c43163ba04fc1fc6"
+  patch_sha256: "1bd449170fa542fdb4af231c818011e95f70ffb00539706cb0660f8960bd8776"
+validation:
+  model: "pass: 92 cases, 7 routed; fp16 532->512, fp32 286->256, int8 stays Key 0/256"
+  focused_correctness: "pass: 6 boundary controls plus 4 dtype offset-output repeat10"
+  full_correctness: "pass: 48 fixed, 300 random, 4 contracts, 11 repeat10"
+  runtime_provider: "pass: private OpAPI, Host Tiling, and Proto only"
+  formal_screening: "incomplete: card 7 round 3 only; cards 5/6 mapped by unrelated zxc_vllm"
+  card7_confirmation: "fail: AB/BA/AB target sum 387.853->404.597 us, -4.32%, 0/3 faster"
+  full_ab: "not_run: screening rejection"
+  package: "not_built: candidate rejected"
+decision:
+  reason: >-
+    All seven Key 3 targets were slower on the available intended device;
+    fragmented fp16/fp32 had material regressions and only 1/4 256-input
+    dtype controls improved. Absolute PipeUtilization time showed a repeated
+    Scalar increase that outweighed the modeled MTE2 reduction.
+  rollback_result: >-
+    Operator and caller restored to the recorded P1 hashes; private P1
+    single-provider General/Identity smoke passed.
+  next_stage: "p4-wide-span from p1-identity"

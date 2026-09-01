@@ -1,0 +1,7 @@
+{
+  "baseline": "p1_128",
+  "eligible": [],
+  "tie_band_pct": 1.0,
+  "tie_break": "smaller core-launch penalty",
+  "winner": null
+}

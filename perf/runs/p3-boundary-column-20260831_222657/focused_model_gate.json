@@ -1,0 +1,47 @@
+{
+  "eligible_boundary_controls": {
+    "k": {
+      "boundaries": [
+        0,
+        32,
+        128,
+        160,
+        256
+      ],
+      "eligible_count": 5,
+      "required_count": 5,
+      "valid": true
+    },
+    "k_minus_1": {
+      "boundaries": [],
+      "eligible_count": 4,
+      "required_count": 5,
+      "valid": false
+    },
+    "k_plus_1": {
+      "boundaries": [
+        0,
+        32,
+        96,
+        128,
+        256
+      ],
+      "eligible_count": 6,
+      "required_count": 5,
+      "valid": true
+    }
+  },
+  "route_keys": {
+    "p3_input_255_fp16": 0,
+    "p3_input_256_fp16": 3,
+    "p3_inputs_063_fp16": 0,
+    "p3_inputs_064_fp16": 0,
+    "p3_inputs_065_fp16": 3,
+    "p3_offset_fp16": 3,
+    "p3_offset_fp32": 3,
+    "p3_offset_int32": 3,
+    "p3_offset_int8": 3,
+    "p3_zero_prefix_fp32": 0
+  },
+  "status": "pass"
+}

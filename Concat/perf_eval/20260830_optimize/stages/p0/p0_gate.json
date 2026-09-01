@@ -1,0 +1,9 @@
+{
+  "faster_total_rounds": 3,
+  "material_regressions": [],
+  "median_scoring_ratio_p0_over_baseline": 0.9900286159831521,
+  "median_total_ratio_p0_over_baseline": 0.9951118830115664,
+  "performance_gate_pass": false,
+  "policy": "At least 4/6 total rounds faster; total/scoring within 1%; no case regresses by max(2us,2%)",
+  "rounds": 6
+}
