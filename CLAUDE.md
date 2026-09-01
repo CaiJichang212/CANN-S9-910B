@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> 状态说明（2026-09-01）：本文保留早期从零开发过程，其中“尚未创建算子工程”等
+> 描述已经过期。当前唯一发布源码根是 `op/CustomOp/`；最新入口、官方反馈边界和
+> Git/存储策略以 [`README.md`](README.md)、[`docs/INDEX.md`](docs/INDEX.md) 和
+> [`perf/README.md`](perf/README.md) 为准。
+
 > 本文件是本工作目录（`/home/liyc/hw-S9/case_910b_IndexAdd`）的项目级开发指南。算子开发通用方法论与踩坑见上层文档 `/home/liyc/hw-S9/AscendC算子开发经验教训.md` 与 memory，本文件只讲「这个项目怎么用、IndexAdd 怎么做」。
 
 ## 1. 项目定位与分支纪律

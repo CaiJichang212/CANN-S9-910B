@@ -1,3 +1,11 @@
+hw-S9/case_910b_IndexAdd/IndexAdd_20260723_200933_zip
+Case1: Pass, Result: 15.492
+Case2: Pass, Result: 758638.56
+Case3: Pass, Result: 609.66
+Case4: Pass, Result: 671.96
+Case5: Pass, Result: 2802322.544
+prof_sum: 3562258.216
+
 提交结果：性能数据=941265.1255us
 Case1: Pass, Result: 52.641
 Case2: Pass, Result: 406544.3025
