@@ -1,4 +1,6 @@
-*zip*
+# 发布包和历史兼容解包目录；避免误伤名称中仅包含 "zip" 的源码。
+*.zip
+*_zip/
 # build artifacts
 **/build_out/
 **/build/
@@ -8,6 +10,7 @@ dist/
 **/__pycache__/
 PROF_*/
 *.pyc
+*.run
 **/.local_opp/
 **/.local_python/
 
@@ -18,3 +21,11 @@ PROF_*/
 
 # transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
 todo.md
+
+# standardized performance/release layout
+perf/runs/**/raw/
+perf/runs/**/private/
+perf/runs/**/profile/
+perf/runs/**/PROF_*/
+releases/**/private/
+releases/**/extracted/

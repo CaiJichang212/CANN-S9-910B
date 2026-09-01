@@ -2,6 +2,11 @@
 
 > 本文件指导在 **dev-transpose-0707 分支** 上使用 Ascend C 开发 **Transpose（torch.permute）** 算子。
 > **重要：只能使用本分支（dev-transpose-0707）的代码，禁止引用/合并其他分支（Concat/Greater/IndexAdd/SquareSumV1）的算子实现。** 跨分支参考仅限阅读 `samples` 与 `asc-devkit` 官方资料。
+>
+> 状态说明（2026-09-01）：本文包含早期从零开发计划，部分“Host/Kernel 待生成”描述
+> 已经过期。当前唯一发布源码根为 `Transpose/`；最新导航、官方反馈边界和 Git/存储
+> 策略以 [`README.md`](README.md)、[`docs/INDEX.md`](docs/INDEX.md) 和
+> [`perf/README.md`](perf/README.md) 为准。
 
 ---
 
