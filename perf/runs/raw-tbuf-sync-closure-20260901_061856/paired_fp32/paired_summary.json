@@ -1,0 +1,25 @@
+{
+  "round_count": 6,
+  "case_count": 42,
+  "rounds_improved": 6,
+  "median_total_delta_us": -115.59250000000003,
+  "median_total_improvement_percent": 15.309185146875404,
+  "target_case": "multi_noncontiguous_fp32",
+  "target": {
+    "case_index": 38,
+    "case_name": "multi_noncontiguous_fp32",
+    "block_dim": 1,
+    "parent_median_us": 65.902,
+    "candidate_median_us": 17.41975,
+    "paired_delta_median_us": -48.291000000000004,
+    "improvement_percent": 73.27698704136445,
+    "candidate_faster_rounds": 6,
+    "material_regression_limit_us": 3.2950999999999997,
+    "material_regression": false
+  },
+  "target_pass": true,
+  "global_pass": true,
+  "regression_pass": true,
+  "structure_pass": true,
+  "material_regression_cases": []
+}

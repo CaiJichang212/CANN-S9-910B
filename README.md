@@ -5,7 +5,8 @@
 ## 当前状态
 
 - 唯一发布源码根：`SquareSumV1/op_project/custom_squaresumv1/`。
-- 当前本地结论：评分路径 44/44、BF16 3/3、非法输入 4/4；详见 [20260725-3 性能评测报告](20260725-3算子性能评测和瓶颈分析报告.md)。
+- 当前本地结论：最终 release 的评分路径 44/44、BF16 4/4、非法输入 4/4、Real ST 467/467 通过；六轮 42 workload 合计 P50 中位改善 17.49%。详见 [最终执行报告](docs/reports/SquareSumV1算子mode4-all-layer-dense-singlecore-20260901_075612最终执行报告.md)。
+- 当前本地包：[`SquareSumV1-20260901_090646`](releases/SquareSumV1-20260901_090646/manifest.yaml)，状态为 `local-verified-pending-official`。
 - 当前外部结论：四次历史提交的 Case1/2/3/5 通过，Case4 均为 `Run failed`；在取得新回执前不得标记为外部通过。
 - `Concat/`、`Greater/`、`IndexAdd/`、`Transpose/` 是仓库历史保留的 PyTorch 扩展材料，不是 SquareSumV1 发布源码根。
 
@@ -39,8 +40,18 @@ bash build_and_pack.sh
 
 ## 渐进迁移规则
 
-1. 既有源码、根目录文档、`SquareSumV1/docs/`、`perf_eval_*`、`probe/` 和历史 `_zip/` 均保持原位。
+1. 既有源码、根目录文档、`SquareSumV1/docs/`、`perf_eval_*`、`probe/` 和历史 `_zip/` 的导航路径保持稳定。
 2. 新文档分别写入 `docs/design/`、`docs/reports/`、`docs/notes/`；目录在首次新增相应文档时创建。
 3. 新性能采集写入 `perf/runs/<run_id>/`，原始数据只放 `raw/` 并保持 Git 忽略。
-4. 新提交包只写入 `releases/SquareSumV1-YYYYmmdd_HHMMSS/`，保留一个 `package.zip` 和一个 `manifest.yaml`，不新增同名解压目录。
+4. 新提交包只写入 `releases/SquareSumV1-YYYYmmdd_HHMMSS/`，保留一个同名 `SquareSumV1-YYYYmmdd_HHMMSS.zip` 和一个 `manifest.yaml`，不新增同名解压目录。
 5. 只有在工作树干净且引用已核对时，才单独迁移小型 Markdown/CSV；不整体搬迁历史 profiling。
+
+## 存储维护
+
+`scripts/clean_generated.sh` 默认只预览。它只处理被 Git 忽略、内部无跟踪文件的
+build、raw/profile、临时 OPP 和缓存；历史/release zip 与兼容解包目录不会被选中。
+
+```bash
+bash scripts/clean_generated.sh
+sudo -n bash scripts/clean_generated.sh --apply
+```

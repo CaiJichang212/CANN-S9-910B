@@ -1,0 +1,4 @@
+testcase_name,api_name,tensor_view_shapes,tensor_dtypes,scalar_dtypes,attributes,output_tensor_indexes,precision_tolerances,absolute_precision,input_data_ranges,scalar_data_ranges,tensor_list_distribution
+aclnnSquareSumV1_L1_270,aclnnSquareSumV1,"((66,90,51,),(90,),)","('float32','float32',)",,"{""axis"": [2, 0], ""keepDims"": false}","(1,)",,,"(([-1000,-10],),)",,
+aclnnSquareSumV1_L1_307,aclnnSquareSumV1,"((33,255,127,),(255,),)","('float16','float16',)",,"{""axis"": [0, -1], ""keepDims"": false}","(1,)",,,"(([-65504.0,-65504.0],),)",,
+empty_nonreduce_multi_axis,aclnnSquareSumV1,"((2,0,3,4,),(0,4,),)","('bfloat16','bfloat16',)",,"{""axis"": [0, 2], ""keepDims"": false}","(1,)",,,"(([-1,1],),)",,

@@ -1,0 +1,42 @@
+run_id: mode3-fulltile-skipzero-sync-20260901_022004
+purpose: screening
+operator: SquareSumV1
+candidate_id: mode3-fulltile-skipzero-sync-20260901_022004
+parent_id: mode3-parent-baseline-20260831_235019
+status: rejected_screening
+sources:
+  host_tiling_sha256: 8035875059958fb45d5fc606f3090609a057391c09220da10dd0bf0516219617
+  kernel_header_sha256: 09af456029bcf4e9e3863856510ab5df539a9bc51aa2e086227bfa3b7a52b529
+  candidate_patch_sha256: acfd47f36a1860bac3108af04e2704020bad4eb35dfeb05973a46d2b9c1e6b75
+artifacts:
+  run_sha256: ecf550f01846b89eefc321d38a19b16779bd7e100b1b3b2603985635eab146f7
+  host_artifacts_match_parent: true
+  kernel_object_sha256:
+    SquareSumV1_49f03b38bcf38192151ad1af31bcaf03.o: 1966fc6bc2e3d236e41373130c36581302c34c1d3b89c1dd04f067d7f10558db
+    SquareSumV1_c50bd7ff8065d2a0ad0578537fefa355.o: 3aa0a2cba93afddf2c4acd00b046e04b1ffd05a4f1866e3a59cceeb4bf79b359
+    SquareSumV1_e21f218258c0e74703e6bfcb30e95f7d.o: 8fe27e23ca8d185d930faf9c147bf2fd17466833ca53131f3785582e73abf4e9
+tests:
+  host_ut: pass_103_of_103
+  npu_correctness_r1: pass_44_plus_4_plus_4
+  npu_correctness_r2: pass_44_plus_4_plus_4
+  correctness_log_sha256: dba7603c977512d257631aa4c8ea41647567a433d8459f1e3dd465ce6be11030
+screening:
+  parent_fp16_us: 123.765
+  candidate_fp16_us: 124.8715
+  parent_fp32_us: 36.7615
+  candidate_fp32_us: 35.9965
+  parent_bf16_us: 126.0085
+  candidate_bf16_us: 135.888
+  parent_tiny_us: 6.0665
+  candidate_tiny_us: 5.493
+decision:
+  local_status: rejected
+  correctness_gate: pass
+  target_gate: fail
+  global_gate: not_run
+  regression_gate: fail_bf16_screen
+  structure_gate: pass
+  reason: neither fp16 nor fp32 reached 7 percent and 3 us; BF16 regressed 7.84 percent and 9.8795 us
+started_at: 2026-09-01T02:20:04+08:00
+finished_at: 2026-09-01T02:31:57+08:00
+

@@ -1,0 +1,18 @@
+gate,status,metric,value,evidence
+host_ut,PASS,cases,106/106,SquareSumV1/tests/ut/run.sh
+mock_st,PASS,cases,L0=117/117;L1=462/462;L2=9/9;boundary=26/26,SquareSumV1/tests/st/run.sh --mock --all
+real_st,PASS,cases,L0=106/106;L1=361/361,SquareSumV1/tests/st/run.sh --real
+score_correctness,PASS,cases,44/44,SquareSumV1/npu_acceptance_test.py
+bf16_correctness,PASS,cases,4/4,SquareSumV1/npu_acceptance_test.py
+invalid_input,PASS,cases,4/4,SquareSumV1/npu_acceptance_test.py
+mode6_random_regression,PASS,cases,20/20,perf/cases/mode6_bf16_regression.csv
+mode4_empty_regression,PASS,cases,3/3,perf/cases/mode4_dense_sync_regression.csv
+case4_stress,PASS,sequences,100,SquareSumV1/npu_case4_regression.py
+memory_safety,PASS,dtypes,3/3,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/raw/memcheck_*.log
+paired_performance,PASS,median_total_delta_us,-131.97175,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/paired_fp16/paired_summary.json
+paired_performance,PASS,median_total_improvement_percent,17.66334,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/paired_fp16/paired_summary.json
+mode4_fp16,PASS,improvement_percent,74.88190,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/paired_fp16/paired_summary.json
+mode4_fp32,PASS,improvement_percent,75.21362,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/paired_fp32/paired_summary.json
+mode6_screen,PASS,p50_sum_us,51.330->50.514,perf/runs/mode4-dense-output-v-mte3-sync-20260901_045724/metadata/mode6_candidate.json
+package,PENDING,release_id,pending,s8 clean build required
+official,PENDING,result,unknown,not submitted

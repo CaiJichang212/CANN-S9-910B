@@ -1,0 +1,32 @@
+run_id: mode3-min64b-a0tile-20260901_023607
+purpose: screening
+operator: SquareSumV1
+candidate_id: mode3-min64b-a0tile-20260901_023607
+parent_id: mode3-parent-baseline-20260831_235019
+status: rejected_screening
+sources:
+  host_tiling_sha256: d986857dd4d969de07216b6003630b22be9a34813845f1704cef05bd97ca5b00
+  candidate_patch_sha256: 72bb2c7416707c33bd8fda62b660daa4bdac19070e2ad09fb2fb1428ba9e65d0
+artifacts:
+  run_sha256: d6ddfaabfe1bbc12c13eceebf0bfe372ddee66abee03f79daab07df4ff03b165
+  kernel_objects_match_parent: true
+tests:
+  host_ut: pass_104_of_104
+  npu_correctness: pass_44_plus_4_plus_4
+  correctness_log_sha256: dba7603c977512d257631aa4c8ea41647567a433d8459f1e3dd465ce6be11030
+screening:
+  fp16: {parent_us: 123.765, candidate_us: 125.9485, candidate_block_dim: 16}
+  fp32: {parent_us: 36.7615, candidate_us: 47.788, candidate_block_dim: 7}
+  bf16: {parent_us: 126.0085, candidate_us: 126.401, candidate_block_dim: 16}
+  tiny: {parent_us: 6.0665, candidate_us: 6.016, candidate_block_dim: 1}
+decision:
+  local_status: rejected
+  correctness_gate: pass
+  target_gate: fail
+  global_gate: not_run
+  regression_gate: fail_fp32
+  structure_gate: pass
+  reason: fewer cores outweighed wider DMA and fp32 regressed about 30 percent
+started_at: 2026-09-01T02:36:07+08:00
+finished_at: 2026-09-01T02:47:51+08:00
+

@@ -1,0 +1,12 @@
+metric,parent,candidate,unit,status,evidence
+paired_total_p50_median_delta,0,-134.801,us,PASS,paired_final/paired_summary.json
+paired_total_improvement,0,17.4918,percent,PASS,paired_final/paired_summary.json
+multi_noncontiguous_fp16_p50,67.2495,18.4205,us,PASS,paired_final/paired_cases.csv
+multi_noncontiguous_fp32_p50,67.154,17.62625,us,PASS,paired_final/paired_cases.csv
+three_layer_fp16_p50,248.7875,47.426,us,PASS,metadata/sync_parent.json
+three_layer_fp32_p50,244.1495,46.832,us,PASS,metadata/sync_parent.json
+three_layer_bf16_p50,253.858,50.766,us,PASS,metadata/sync_parent.json
+release_42case_p50_sum,,635.1235,us,PASS,metadata/release_profile_smoke.json
+host_ut,,107/107,count,PASS,manifest.yaml
+final_real_st,,467/467,count,PASS,manifest.yaml
+score_bf16_invalid,,44+4+4,count,PASS,manifest.yaml

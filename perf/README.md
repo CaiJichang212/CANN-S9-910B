@@ -53,11 +53,20 @@ perf/runs/<run_id>/
 | `SquareSumV1/docs/perf/` | profiling CSV 中间汇总，Git 忽略 |
 
 历史结果的解释入口见 [`docs/INDEX.md`](../docs/INDEX.md)。历史目录名不能复用，新采集不得写回或覆盖这些目录。
+当 manifest、summary、候选结论和报告均已核对后，raw/profile 可用
+`scripts/clean_generated.sh` 回收；脚本、case、哈希和小型汇总继续保留。
 
 ## 采集门禁
 
 1. 先在 `candidates.csv` 建立 candidate 与 parent，再创建 run。
 2. 同机比较必须记录包哈希、设备、频率/占用快照和 A/B 顺序；候选与父版本分别使用隔离 OPP。
-3. 正确性通过后才记录性能结论。当前本地门禁为评分路径 44/44、BF16 3/3、非法输入 4/4。
+3. 正确性通过后才记录性能结论。当前本地门禁为评分路径 44/44、BF16 4/4、非法输入 4/4。
 4. `custom_op.cpp` 每次调用会发射 30 个 SquareSumV1 和 30 个 `aclnnMul`；统计需过滤 Mul，并从目标 task 的第 11 至 30 次计算 P50/CV。
 5. 外部历史 Case4 为 `Run failed`，没有新回执前不得把本地通过改写为正式外部通过。
+
+## 当前接受候选
+
+- Run：`mode4-all-layer-dense-singlecore-20260901_075612`
+- Release：`SquareSumV1-20260901_090646`
+- 六轮 42 workload：6/6 改善，中位总降幅 `134.801 us`（`17.4918%`），无 material regression。
+- 最终 release smoke：P50 合计 `635.1235 us`；正式官方隐藏 Case 结果仍未知。

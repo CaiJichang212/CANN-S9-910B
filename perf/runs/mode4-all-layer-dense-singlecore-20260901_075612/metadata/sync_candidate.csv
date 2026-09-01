@@ -1,0 +1,13 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,mode1_fp16,2,30,10,20,7.122999999999999,8.149,7.1751499999999995,0.10546721745935086,6.318,8.149,"""2,30000""",FLOAT16,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+1,mode4_fallback_fp16,1,30,10,20,47.426,50.142,47.87025,0.02798853940704028,46.439,50.182,"""2,3,2,3,2,3,2,3""",FLOAT16,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+2,mode5_fp16,5,30,10,20,6.2675,6.419,6.2335,0.021236977783008166,5.976,6.439,"""65536""",FLOAT16,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+3,mode7_fp16,17,30,10,20,5.101,5.473,5.105700000000001,0.04137942687400202,4.849,5.613,"""257""",FLOAT16,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+4,mode1_fp32,2,30,10,20,7.184,7.727,7.147150000000001,0.06773716761419393,6.54,7.747,"""2,30000""",FLOAT,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+5,mode4_fallback_fp32,1,30,10,20,46.832,47.788,46.6539,0.019397351413896095,44.428,47.848,"""2,3,2,3,2,3,2,3""",FLOAT,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+6,mode5_fp32,5,30,10,20,6.479,6.68,6.494,0.018964582481656375,6.258,6.78,"""65536""",FLOAT,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+7,mode7_fp32,33,30,10,20,6.851,7.284,6.8009,0.04435904629447089,6.318,7.505,"""257""",FLOAT,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+8,mode1_bf16,2,30,10,20,7.676,8.511,7.725499999999999,0.07387090988196914,7.083,8.551,"""2,30000""",DT_BF16,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+9,mode4_fallback_bf16,1,30,10,20,50.766,51.671,50.66705,0.014127906676181206,49.176,51.691,"""2,3,2,3,2,3,2,3""",DT_BF16,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+10,mode5_bf16,5,30,10,20,6.58,6.862,6.6059,0.026990980725341233,6.338,7.083,"""65536""",DT_BF16,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+11,mode7_bf16,17,30,10,20,5.09,5.392,5.074450000000001,0.03634660062344806,4.789,5.412,"""257""",DT_BF16,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

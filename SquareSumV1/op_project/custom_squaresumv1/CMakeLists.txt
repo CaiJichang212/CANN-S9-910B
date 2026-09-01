@@ -34,6 +34,29 @@ npu_op_package(${package_name}
         INSTALL_PATH ${CMAKE_BINARY_DIR}
 )
 
+# Some CANN 8.5 layouts omit toolkit/version.info even though the package
+# helper still reads that legacy path. Rewrite the generated vendor identity
+# from the compiler version file before CPack creates the .run package.
+set(CANN_COMPILER_VERSION_FILE "${ASCEND_CANN_PACKAGE_PATH}/compiler/version.info")
+if(NOT EXISTS "${CANN_COMPILER_VERSION_FILE}")
+    set(CANN_COMPILER_VERSION_FILE "${ASCEND_CANN_PACKAGE_PATH}/toolkit/version.info")
+endif()
+if(NOT EXISTS "${CANN_COMPILER_VERSION_FILE}")
+    message(FATAL_ERROR "CANN compiler version file not found under ${ASCEND_CANN_PACKAGE_PATH}")
+endif()
+file(STRINGS "${CANN_COMPILER_VERSION_FILE}" CANN_COMPILER_VERSION_LINE
+    REGEX "^Version=" LIMIT_COUNT 1)
+string(REGEX REPLACE "^Version=" "" CANN_COMPILER_VERSION "${CANN_COMPILER_VERSION_LINE}")
+if(CANN_COMPILER_VERSION STREQUAL "")
+    message(FATAL_ERROR "CANN compiler version is empty in ${CANN_COMPILER_VERSION_FILE}")
+endif()
+set(WRITE_VENDOR_VERSION_SCRIPT "${CMAKE_BINARY_DIR}/write_vendor_version.cmake")
+file(GENERATE OUTPUT "${WRITE_VENDOR_VERSION_SCRIPT}"
+    CONTENT "file(WRITE \"${CMAKE_BINARY_DIR}/version.info\" \"custom_opp_compiler_version=${CANN_COMPILER_VERSION}\\n\")\n")
+add_custom_command(TARGET gen_version_info POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -P "${WRITE_VENDOR_VERSION_SCRIPT}"
+    VERBATIM)
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/op_host")
     add_subdirectory(op_host)
 endif()

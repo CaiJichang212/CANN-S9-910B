@@ -57,7 +57,10 @@ add_executable(test_aclnn_square_sum_v1 test_aclnn_square_sum_v1.cpp)
 # Link Ascend libraries for Real mode
 if(NOT USE_MOCK)
     # Find the current package identity (vendors/customize), preferring the
-    # isolated OPP selected by SQUARESUMV1_OPP_ROOT.
+    # isolated OPP selected by SQUARESUMV1_OPP_ROOT.  These locations must not
+    # survive a reconfigure because every validation run installs a new OPP.
+    unset(CUSTOM_OP_INCLUDE_DIR CACHE)
+    unset(CUSTOM_OP_LIBRARY CACHE)
     find_path(CUSTOM_OP_INCLUDE_DIR
         NAMES aclnn_square_sum_v1.h
         PATHS ${CUSTOM_OP_INCLUDE_HINTS}

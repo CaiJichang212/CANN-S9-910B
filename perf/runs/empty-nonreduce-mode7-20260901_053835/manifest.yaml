@@ -1,0 +1,64 @@
+schema_version: 1
+run_id: "empty-nonreduce-mode7-20260901_053835"
+operator: "SquareSumV1"
+created_at: "2026-09-01T05:50:00+08:00"
+status: "local-accepted-pending-package"
+candidate:
+  id: "empty-nonreduce-mode7-20260901_053835"
+  parent: "mode4-dense-output-v-mte3-sync-20260901_045724"
+  performance_parent: "mode3-parent-baseline-20260831_235019"
+source:
+  commit: "9ebc145744ad630fe9125f6be4d440046dc7dc48"
+  worktree_dirty: true
+  root: "SquareSumV1/op_project/custom_squaresumv1"
+  sha256: "146589376522de3510013f32a2eef60e835951c4d1f538c3f8987dd7e44f4a17"
+  host_tiling_sha256: "5a89c0e61c7c76839f855956f83210731d3d2720aca751b3d38e78c4d2e3655f"
+  kernel_header_sha256: "82dac7873c8c3b79a81220a73bb79c606653b107e6db57f3dcc653bd0f1f4a08"
+artifact:
+  path: "perf/runs/empty-nonreduce-mode7-20260901_053835/raw/candidate.run"
+  sha256: "b3e7f2f2fd56fff52ba348a3b618007eefcd4a802e6d01f45153cebb47f6942a"
+  status: "dev-build-verified"
+environment:
+  soc: "ascend910b"
+  device: "Ascend 910B4-1"
+  physical_device: 7
+  bus_id: "0000:42:00.0"
+  cann: "8.5.0"
+  container: "squaresumv1-npu-liyc-20260901"
+correctness:
+  host_ut: "106/106 PASS"
+  mock_st: "L0 117/117; L1 462/462; L2 9/9; boundary 26/26 PASS"
+  real_st: "L0 106/106 with 11 resource skips; L1 361/361 with 101 resource skips"
+  score_matrix: "44/44 PASS"
+  bf16_matrix: "4/4 PASS"
+  invalid_input: "4/4 PASS"
+  targeted_mode6: "20/20 PASS across five processes"
+  targeted_mode4_empty: "3/3 PASS"
+  mode4_rank8: "3 dtype x 3 routes x 10 repeats PASS"
+  case4_stress: "fp16/fp32 x 100 wrapper sequences PASS"
+memory_safety:
+  status: "PASS"
+  note: "fp16/fp32/bf16 memcheck captured the matching Kernel and reported no memory error"
+performance:
+  evidence_run: "mode4-dense-output-v-mte3-sync-20260901_045724"
+  inheritance: "all three Kernel object SHA256 values are identical between this Host-only fix and the evidence run"
+  rounds: 6
+  case_count: 42
+  task_count_per_profile: 1260
+  warmup_per_case: 10
+  measured_per_case: 20
+  parent_sum_median_delta_us: -131.97175
+  total_improvement_percent: 17.66334
+  target_fp16_improvement_percent: 74.88190
+  target_fp32_improvement_percent: 75.21362
+  improved_rounds: "6/6"
+  material_regressions: []
+  mode6_sum_parent_us: 51.330
+  mode6_sum_candidate_us: 50.514
+official:
+  submitted: false
+  result: "unknown"
+  goal_status: "pending-official-evaluation"
+package:
+  release_id: "pending"
+  status: "pending-s8-clean-build"

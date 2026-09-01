@@ -1,0 +1,37 @@
+schema_version: 1
+release_id: "SquareSumV1-20260901_090646"
+operator: "SquareSumV1"
+created_at: "2026-09-01T09:08:04+08:00"
+status: "local-verified-pending-official"
+source:
+  commit: "9ebc145744ad630fe9125f6be4d440046dc7dc48"
+  worktree_dirty: true
+  root: "SquareSumV1/op_project/custom_squaresumv1"
+  scope: "CMakeLists.txt,CMakePresets.json,build.sh,op_api,op_graph,op_host,op_kernel"
+  sha256: "b8d705aa30e69aea163e5139687aacf82ed092e269a1c6fb9ff39755dd1a776a"
+artifacts:
+  package:
+    path: "releases/SquareSumV1-20260901_090646/SquareSumV1-20260901_090646.zip"
+    sha256: "dfc50b075bd867604559c9ee2e78c632dc9b8938fb4b3ed8ba0f8078ef1e5442"
+    archive_root: "SquareSumV1-20260901_090646"
+  run:
+    filename: "custom_opp_euleros_aarch64.run"
+    sha256: "a1caa4208c9fca6911ea464a6651c94401683c35a0aef369c99fe99a83e24f2e"
+build:
+  soc: "ascend910b"
+  cann_version: "8.5.0"
+  clean_build: true
+verification:
+  archive_layout: "PASS: one root with op_host op_kernel and one run"
+  source_package: "PASS: dynamic square_sum_v1.cpp h py present"
+  installed_compiler_version: "custom_opp_compiler_version=8.5.0"
+  kernel_identity: "PASS: all three object hashes equal the six-round performance candidate"
+  host_ut: "107/107 PASS"
+  real_st: "L0 106/106 and L1 361/361 PASS"
+  acceptance: "44/44 score + 4/4 BF16 + 4/4 invalid PASS"
+  rank8: "three dtypes x three routes x ten repeats PASS"
+  case4: "large address empty reduce and 100 wrapper sequences PASS"
+  performance_smoke_p50_sum_us: 635.1235
+official:
+  submitted: false
+  result: "unknown"

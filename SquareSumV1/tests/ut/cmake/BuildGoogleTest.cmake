@@ -31,6 +31,11 @@ set(GTEST_SOURCE_DIR ${CMAKE_BINARY_DIR}/3rd_party/gtest-src)
 
 # Download URL (using gitcode mirror for China access)
 set(GTEST_URL "https://gitcode.com/cann-src-third-party/googletest/releases/download/v${GTEST_VERSION}/googletest-${GTEST_VERSION}.tar.gz")
+if(DEFINED ENV{GTEST_ARCHIVE} AND EXISTS "$ENV{GTEST_ARCHIVE}")
+    get_filename_component(GTEST_ARCHIVE "$ENV{GTEST_ARCHIVE}" ABSOLUTE)
+    set(GTEST_URL "file://${GTEST_ARCHIVE}")
+    message(STATUS "  Google Test archive: ${GTEST_ARCHIVE}")
+endif()
 
 # Compiler flags - CRITICAL: Use OLD ABI
 set(GTEST_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0 -O2 -D_FORTIFY_SOURCE=2 -fPIC -fstack-protector-all -w")

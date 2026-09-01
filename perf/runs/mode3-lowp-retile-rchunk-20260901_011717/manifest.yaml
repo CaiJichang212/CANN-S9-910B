@@ -1,0 +1,71 @@
+run_id: mode3-lowp-retile-rchunk-20260901_011717
+purpose: paired_ab
+operator: SquareSumV1
+candidate_id: mode3-lowp-retile-rchunk-20260901_011717
+parent_id: mode3-parent-baseline-20260831_235019
+status: rejected_target_gate
+git:
+  branch: dev-square-sum-v1-0710
+  commit: 9ebc145744ad630fe9125f6be4d440046dc7dc48
+  candidate_patch_sha256: 486c61305d3c5a441ea0283b6d7b690eb92bbd1bd4a03187c1e8fdf9bd7cc9b9
+sources:
+  host_tiling_sha256: f946661f8596f2f5dd0e1956f8fbc91de80e179e7c77e575ad216ac4503d8b7d
+  acceptance_suite_sha256: 79ad990225517aa4efe7975ffd1cf4bb8f48a34b47619658f2c328858335ac9d
+  case_manifest_sha256: 815274e37777c7de8d840adbbc68d06c26e95a7f948ab32d101c586c986cbcf4
+  profile_script_sha256: f7c381d460e902de00ccfaa31f9d6773d8e2297411ea09e95da53e7272b10485
+  round_order_sha256: b41a6a77c6b60d14456d14d3edd1d71ad5d993d7db299212515b0649c064b25f
+artifacts:
+  run_path: raw/candidate.run
+  run_sha256: 0f6f06d704e2314ee061610b8e5e33a8f9734036e4675ecc664d7c0abeb8f8dc
+  opapi_sha256: 3fd7622ae270f008215ba8e0f70f335f8351f00e705512a737fc0c84b7881a1e
+  host_tiling_sha256: 871ae6d3c515bda20bb360831feb45e4ff227a0772507dd75f38184d63869a72
+  proto_sha256: 17305008e80e37d609137fdb355cc3c51297becc791f1917efb7d8c7c10a466a
+  kernel_objects_match_parent: true
+build:
+  image_id: sha256:145c1e7e479c1efa62fa4448ec55ee12e4f66b1abaffb7658fe6953d5052cae0
+  cann: 8.5.0
+  soc: ascend910b
+runtime:
+  container: squaresumv1-npu-liyc-20260901
+  physical_device: 7
+  logical_device: 0
+  bus_id: 0000:42:00.0
+  python: 3.9.10
+  torch: 2.5.1
+  torch_npu: 2.5.1.post1
+  caller_sha256: 346dcbadaf8c61eb7904b5498163548c6ea6615d2cb91f59312b4e55627edfff
+tests:
+  host_ut: pass_103_of_103
+  parent_npu_correctness: pass_44_plus_4_plus_4
+  candidate_npu_correctness: pass_44_plus_4_plus_4
+  parent_correctness_log_sha256: dba7603c977512d257631aa4c8ea41647567a433d8459f1e3dd465ce6be11030
+  candidate_correctness_log_sha256: dba7603c977512d257631aa4c8ea41647567a433d8459f1e3dd465ce6be11030
+performance:
+  rounds: 6
+  order: AB_BA_AB_BA_AB_BA
+  tasks_per_case: 30
+  warmup_tasks: 10
+  statistic: per-case task 11-30 P50; paired round and paired-case medians
+  rounds_improved: 4
+  median_total_delta_us: -14.37
+  median_total_improvement_percent: 1.91249
+  target_parent_median_us: 120.787
+  target_candidate_median_us: 114.0265
+  target_paired_delta_median_us: -6.7605
+  target_improvement_percent: 5.59704
+  target_faster_rounds: 5
+  bf16_screen_parent_us: 126.0085
+  bf16_screen_candidate_us: 116.6525
+  material_regression_cases: []
+  paired_summary_sha256: df9d600fa7dd5635ce51b7c6eac10c7cae60631d0aa42f9d76ee152e612ab8fe
+decision:
+  local_status: rejected
+  correctness_gate: pass
+  target_gate: fail
+  global_gate: pass
+  regression_gate: pass
+  structure_gate: pass
+  reason: target paired improvement 5.597 percent is below the predeclared 10 percent threshold
+started_at: 2026-09-01T01:17:17+08:00
+finished_at: 2026-09-01T01:59:15+08:00
+

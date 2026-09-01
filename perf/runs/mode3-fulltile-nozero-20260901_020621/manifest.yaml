@@ -1,0 +1,43 @@
+run_id: mode3-fulltile-nozero-20260901_020621
+purpose: correctness
+operator: SquareSumV1
+candidate_id: mode3-fulltile-nozero-20260901_020621
+parent_id: mode3-parent-baseline-20260831_235019
+status: rejected_correctness
+sources:
+  host_tiling_sha256: 8035875059958fb45d5fc606f3090609a057391c09220da10dd0bf0516219617
+  kernel_header_sha256: 9a5215385903a5193494fba14ebddc3c702de13d0f0b30a9a961200c2db8ce46
+  candidate_patch_sha256: 4e43c18ecab5bbe062b2db2a9e0a5fda3ac1f2f4748d2dd1eca09b1dbe9a481e
+artifacts:
+  run_sha256: d2060f6791a2da06df98b236f64b840347d4d08ab291ecdd296e03309868702c
+  opapi_sha256: 3fd7622ae270f008215ba8e0f70f335f8351f00e705512a737fc0c84b7881a1e
+  host_tiling_sha256: 2066d25eac5b73248611b6acd0ca09efe0cc14b034f653f29563a35991b44b12
+  proto_sha256: 6a821c49c1a890157382db3411abf257c2e6c9aa4a94f93095ce6da4c4e334b2
+  kernel_object_sha256:
+    SquareSumV1_49f03b38bcf38192151ad1af31bcaf03.o: 7c8ac41807e8ec6cd2a505360aa136fbad11408f032b847a43533f678ebbc8da
+    SquareSumV1_c50bd7ff8065d2a0ad0578537fefa355.o: a245a98e89df48c3e3a041245197082601806174e20b7fbb9ede65b59afc73a6
+    SquareSumV1_e21f218258c0e74703e6bfcb30e95f7d.o: 6fb3c8710be5fb75f77598f64465f434d5afbd68e105570e2c4ae491a84a798a
+runtime:
+  physical_device: 7
+  logical_device: 0
+  cann: 8.5.0
+  caller_sha256: 346dcbadaf8c61eb7904b5498163548c6ea6615d2cb91f59312b4e55627edfff
+tests:
+  host_ut: pass_103_of_103
+  npu_correctness: fail_42_of_44_plus_3_of_4_plus_4_of_4
+  correctness_log_sha256: a9b65e69e39a92d8e0bd8bdfe08a5692ad1582cc2b008aeb1c1a445a0d91869e
+  failing_cases:
+    - ara_fp32_r4096
+    - ara_fp32_r5000
+    - bf16_ara_rowsplit
+decision:
+  local_status: rejected
+  correctness_gate: fail
+  target_gate: not_run
+  global_gate: not_run
+  regression_gate: not_run
+  structure_gate: incomplete
+  reason: removing the pre-copy PIPE_ALL broke the raw TBuf Vector-to-MTE2 reuse dependency
+started_at: 2026-09-01T02:06:21+08:00
+finished_at: 2026-09-01T02:16:06+08:00
+

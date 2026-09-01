@@ -1,0 +1,22 @@
+diff --git a/SquareSumV1/op_project/custom_squaresumv1/op_kernel/square_sum_v1.h b/SquareSumV1/op_project/custom_squaresumv1/op_kernel/square_sum_v1.h
+index 8333bce..0767712 100644
+--- a/SquareSumV1/op_project/custom_squaresumv1/op_kernel/square_sum_v1.h
++++ b/SquareSumV1/op_project/custom_squaresumv1/op_kernel/square_sum_v1.h
+@@ -656,10 +656,13 @@ __aicore__ inline void SquareSumV1<T>::ProcessAraRowSplit()
+ 
+                 LocalTensor<T> xLocal = inQueueXSingle.Get<T>();
+ 
+-                // DataCopyPad advances each UB block to a 32B boundary.  The
+-                // host guarantees alignedCols is an input-type 32B multiple;
+-                // clear the final partial A0 tile before copying its rows.
+-                Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rSize * alignedCols));
++                // Full tiles are completely overwritten by the DMA. Partial
++                // tails still need zeroes because the aligned columns join
++                // the RA reduction. Keep the barrier unconditional: it also
++                // protects raw TBuf reuse from the previous Vector stage.
++                if (a0Len < alignedCols) {
++                    Duplicate(xLocal, static_cast<T>(0), static_cast<int32_t>(rSize * alignedCols));
++                }
+                 PipeBarrier<PIPE_ALL>();
+ 
+                 DataCopyExtParams copyParams;

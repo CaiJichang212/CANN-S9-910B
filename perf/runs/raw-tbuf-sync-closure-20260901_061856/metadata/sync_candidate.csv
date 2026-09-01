@@ -1,0 +1,13 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,mode1_fp16,2,30,10,20,7.465,8.612,7.3785,0.12713398033410783,6.238,8.853,"""2,30000""",FLOAT16,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+1,mode4_fallback_fp16,1,30,10,20,245.578,252.54,245.76035000000002,0.015323470025092253,240.427,254.13,"""2,3,2,3,2,3,2,3""",FLOAT16,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+2,mode5_fp16,5,30,10,20,6.1065000000000005,6.338,6.100849999999999,0.027578253442836726,5.755,6.499,"""65536""",FLOAT16,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+3,mode7_fp16,17,30,10,20,5.211,5.433,5.21125,0.02777526862256606,4.869,5.452,"""257""",FLOAT16,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+4,mode1_fp32,2,30,10,20,7.022,8.27,7.1783,0.1155977015035684,6.218,8.411,"""2,30000""",FLOAT,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+5,mode4_fallback_fp32,1,30,10,20,242.902,247.369,243.08229999999998,0.012908544884247109,236.504,248.537,"""2,3,2,3,2,3,2,3""",FLOAT,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+6,mode5_fp32,5,30,10,20,6.2379999999999995,6.399,6.23365,0.018655590603749925,5.936,6.439,"""65536""",FLOAT,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+7,mode7_fp32,33,30,10,20,7.2035,7.525,7.143000000000001,0.042040135874805123,6.398,7.566,"""257""",FLOAT,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+8,mode1_bf16,2,30,10,20,8.169,8.673,8.137,0.05907538034454409,7.405,8.813,"""2,30000""",DT_BF16,"""2""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+9,mode4_fallback_bf16,1,30,10,20,257.3995,261.796,257.5576,0.010407700238510167,252.239,262.238,"""2,3,2,3,2,3,2,3""",DT_BF16,"""2,2,2,2,3""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+10,mode5_bf16,5,30,10,20,6.388,6.66,6.4155500000000005,0.019143028915530626,6.237,6.7,"""65536""",DT_BF16,"""""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+11,mode7_bf16,17,30,10,20,5.2515,5.493,5.26165,0.0352612870586925,4.89,5.714,"""257""",DT_BF16,"""257""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

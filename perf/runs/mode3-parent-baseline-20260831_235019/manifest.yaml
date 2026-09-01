@@ -1,0 +1,56 @@
+run_id: mode3-parent-baseline-20260831_235019
+purpose: baseline
+operator: SquareSumV1
+status: artifact_built_waiting_npu
+parent_baseline: b1ab2e04745e6163530027111fc4316adf363371
+git:
+  branch: dev-square-sum-v1-0710
+  commit: 9ebc145744ad630fe9125f6be4d440046dc7dc48
+  source_tree_matches_parent: true
+  source_dirty: clean
+sources:
+  host_registration_sha256: 907c51c8cb9ee1984b6a0ffffcb7723bf77fe4fe30ab02f222e37253e8930d5f
+  host_tiling_sha256: 8035875059958fb45d5fc606f3090609a057391c09220da10dd0bf0516219617
+  tiling_data_sha256: 0d4e919025475cda6e6170f15d20731c9839b46524e1da5830470df4fc3e2ca2
+  kernel_entry_sha256: 65cd367f61058114c4eb39130a167c6c555c38aaeefb64189b6b21b19b4dd017
+  kernel_header_sha256: 5d3593d0173141b21a01c5615946f841c02fe752b40118076c52b96e181dcdcf
+  opapi_sha256: f48482dd5ec7397d212a4cf42cf94c4e8e27e271a9c2dde49030cb239d4f8b41
+  caller_sha256: 87028860a534854cab232113b9fd984f333f4834617eb218d03a974aa437b21c
+artifacts:
+  run_path: raw/parent.run
+  run_sha256: 199592a838ebe3c8adbbd6558e3b70a67685d4be85bb8ffecfafda02a16fb416
+  opapi_sha256: 3fd7622ae270f008215ba8e0f70f335f8351f00e705512a737fc0c84b7881a1e
+  host_tiling_sha256: 2066d25eac5b73248611b6acd0ca09efe0cc14b034f653f29563a35991b44b12
+  proto_sha256: 6a821c49c1a890157382db3411abf257c2e6c9aa4a94f93095ce6da4c4e334b2
+  kernel_config_sha256: cf3516ce4579be123a86d393784920505b9a9014e912a5ce60238efcf481e482
+  kernel_object_sha256:
+    SquareSumV1_49f03b38bcf38192151ad1af31bcaf03.o: 699242351769c62ee9514a7c8b3a76d4d34da37e0121c30cdf9fafba679b2d9f
+    SquareSumV1_c50bd7ff8065d2a0ad0578537fefa355.o: 7b872c13ed5fa2ccf1a1b2dcfa4168dce32a843f2fd3cdb3932f4eb451db8146
+    SquareSumV1_e21f218258c0e74703e6bfcb30e95f7d.o: 9b39e013460ffdaa9cfe4d84b5d41a9003126abd75d17c92a5f004c6decece6f
+  dynamic_kernel_matches_source: true
+build:
+  image: swr.cn-south-1.myhuaweicloud.com/ascendhub/cann:8.5.0-910b-openeuler24.03-py3.11
+  image_id: sha256:145c1e7e479c1efa62fa4448ec55ee12e4f66b1abaffb7658fe6953d5052cae0
+  image_digest: sha256:98b8567237d8bf93bf4e9393f2353946c1562182ceafa746a9fbf50a5f0a0cf2
+  container: squaresumv1-build-liyc-20260831
+  cann: 8.5.0
+  soc: ascend910b
+  source_package: true
+  package_version_marker: empty
+  package_version_note: dev image lacks ASCEND_HOME_PATH/toolkit/version.info; final s8 package must report 8.5.0
+runtime:
+  provider_root: raw/opp_parent/vendors/customize
+  provider_validation: pending_npu_container
+  physical_device: pending_exclusive_device
+  logical_device: 0
+tests:
+  case_manifest_sha256: d1c89ebc1e1db3ec2e37c44525d9353de87c11551a742552495aae3ebf99cf4e
+  batch_driver_sha256: 91c3a479b31310c49f975ee73ce29f6343c01be31d6e82afaf68ffbdd248a4d9
+  host_library_build: pass
+  host_ut: blocked_missing_networkless_gtest_cache
+  npu_correctness: pending
+  pilot: pending
+  profiling: pending
+started_at: 2026-08-31T23:50:19+08:00
+artifact_finished_at: 2026-08-31T23:58:54+08:00
+

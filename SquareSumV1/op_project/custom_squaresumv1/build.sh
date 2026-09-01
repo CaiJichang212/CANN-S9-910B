@@ -149,6 +149,18 @@ echo "----------------------------------------------------------------"
 echo "[INFO] Building project with ${THREAD_NUM} threads..."
 cmake --build . --target all binary package -- -j ${THREAD_NUM}
 
+# The package identity must name the compiler that produced Host, Proto,
+# OpAPI and Kernel. CANN 8.5 installations may not provide the legacy
+# toolkit/version.info path used by the upstream helper, so CMake rewrites
+# this file from compiler/version.info and the build verifies it here.
+COMPILER_VERSION_FILE="${ASCEND_HOME_PATH}/compiler/version.info"
+EXPECTED_COMPILER_VERSION="$(sed -n 's/^Version=//p' "${COMPILER_VERSION_FILE}")"
+ACTUAL_COMPILER_VERSION="$(sed -n 's/^custom_opp_compiler_version=//p' "${BUILD_PATH}/version.info")"
+if [ -z "${EXPECTED_COMPILER_VERSION}" ] || [ "${ACTUAL_COMPILER_VERSION}" != "${EXPECTED_COMPILER_VERSION}" ]; then
+    echo "[ERROR] Invalid custom OPP compiler version: expected '${EXPECTED_COMPILER_VERSION}', got '${ACTUAL_COMPILER_VERSION}'" >&2
+    exit 1
+fi
+
 # The installed dynamic sources are copied from this staging directory.  Make
 # a stale copy a hard build failure: otherwise a package can contain an old
 # kernel header even when the local AscendC binary was rebuilt successfully.

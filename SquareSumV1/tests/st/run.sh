@@ -172,6 +172,7 @@ echo "设置环境变量..."
 
 # 设置 LD_LIBRARY_PATH（Real 模式优先使用本轮隔离 OPP）
 CUSTOM_OP_LIB_DIR=""
+CUSTOM_OP_RUNTIME_PRELOAD=""
 CUSTOM_OP_LIB_CANDIDATES=()
 if [ -n "${SQUARESUMV1_OPP_ROOT:-}" ]; then
     CUSTOM_OP_LIB_CANDIDATES+=("${SQUARESUMV1_OPP_ROOT}/op_api/lib")
@@ -196,6 +197,17 @@ else
         echo "错误: 未找到本轮 customize/op_api/lib；请设置 SQUARESUMV1_OPP_ROOT" >&2
         exit 1
     fi
+fi
+
+if [ -z "$USE_MOCK" ]; then
+    CUSTOM_OP_TILING_LIB="${SQUARESUMV1_OPP_ROOT}/op_impl/ai_core/tbe/op_tiling/lib/linux/aarch64/libcust_opmaster_rt2.0.so"
+    CUSTOM_OP_PROTO_LIB="${SQUARESUMV1_OPP_ROOT}/op_proto/lib/linux/aarch64/libcust_opsproto_rt2.0.so"
+    if [ ! -f "$CUSTOM_OP_TILING_LIB" ] || [ ! -f "$CUSTOM_OP_PROTO_LIB" ]; then
+        echo "错误: 隔离 OPP 缺少 Host Tiling 或 Proto 动态库" >&2
+        exit 1
+    fi
+    CUSTOM_OP_RUNTIME_PRELOAD="${CUSTOM_OP_TILING_LIB}:${CUSTOM_OP_PROTO_LIB}"
+    echo "运行时预加载: Host Tiling + Proto"
 fi
 
 echo "环境变量设置完成"
@@ -260,7 +272,8 @@ if [ -n "$EXTRA_CASE_FILE" ]; then
     fi
 fi
 
-"${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}" ${EXTRA_ARG} ${EXTRA_ARGS}
+LD_PRELOAD="${CUSTOM_OP_RUNTIME_PRELOAD}${LD_PRELOAD:+:${LD_PRELOAD}}" \
+    "${BUILD_DIR}/test_aclnn_square_sum_v1" "${CASE_FILE}" ${EXTRA_ARG} ${EXTRA_ARGS}
 
 TEST_RESULT=$?
 

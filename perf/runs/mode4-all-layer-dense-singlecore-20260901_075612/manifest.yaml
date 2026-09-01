@@ -1,0 +1,80 @@
+schema_version: 1
+run_id: "mode4-all-layer-dense-singlecore-20260901_075612"
+operator: "SquareSumV1"
+created_at: "2026-09-01T07:56:12+08:00"
+status: "package-verified-local"
+candidate:
+  id: "mode4-all-layer-dense-singlecore-20260901_075612"
+  parent: "raw-tbuf-sync-closure-20260901_061856"
+  performance_parent: "mode3-parent-baseline-20260831_235019"
+source:
+  commit: "9ebc145744ad630fe9125f6be4d440046dc7dc48"
+  worktree_dirty: true
+  root: "SquareSumV1/op_project/custom_squaresumv1"
+  sha256: "b8d705aa30e69aea163e5139687aacf82ed092e269a1c6fb9ff39755dd1a776a"
+  host_tiling_sha256: "baba373ed57bacf49aefe7c361e165a68f06f37e125320c9085983e739fb6823"
+  kernel_header_sha256: "3b9263f67b1e20cb580486e8881e08525c97f5591be7eff31820f6f319d6536c"
+artifact:
+  release_id: "SquareSumV1-20260901_090646"
+  package_path: "releases/SquareSumV1-20260901_090646/SquareSumV1-20260901_090646.zip"
+  package_sha256: "dfc50b075bd867604559c9ee2e78c632dc9b8938fb4b3ed8ba0f8078ef1e5442"
+  run_sha256: "a1caa4208c9fca6911ea464a6651c94401683c35a0aef369c99fe99a83e24f2e"
+  installed_opp: "raw/opp_release_final/vendors/customize"
+environment:
+  soc: "ascend910b"
+  device: "Ascend 910B4-1"
+  physical_device: 7
+  cann: "8.5.0"
+  npu_container: "squaresumv1-npu-liyc-20260901"
+  pack_container: "squaresumv1-pack-liyc-20260901"
+correctness:
+  host_ut: "107/107 PASS"
+  mock_st: "L0 117/117; L1 462/462; L2 9/9; boundary 26/26 PASS"
+  final_release_real_st: "L0 106/106 with 11 resource skips; L1 361/361 with 101 resource skips"
+  score_matrix: "44/44 PASS"
+  bf16_matrix: "4/4 PASS"
+  invalid_input: "4/4 PASS including int32 rejection"
+  sync_regression: "160/160 PASS across modes 1/4/5/7 and three dtypes"
+  mode4_rank8: "3 dtypes x 3 routes x 10 repeats PASS"
+  case4: "large-address >4 GiB PASS; empty reduction PASS; fp16/fp32 x 100 wrapper sequences PASS"
+memory_safety:
+  status: "PASS"
+  memcheck: "fp16/fp32/bf16 each captured 2 matching mode4 kernels with no error"
+  initcheck: "BF16 captured 2 matching mode4 kernels with no uninitialized read"
+  synccheck: "BF16 mode5 captured 1 matching kernel with no sync error"
+  evidence: "raw/sanitizer/unfiltered_*"
+performance:
+  rounds: 6
+  case_count: 42
+  task_count_per_profile: 1260
+  warmup_per_case: 10
+  measured_per_case: 20
+  improved_rounds: "6/6"
+  median_total_delta_us: -134.801
+  median_total_improvement_percent: 17.4918
+  target_fp16_parent_us: 67.2495
+  target_fp16_candidate_us: 18.4205
+  target_fp16_improvement_percent: 72.1972
+  target_fp32_parent_us: 67.154
+  target_fp32_candidate_us: 17.62625
+  target_fp32_improvement_percent: 73.3784
+  three_layer_fp16_improvement_percent: 80.9372
+  three_layer_fp32_improvement_percent: 80.8183
+  three_layer_bf16_improvement_percent: 80.0022
+  material_regressions: []
+  structure_pass: true
+  release_smoke_p50_sum_us: 635.1235
+  inheritance: "all three final s8 Kernel object SHA256 values equal the six-round candidate"
+package:
+  status: "PASS"
+  zip_unique_root: true
+  source_package: true
+  compiler_version: "8.5.0"
+  dynamic_kernel_header_sha256: "3b9263f67b1e20cb580486e8881e08525c97f5591be7eff31820f6f319d6536c"
+code_review:
+  stage0: "final code summary and API prestudy complete"
+  clause_review: "not run; local collector payload authorization was not provided"
+official:
+  submitted: false
+  result: "unknown"
+  goal_status: "pending-official-evaluation"

@@ -1,0 +1,5 @@
+cohort,case,parent_p50_us,parent_cv,candidate_p50_us,candidate_cv,delta_us,improvement_percent,parent_block_dim,candidate_block_dim,material_rule,status
+target,ara_fp16_r10000,123.765,0.0331114,108.775,0.0264536,-14.990,12.111663,28,28,at_least_10_percent_and_3us,pass
+target,ara_fp32_r5000,36.7615,0.0213436,36.55,0.0328911,-0.2115,0.575330,13,13,at_least_10_percent_and_3us,fail
+control,1d_fp16_n4,6.0665,0.0481521,5.443,0.0513760,-0.6235,10.277755,1,1,max_2us_or_5percent,immaterial
+

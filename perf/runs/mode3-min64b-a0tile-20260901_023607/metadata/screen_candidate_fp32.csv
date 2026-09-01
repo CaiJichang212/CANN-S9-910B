@@ -1,0 +1,2 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,screen_candidate_fp32,7,30,10,20,47.788,49.317,47.329899999999995,0.030883022948979183,44.709,49.437,"""1,5000,100""",FLOAT,"""1,100""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

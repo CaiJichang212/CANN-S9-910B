@@ -267,6 +267,22 @@ TEST_F(SquareSumV1TilingTest, tiling_empty_reduce_with_empty_output_is_noop)
     EXPECT_EQ(td->usedCoreNum, 1);
 }
 
+TEST_F(SquareSumV1TilingTest, tiling_empty_nonreduce_multi_axis_is_noop)
+{
+    // Dim 1 survives axis=[0,2], so the output shape is [0,4]. This must not
+    // enter mode 4 and construct an A0 tile with a zero divisor.
+    auto r = RunTiling({2, 0, 3, 4}, ge::DT_BF16, {0, 2});
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 7u);
+    EXPECT_EQ(td->noReduceTotalElements, 0u);
+    EXPECT_EQ(td->totalWorkItems, 0);
+    EXPECT_EQ(td->usedCoreNum, 1);
+    EXPECT_EQ(r.info.blockNum, 1u);
+}
+
 // The ACLNN front end rejects these too; exercising tiling directly prevents
 // malformed graph attributes from reaching CoalesceAxis/Kernel dispatch.
 TEST_F(SquareSumV1TilingTest, tiling_rejects_out_of_range_and_duplicate_axis)
@@ -1152,9 +1168,9 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp32)
     EXPECT_EQ(td->tileA0Align, 16);
     EXPECT_EQ(td->tileA0Len, 16);
     EXPECT_EQ(td->numA0Tiles, 4);
-    EXPECT_GT(td->rChunkSize, 0);
-    EXPECT_GT(td->numRChunks, 1);
-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
+    // FP32 is an explicit control cohort for the low-precision candidate.
+    EXPECT_EQ(td->rChunkSize, 733);
+    EXPECT_EQ(td->numRChunks, 10);
 }
 
 // =============================================================================
@@ -1174,9 +1190,67 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
     EXPECT_EQ(td->rLength, 5000);
     EXPECT_EQ(td->a0Length, 64);
     EXPECT_EQ(td->tileA0Align, 16);
-    EXPECT_GT(td->rChunkSize, 0);
-    EXPECT_GT(td->numRChunks, 1);
-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
+    EXPECT_EQ(td->rChunkSize, 489);
+    EXPECT_EQ(td->numRChunks, 11);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_bf16_retiles_rchunk)
+{
+    auto r = RunTiling({4, 5000, 64}, ge::DT_BF16, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 3u);
+    EXPECT_EQ(td->tileA0Align, 16);
+    EXPECT_EQ(td->rChunkSize, 489);
+    EXPECT_EQ(td->numRChunks, 11);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_runtime_core_count)
+{
+    auto fp16 = RunTiling({4, 10000, 100}, ge::DT_FLOAT16, {1}, false, 40);
+    auto bf16 = RunTiling({4, 10000, 100}, ge::DT_BF16, {1}, false, 40);
+    auto fp32 = RunTiling({1, 5000, 100}, ge::DT_FLOAT, {1}, false, 40);
+    ASSERT_TRUE(fp16.success);
+    ASSERT_TRUE(bf16.success);
+    ASSERT_TRUE(fp32.success);
+
+    auto* fp16Td = AsTilingData(fp16.info);
+    auto* bf16Td = AsTilingData(bf16.info);
+    auto* fp32Td = AsTilingData(fp32.info);
+    ASSERT_NE(fp16Td, nullptr);
+    ASSERT_NE(bf16Td, nullptr);
+    ASSERT_NE(fp32Td, nullptr);
+
+    EXPECT_EQ(fp16Td->tileA0Align, 16);
+    EXPECT_EQ(fp16Td->numA0Tiles, 7);
+    EXPECT_EQ(fp16Td->usedCoreNum, 28);
+    EXPECT_EQ(fp16Td->rChunkSize, 278);
+    EXPECT_EQ(fp16Td->numRChunks, 36);
+    EXPECT_EQ(bf16Td->tileA0Align, 16);
+    EXPECT_EQ(bf16Td->usedCoreNum, 28);
+    EXPECT_EQ(bf16Td->rChunkSize, 278);
+    EXPECT_EQ(fp32Td->tileA0Align, 8);
+    EXPECT_EQ(fp32Td->numA0Tiles, 13);
+    EXPECT_EQ(fp32Td->usedCoreNum, 13);
+    EXPECT_EQ(fp32Td->rChunkSize, 733);
+    EXPECT_EQ(fp32Td->numRChunks, 7);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_without_core_retile_keeps_parent_rchunk)
+{
+    auto r = RunTiling({20, 5000, 64}, ge::DT_FLOAT16, {1});
+    ASSERT_TRUE(r.success);
+
+    auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+
+    EXPECT_EQ(td->tilingMode, 3u);
+    EXPECT_EQ(td->tileA0Align, 64);
+    EXPECT_EQ(td->rChunkSize, 489);
+    EXPECT_EQ(td->numRChunks, 11);
 }
 
 // =============================================================================
@@ -1185,7 +1259,7 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
 TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
 {
     // shape=[4, 7000, 64], axis=[1], fp32
-    // rChunkSize should be the max that fits in UB: 765
+    // FP32 keeps the parent chunk selected before the final A0 retile.
     auto r = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
     ASSERT_TRUE(r.success);
 
@@ -1195,6 +1269,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
     ASSERT_EQ(td->tilingMode, 3u);
     int64_t rChunk = td->rChunkSize;
     int64_t tileA0 = td->tileA0Align;
+    EXPECT_EQ(rChunk, 733);
+    EXPECT_EQ(td->numRChunks, 10);
 
     // Verify rChunkSize * tileA0 fits in UB
     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * sizeof(float)
@@ -1424,7 +1500,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_boundary)
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
 {
-    // shape=[4, 5000, 64], axis=[1], fp16 → rChunkSize=510
+    // shape=[4, 5000, 64], axis=[1], fp16. The parent sizes R with the
+    // initial 64-column row-split tile before the final A0 core split.
     auto r = RunTiling({4, 5000, 64}, ge::DT_FLOAT16, {1});
     ASSERT_TRUE(r.success);
 
@@ -1436,7 +1513,10 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
     int64_t tileA0 = td->tileA0Align;
     uint32_t ts = 2;  // fp16 typeSize
 
-    // Verify rChunkSize fits in UB (fp16: input + fp32 compute buffer)
+    EXPECT_EQ(rChunk, 489);
+    EXPECT_EQ(td->numRChunks, 11);
+
+    // Verify the parent-selected chunk remains within physical UB.
     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * ts   // input buffer
                        + static_cast<uint64_t>(rChunk) * tileA0 * 4UL  // fp32 compute buffer
                        + tileA0 * 4UL                                    // acc buffer
@@ -1792,14 +1872,13 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_3d_workspace_offset)
 // -----------------------------------------------------------------------------
 
 // =============================================================================
-// 68. Workspace size: Key=4 padded scalar slots + DAV_C220 user reserve
+// 68. Workspace size: two-layer Key=4 dense fp32 stage + user reserve
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
 {
     // shape=[4, 100, 64], axis=[0, 2], fp32
-    // The first layer produces 4*100=400 fp32 values. The safe one-core
-    // protocol assigns each value one 32B slot, then requests the 16MiB
-    // framework reserve before its user workspace.
+    // The first layer produces 4*100=400 dense fp32 values, followed by the
+    // 16MiB framework reserve and 4KiB user-workspace alignment.
     auto r = RunTiling({4, 100, 64}, ge::DT_FLOAT, {0, 2});
     ASSERT_TRUE(r.success);
 
@@ -1808,19 +1887,19 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    size_t expectedWs = static_cast<size_t>(400) * 8 * sizeof(float);
+    size_t expectedWs = static_cast<size_t>(400) * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
 }
 
 // =============================================================================
-// 69. Workspace size: Key=4 fp16 uses the same fp32 scalar-slot staging
+// 69. Workspace size: two-layer Key=4 fp16 also stages dense fp32
 // =============================================================================
 TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
 {
     // shape=[2, 50, 32], axis=[0, 2], fp16
-    // Layer 0 produces 2*50=100 values, each in an eight-float slot.
+    // Layer 0 produces 2*50=100 dense fp32 values.
     auto r = RunTiling({2, 50, 32}, ge::DT_FLOAT16, {0, 2});
     ASSERT_TRUE(r.success);
 
@@ -1829,10 +1908,19 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_workspace_size_fp16)
     ASSERT_EQ(td->tilingMode, 4u);
 
     ASSERT_GE(r.info.workspaceSizes.size(), 1u);
-    size_t expectedWs = static_cast<size_t>(100) * 8 * sizeof(float);
+    size_t expectedWs = static_cast<size_t>(100) * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_rejects_workspace_alignment_overflow)
+{
+    // The first reduction leaves 2 * huge dense fp32 values. Their byte size
+    // fits size_t but adding the 4 KiB alignment tail does not.
+    constexpr int64_t huge = std::numeric_limits<int64_t>::max() / 4;
+    auto r = RunTiling({huge, 2, 2}, ge::DT_FLOAT, {0, 2});
+    EXPECT_FALSE(r.success);
 }
 
 // =============================================================================
@@ -2197,9 +2285,9 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_5d_max_dim)
     EXPECT_EQ(td->usedCoreNum, 1);
     EXPECT_EQ(r.info.blockNum, 1u);
 
-    // Two intermediate stages are stored as one 32B slot per fp32 scalar:
-    // 2400 values after axis 4 and 24 after axis 2.
-    size_t expectedWs = static_cast<size_t>(2400 + 24) * 8 * sizeof(float);
+    // Two disjoint dense fp32 stages hold 2400 values after axis 4 and 24
+    // values after axis 2.
+    size_t expectedWs = static_cast<size_t>(2400 + 24) * sizeof(float);
     expectedWs = (expectedWs + 4095) & ~static_cast<size_t>(4095);
     expectedWs += DAV_C220_USER_WORKSPACE_OFFSET;
     EXPECT_EQ(r.info.workspaceSizes[0], expectedWs);
@@ -2271,7 +2359,7 @@ TEST_F(SquareSumV1TilingTest, tiling_reduce_all_cooperative_uses_partial_workspa
     EXPECT_EQ(r.info.workspaceSizes[0], DAV_C220_USER_WORKSPACE_OFFSET + 4096u);
 }
 
-TEST_F(SquareSumV1TilingTest, tiling_multi_axis_stages_use_padded_scalar_slots)
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_two_layers_use_dense_stage)
 {
     auto r = RunTiling({2, 3, 5}, ge::DT_BF16, {0, 2}, false, 20);
     ASSERT_TRUE(r.success);
@@ -2280,12 +2368,31 @@ TEST_F(SquareSumV1TilingTest, tiling_multi_axis_stages_use_padded_scalar_slots)
     ASSERT_EQ(td->tilingMode, 4u);
     ASSERT_EQ(td->numLayers, 2);
 
-    // Layer 0 output is [2,3] = 6 fp32 values, each stored in a 32B slot.
+    // Layer 0 output is [2,3] = 6 dense fp32 values.
     EXPECT_EQ(td->layerOutputElemCount[0], 6);
     EXPECT_EQ(td->layerWorkspaceOffset[0], 0);
     EXPECT_EQ(td->layerWorkspaceOffset[1], 0);
     EXPECT_GT(td->layerRChunkSizeCompact[0], 0);
     EXPECT_GT(td->layerReduceTmpBytes[0], 0u);
+    EXPECT_EQ(r.info.workspaceSizes[0], DAV_C220_USER_WORKSPACE_OFFSET + 4096u);
+}
+
+TEST_F(SquareSumV1TilingTest, tiling_multi_axis_three_layers_use_disjoint_dense_stages)
+{
+    auto r = RunTiling({2, 3, 4, 5, 6}, ge::DT_FLOAT16, {0, 2, 4}, false, 20);
+    ASSERT_TRUE(r.success);
+    const auto* td = AsTilingData(r.info);
+    ASSERT_NE(td, nullptr);
+    ASSERT_EQ(td->tilingMode, 4u);
+    ASSERT_EQ(td->numLayers, 3);
+
+    // Intermediate outputs contain 120 and 30 values in disjoint dense fp32
+    // stages. Their 150 elements fit in one 4KiB-aligned user allocation.
+    EXPECT_EQ(td->layerOutputElemCount[0], 120);
+    EXPECT_EQ(td->layerOutputElemCount[1], 30);
+    EXPECT_EQ(td->layerWorkspaceOffset[0], 0);
+    EXPECT_EQ(td->layerWorkspaceOffset[1], 120);
+    EXPECT_EQ(td->layerWorkspaceOffset[2], 0);
     EXPECT_EQ(r.info.workspaceSizes[0], DAV_C220_USER_WORKSPACE_OFFSET + 4096u);
 }
 

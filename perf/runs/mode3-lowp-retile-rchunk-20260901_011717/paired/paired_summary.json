@@ -1,0 +1,25 @@
+{
+  "round_count": 6,
+  "case_count": 42,
+  "rounds_improved": 4,
+  "median_total_delta_us": -14.370000000000175,
+  "median_total_improvement_percent": 1.9124918524453547,
+  "target_case": "ara_fp16_r10000",
+  "target": {
+    "case_index": 32,
+    "case_name": "ara_fp16_r10000",
+    "block_dim": 28,
+    "parent_median_us": 120.787,
+    "candidate_median_us": 114.0265,
+    "paired_delta_median_us": -6.7605,
+    "improvement_percent": 5.597042728108157,
+    "candidate_faster_rounds": 5,
+    "material_regression_limit_us": 6.039350000000001,
+    "material_regression": false
+  },
+  "target_pass": false,
+  "global_pass": true,
+  "regression_pass": true,
+  "structure_pass": true,
+  "material_regression_cases": []
+}

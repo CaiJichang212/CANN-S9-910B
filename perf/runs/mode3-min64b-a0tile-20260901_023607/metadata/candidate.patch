@@ -1,0 +1,149 @@
+diff --git a/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp b/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
+index d1776d5..97ea4b5 100644
+--- a/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
++++ b/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
+@@ -1150,7 +1150,13 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
+             const int64_t wantedTiles = CeilDiv(coreNum, totalRows);
+             const int64_t rowAlign = std::max(static_cast<int64_t>(fp32ElementsPerBlock),
+                 static_cast<int64_t>(inputElementsPerBlock));
+-            const int64_t targetLen = CeilAlign(CeilDiv(a0Length, wantedTiles), rowAlign);
++            int64_t targetLen = CeilAlign(CeilDiv(a0Length, wantedTiles), rowAlign);
++            if (tilingMode == 3) {
++                // A single-datablock row overpays 2D DMA descriptor cost on
++                // row-split. Retain enough owners to parallelize A0 while
++                // keeping each full row at least 64 bytes wide.
++                targetLen = std::max(targetLen, rowAlign * 2);
++            }
+             if (targetLen >= rowAlign && targetLen < tileA0Len) {
+                 tileA0Len = targetLen;
+                 tileA0Align = targetLen;
+diff --git a/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp b/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
+index 6699524..6f38106 100644
+--- a/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
++++ b/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
+@@ -1152,9 +1152,9 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp32)
+     EXPECT_EQ(td->tileA0Align, 16);
+     EXPECT_EQ(td->tileA0Len, 16);
+     EXPECT_EQ(td->numA0Tiles, 4);
+-    EXPECT_GT(td->rChunkSize, 0);
+-    EXPECT_GT(td->numRChunks, 1);
+-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
++    // FP32 is an explicit control cohort for the low-precision candidate.
++    EXPECT_EQ(td->rChunkSize, 733);
++    EXPECT_EQ(td->numRChunks, 10);
+ }
+ 
+ // =============================================================================
+@@ -1173,10 +1173,68 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
+     EXPECT_EQ(td->tilingMode, 3u);
+     EXPECT_EQ(td->rLength, 5000);
+     EXPECT_EQ(td->a0Length, 64);
+-    EXPECT_EQ(td->tileA0Align, 16);
+-    EXPECT_GT(td->rChunkSize, 0);
+-    EXPECT_GT(td->numRChunks, 1);
+-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
++    EXPECT_EQ(td->tileA0Align, 32);
++    EXPECT_EQ(td->rChunkSize, 489);
++    EXPECT_EQ(td->numRChunks, 11);
++}
++
++TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_bf16_retiles_rchunk)
++{
++    auto r = RunTiling({4, 5000, 64}, ge::DT_BF16, {1});
++    ASSERT_TRUE(r.success);
++
++    auto* td = AsTilingData(r.info);
++    ASSERT_NE(td, nullptr);
++
++    EXPECT_EQ(td->tilingMode, 3u);
++    EXPECT_EQ(td->tileA0Align, 32);
++    EXPECT_EQ(td->rChunkSize, 489);
++    EXPECT_EQ(td->numRChunks, 11);
++}
++
++TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_min64b_runtime_core_count)
++{
++    auto fp16 = RunTiling({4, 10000, 100}, ge::DT_FLOAT16, {1}, false, 40);
++    auto bf16 = RunTiling({4, 10000, 100}, ge::DT_BF16, {1}, false, 40);
++    auto fp32 = RunTiling({1, 5000, 100}, ge::DT_FLOAT, {1}, false, 40);
++    ASSERT_TRUE(fp16.success);
++    ASSERT_TRUE(bf16.success);
++    ASSERT_TRUE(fp32.success);
++
++    auto* fp16Td = AsTilingData(fp16.info);
++    auto* bf16Td = AsTilingData(bf16.info);
++    auto* fp32Td = AsTilingData(fp32.info);
++    ASSERT_NE(fp16Td, nullptr);
++    ASSERT_NE(bf16Td, nullptr);
++    ASSERT_NE(fp32Td, nullptr);
++
++    EXPECT_EQ(fp16Td->tileA0Align, 32);
++    EXPECT_EQ(fp16Td->numA0Tiles, 4);
++    EXPECT_EQ(fp16Td->usedCoreNum, 16);
++    EXPECT_EQ(fp16Td->rChunkSize, 278);
++    EXPECT_EQ(fp16Td->numRChunks, 36);
++    EXPECT_EQ(bf16Td->tileA0Align, 32);
++    EXPECT_EQ(bf16Td->usedCoreNum, 16);
++    EXPECT_EQ(bf16Td->rChunkSize, 278);
++    EXPECT_EQ(fp32Td->tileA0Align, 16);
++    EXPECT_EQ(fp32Td->numA0Tiles, 7);
++    EXPECT_EQ(fp32Td->usedCoreNum, 7);
++    EXPECT_EQ(fp32Td->rChunkSize, 733);
++    EXPECT_EQ(fp32Td->numRChunks, 7);
++}
++
++TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_without_core_retile_keeps_parent_rchunk)
++{
++    auto r = RunTiling({20, 5000, 64}, ge::DT_FLOAT16, {1});
++    ASSERT_TRUE(r.success);
++
++    auto* td = AsTilingData(r.info);
++    ASSERT_NE(td, nullptr);
++
++    EXPECT_EQ(td->tilingMode, 3u);
++    EXPECT_EQ(td->tileA0Align, 64);
++    EXPECT_EQ(td->rChunkSize, 489);
++    EXPECT_EQ(td->numRChunks, 11);
+ }
+ 
+ // =============================================================================
+@@ -1185,7 +1243,7 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
+ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
+ {
+     // shape=[4, 7000, 64], axis=[1], fp32
+-    // rChunkSize should be the max that fits in UB: 765
++    // FP32 keeps the parent chunk selected before the final A0 retile.
+     auto r = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+     ASSERT_TRUE(r.success);
+ 
+@@ -1195,6 +1253,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
+     ASSERT_EQ(td->tilingMode, 3u);
+     int64_t rChunk = td->rChunkSize;
+     int64_t tileA0 = td->tileA0Align;
++    EXPECT_EQ(rChunk, 733);
++    EXPECT_EQ(td->numRChunks, 10);
+ 
+     // Verify rChunkSize * tileA0 fits in UB
+     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * sizeof(float)
+@@ -1424,7 +1484,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_boundary)
+ // =============================================================================
+ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
+ {
+-    // shape=[4, 5000, 64], axis=[1], fp16 → rChunkSize=510
++    // shape=[4, 5000, 64], axis=[1], fp16. The parent sizes R with the
++    // initial 64-column row-split tile before the final A0 core split.
+     auto r = RunTiling({4, 5000, 64}, ge::DT_FLOAT16, {1});
+     ASSERT_TRUE(r.success);
+ 
+@@ -1436,7 +1497,10 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
+     int64_t tileA0 = td->tileA0Align;
+     uint32_t ts = 2;  // fp16 typeSize
+ 
+-    // Verify rChunkSize fits in UB (fp16: input + fp32 compute buffer)
++    EXPECT_EQ(rChunk, 489);
++    EXPECT_EQ(td->numRChunks, 11);
++
++    // Verify the parent-selected chunk remains within physical UB.
+     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * ts   // input buffer
+                        + static_cast<uint64_t>(rChunk) * tileA0 * 4UL  // fp32 compute buffer
+                        + tileA0 * 4UL                                    // acc buffer

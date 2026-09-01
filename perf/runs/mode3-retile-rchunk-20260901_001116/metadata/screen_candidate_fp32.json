@@ -1,0 +1,29 @@
+{
+  "profile_dir": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode3-retile-rchunk-20260901_001116/raw/screen_candidate_fp32",
+  "op_summary": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode3-retile-rchunk-20260901_001116/raw/screen_candidate_fp32/PROF_000001_20260831170619021_INFCJOJKILBALCLA/mindstudio_profiler_output/op_summary_20260831170637.csv",
+  "case_count": 1,
+  "target_task_count": 30,
+  "tasks_per_case": 30,
+  "warmup": 10,
+  "p50_sum_us": 36.55,
+  "cases": [
+    {
+      "case_index": 0,
+      "case_name": "screen_candidate_fp32",
+      "op_name": "aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1",
+      "block_dim": 13,
+      "task_count": 30,
+      "warmup_count": 10,
+      "hot_count": 20,
+      "p50_us": 36.55,
+      "p95_us": 38.673,
+      "mean_us": 36.83485,
+      "cv": 0.03289111480604369,
+      "min_us": 34.789,
+      "max_us": 38.854,
+      "input_shapes": "\"1,5000,100\"",
+      "input_dtypes": "FLOAT",
+      "output_shapes": "\"1,100\""
+    }
+  ]
+}

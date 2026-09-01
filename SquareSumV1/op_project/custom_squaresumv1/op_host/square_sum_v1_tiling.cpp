@@ -46,8 +46,20 @@ constexpr int64_t MAX_DMA_BLOCK_COUNT = 4095;
 constexpr int64_t MAX_VECTOR_ELEMENTS = 255 * 64;
 constexpr uint32_t NO_REDUCE_MODE = 6;
 constexpr uint32_t EMPTY_REDUCE_MODE = 7;
+constexpr uint32_t BATCH_MODE_SCHEDULE = 1;
+constexpr size_t WORKSPACE_ALIGNMENT = 4096;
 
 static ge::graphStatus GetWorkspaceSize(gert::TilingContext* context, size_t wsSize);
+
+static bool AlignWorkspaceSize(size_t rawSize, size_t* alignedSize)
+{
+    if (alignedSize == nullptr ||
+        rawSize > std::numeric_limits<size_t>::max() - (WORKSPACE_ALIGNMENT - 1)) {
+        return false;
+    }
+    *alignedSize = (rawSize + WORKSPACE_ALIGNMENT - 1) & ~(WORKSPACE_ALIGNMENT - 1);
+    return true;
+}
 
 static uint64_t Align32(uint64_t bytes)
 {
@@ -155,7 +167,8 @@ static ge::graphStatus BuildElementwiseTiling(gert::TilingContext* context, ge::
 
     context->SetBlockDim(static_cast<int32_t>(usedCoreNum));
     ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
-    GetWorkspaceSize(context, WS_SYS_SIZE);
+    OP_CHECK_IF(GetWorkspaceSize(context, WS_SYS_SIZE) != ge::GRAPH_SUCCESS,
+                OP_LOGE(context, "set elementwise workspace size error"), return ge::GRAPH_FAILED);
     OP_LOGD(context, "SquareSumV1 elementwise tiling: mode=%u, elements=%ld, bytes=%llu, blocks=%ld, "
             "tile=%ld, blocksPerCore=%ld, usedCoreNum=%ld",
             tilingMode, totalElements, static_cast<unsigned long long>(elementwiseBytes), totalBlocks,
@@ -790,7 +803,11 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
 
     const auto* axisData = axisVec->GetData();
     size_t axisSize = axisVec->GetSize();
-    std::vector<int64_t> axisList(axisData, axisData + axisSize);
+    std::vector<int64_t> axisList;
+    if (axisSize > 0) {
+        OP_CHECK_NULL_WITH_CONTEXT(context, axisData);
+        axisList.assign(axisData, axisData + axisSize);
+    }
 
     int64_t rank = static_cast<int64_t>(inputShape.GetDimNum());
     OP_CHECK_IF(rank > 8,
@@ -845,6 +862,16 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
                                       outputElements, EMPTY_REDUCE_MODE);
     }
 
+    // A zero dimension outside the reduction axes makes the output empty.
+    // Route it before non-contiguous axes create a mode 4 layer with A0=0.
+    int64_t inputElements = 0;
+    OP_CHECK_IF(!GetElementCount(inputShape, nullptr, &inputElements),
+                OP_LOGE(context, "input element count overflows int64"), return ge::GRAPH_FAILED);
+    if (inputElements == 0) {
+        return BuildElementwiseTiling(context, dataType, typeSize, ubSize, coreNum,
+                                      0, EMPTY_REDUCE_MODE);
+    }
+
     // 4. Coalesce axis
     auto coalesced = CoalesceAxis(inputShape, normalizedAxis);
     int64_t totalRows = coalesced.totalRows;
@@ -856,7 +883,9 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
     if (totalRows == 0 || rLength == 0) {
         SquareSumV1TilingData* tiling = context->GetTilingData<SquareSumV1TilingData>();
         OP_CHECK_NULL_WITH_CONTEXT(context, tiling);
-        memset_s(tiling, sizeof(SquareSumV1TilingData), 0, sizeof(SquareSumV1TilingData));
+        OP_CHECK_IF(memset_s(tiling, sizeof(SquareSumV1TilingData), 0,
+                             sizeof(SquareSumV1TilingData)) != EOK,
+                    OP_LOGE(context, "set empty tiling data error"), return ge::GRAPH_FAILED);
         tiling->totalRows = 0;
         tiling->totalWorkItems = 0;
         tiling->rLength = 0;
@@ -864,7 +893,8 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         tiling->tilingMode = 0;
         context->SetBlockDim(1);
         ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
-        GetWorkspaceSize(context, WS_SYS_SIZE);
+        OP_CHECK_IF(GetWorkspaceSize(context, WS_SYS_SIZE) != ge::GRAPH_SUCCESS,
+                    OP_LOGE(context, "set empty workspace size error"), return ge::GRAPH_FAILED);
         return ge::GRAPH_SUCCESS;
     }
 
@@ -902,38 +932,38 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         auto layers = ComputeMultiAxisLayers(
             inputShape, normalizedAxis, ubSize,
             typeSize, fp32ElementsPerBlock, fp32ElementsPerRepeat);
+        OP_CHECK_IF(layers.size() < 2,
+                    OP_LOGE(context, "MULTI_AXIS requires at least two reduction layers"),
+                    return ge::GRAPH_FAILED);
         OP_CHECK_IF(!ConfigureCompactMultiAxisLayers(&layers, typeSize, ubSize),
                     OP_LOGE(context, "MULTI_AXIS compact buffers cannot fit in %lu bytes UB", ubSize),
                     return ge::GRAPH_FAILED);
 
-        // The safe single-core fallback uses a 32B slot for every intermediate
-        // fp32 scalar.  This avoids short dense workspace transfers while the
-        // dense multi-core protocol is disabled. layerWorkspaceOffset[i]
-        // names the padded input stage consumed by layer i (layer 0 reads GM).
+        // The single-core route gives every intermediate tensor its own dense
+        // fp32 stage. Layer i writes only its stage and layer i+1 reads it, so
+        // no stage is overwritten in place.
         int64_t workspaceElems = 0;
         int64_t maxWorkItems = 1;
         for (size_t li = 0; li < layers.size(); ++li) {
-            // layerWorkspaceOffset[i] is the input stage consumed by layer i.
-            // Layer 0 reads input GM, so its offset is unused.  The output of
-            // layer i is written to the stage consumed by layer i + 1; assign
-            // that offset before reserving layer i's padded output.  In
-            // particular, layer 1 must start at offset zero, not after its
-            // own input stage.
-            layers[li].workspaceOffset = workspaceElems;
-            if (li > 0) {
-                const int64_t previousOutput = layers[li - 1].outputElemCount;
-                OP_CHECK_IF(previousOutput > std::numeric_limits<int64_t>::max() / 8 ||
-                            workspaceElems > std::numeric_limits<int64_t>::max() - previousOutput * 8,
-                            OP_LOGE(context, "MULTI_AXIS padded workspace element count overflows int64"),
+            if (li + 1 < layers.size()) {
+                layers[li].workspaceOffset = workspaceElems;
+                const int64_t stageElems = layers[li].outputElemCount;
+                OP_CHECK_IF(stageElems < 0 ||
+                                workspaceElems > std::numeric_limits<int64_t>::max() - stageElems,
+                            OP_LOGE(context, "MULTI_AXIS dense workspace element count overflows int64"),
                             return ge::GRAPH_FAILED);
-                workspaceElems += previousOutput * 8;
+                workspaceElems += stageElems;
+            } else {
+                layers[li].workspaceOffset = 0;
             }
+        }
+        for (size_t li = 0; li < layers.size(); ++li) {
             const int64_t inner = layers[li].isTailReduce ? 1 : layers[li].a0Length;
             const int64_t tile = layers[li].isTailReduce ? 1 : layers[li].tileA0Len;
             maxWorkItems = std::max(maxWorkItems, layers[li].outerLength * CeilDiv(inner, tile));
         }
-        // mode 4 has a multi-stage workspace and a stage boundary
-        // between every reduction layer.  A 910B MIX AIV launch can report a
+        // Mode 4 has a stage boundary between every reduction layer. A 910B
+        // MIX AIV launch can report a
         // block dimension larger than the participating AIV count to SyncAll,
         // which makes that cross-core protocol unsafe.  Keep the public API
         // and workspace layout unchanged, but execute this fallback on one
@@ -992,8 +1022,15 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
             tiling->layerReduceTmpBytes[li] = lyr.reduceTmpBytes;
         }
 
-        size_t userWsSize = static_cast<size_t>(std::max(workspaceElems, static_cast<int64_t>(1))) * sizeof(float);
-        userWsSize = (userWsSize + 4095) & ~static_cast<size_t>(4095);
+        const int64_t workspaceElemsForAlloc = std::max(workspaceElems, static_cast<int64_t>(1));
+        OP_CHECK_IF(static_cast<uint64_t>(workspaceElemsForAlloc) >
+                        std::numeric_limits<size_t>::max() / sizeof(float),
+                    OP_LOGE(context, "MULTI_AXIS workspace byte size overflows size_t"),
+                    return ge::GRAPH_FAILED);
+        size_t userWsSize = static_cast<size_t>(workspaceElemsForAlloc) * sizeof(float);
+        OP_CHECK_IF(!AlignWorkspaceSize(userWsSize, &userWsSize),
+                    OP_LOGE(context, "MULTI_AXIS workspace alignment overflows size_t"),
+                    return ge::GRAPH_FAILED);
         OP_CHECK_IF(userWsSize > std::numeric_limits<size_t>::max() - WS_USER_OFFSET,
                     OP_LOGE(context, "MULTI_AXIS workspace byte size overflows size_t"),
                     return ge::GRAPH_FAILED);
@@ -1001,11 +1038,13 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
 
         context->SetBlockDim(static_cast<int32_t>(usedCoreNum));
         ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
-        GetWorkspaceSize(context, wsSize);
+        OP_CHECK_IF(GetWorkspaceSize(context, wsSize) != ge::GRAPH_SUCCESS,
+                    OP_LOGE(context, "set MULTI_AXIS workspace size error"), return ge::GRAPH_FAILED);
 
         OP_LOGD(context, "SquareSumV1 MULTI_AXIS_SINGLE_CORE: numLayers=%d, maxWorkItems=%ld, "
-                "usedCoreNum=%ld, paddedWorkspaceElems=%ld, wsSize=%zu",
-                numLayers, maxWorkItems, usedCoreNum, workspaceElems, wsSize);
+                "usedCoreNum=%ld, denseStages=%zu, workspaceElems=%ld, wsSize=%zu",
+                numLayers, maxWorkItems, usedCoreNum, layers.size() - 1,
+                workspaceElems, wsSize);
 
         return ge::GRAPH_SUCCESS;
     }
@@ -1175,7 +1214,9 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
         // partial stores would otherwise share an MTE3 DataBlock.
         size_t userWsSize = static_cast<size_t>(CeilAlign(cooperativeCoreNum * 8,
                                                            static_cast<int64_t>(128))) * sizeof(float);
-        userWsSize = (userWsSize + 4095) & ~static_cast<size_t>(4095);
+        OP_CHECK_IF(!AlignWorkspaceSize(userWsSize, &userWsSize),
+                    OP_LOGE(context, "cooperative workspace alignment overflows size_t"),
+                    return ge::GRAPH_FAILED);
         OP_CHECK_IF(userWsSize > std::numeric_limits<size_t>::max() - WS_USER_OFFSET,
                     OP_LOGE(context, "cooperative workspace byte size overflows size_t"),
                     return ge::GRAPH_FAILED);
@@ -1225,13 +1266,17 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
     tiling->inputDtype = static_cast<uint32_t>(dataType);
     tiling->isAlign32B = isAlign32B;
 
+    if (tilingMode == 5) {
+        context->SetScheduleMode(BATCH_MODE_SCHEDULE);
+    }
     context->SetBlockDim(usedCoreNum);
 
     // 9. Set TilingKey (template parameter selection)
     ASCENDC_TPL_SEL_PARAM(context, static_cast<uint32_t>(dataType));
 
     // 10. Workspace
-    GetWorkspaceSize(context, workspaceSize);
+    OP_CHECK_IF(GetWorkspaceSize(context, workspaceSize) != ge::GRAPH_SUCCESS,
+                OP_LOGE(context, "set workspace size error"), return ge::GRAPH_FAILED);
 
     OP_LOGD(context, "SquareSumV1 tiling: mode=%u, totalRows=%ld, rLength=%ld, a0Length=%ld, "
             "rowsPerCore=%ld, usedCoreNum=%ld, isAlign32B=%u, "

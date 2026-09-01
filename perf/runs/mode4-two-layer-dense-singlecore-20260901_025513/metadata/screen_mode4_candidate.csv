@@ -1,0 +1,5 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,multi_noncontiguous_fp16,1,30,10,20,15.2615,16.902,15.525299999999998,0.05095317586986481,14.306,17.002,"""2,3,4,5,6""",FLOAT16,"""2,1,4,1,6""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+1,multi_negative_fp16,1,30,10,20,57.315,59.981,56.359249999999996,0.05513526086124612,49.639,60.222,"""2,3,4,5,6""",FLOAT16,"""2,3,5""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+2,multi_noncontiguous_fp32,1,30,10,20,15.211500000000001,15.836,15.2477,0.021458600318251426,14.588,15.856,"""2,3,4,5,6""",FLOAT,"""2,1,4,1,6""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+3,multi_negative_fp32,1,30,10,20,51.108,53.201,50.85935,0.027922057249643004,48.17,53.421,"""2,3,4,5,6""",FLOAT,"""2,3,5""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

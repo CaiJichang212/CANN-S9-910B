@@ -1,0 +1,6 @@
+mode6_fp16_small
+mode6_fp16_multitile
+mode6_fp32_small
+mode6_fp32_multitile
+mode6_bf16_small
+mode6_bf16_multitile

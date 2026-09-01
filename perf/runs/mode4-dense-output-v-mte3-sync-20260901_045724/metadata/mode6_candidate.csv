@@ -1,0 +1,7 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,mode6_fp16_small,40,30,10,20,8.25,8.632,8.245650000000001,0.028565013588460912,7.907,8.874,"""62,199""",FLOAT16,"""62,199""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+1,mode6_fp16_multitile,40,30,10,20,8.883,9.256,8.92055,0.02792269799091802,8.552,9.537,"""255,15,134""",FLOAT16,"""255,15,134""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+2,mode6_fp32_small,40,30,10,20,7.7364999999999995,8.41,7.757599999999999,0.04824846845888492,7.284,8.491,"""62,199""",FLOAT,"""62,199""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+3,mode6_fp32_multitile,40,30,10,20,9.0945,9.577,9.0876,0.03533275288292544,8.591,9.638,"""255,15,134""",FLOAT,"""255,15,134""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+4,mode6_bf16_small,40,30,10,20,7.807,8.169,7.7709,0.045014320957767334,7.284,8.612,"""62,199""",DT_BF16,"""62,199""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1
+5,mode6_bf16_multitile,40,30,10,20,8.743,9.256,8.82115,0.04254686822233315,8.31,9.678,"""255,15,134""",DT_BF16,"""255,15,134""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

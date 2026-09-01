@@ -1,0 +1,7 @@
+round,first,second,physical_device,case_manifest,tasks_per_case,warmup
+1,parent,candidate,7,perf/cases/acceptance_42.txt,30,10
+2,candidate,parent,7,perf/cases/acceptance_42.txt,30,10
+3,parent,candidate,7,perf/cases/acceptance_42.txt,30,10
+4,candidate,parent,7,perf/cases/acceptance_42.txt,30,10
+5,parent,candidate,7,perf/cases/acceptance_42.txt,30,10
+6,candidate,parent,7,perf/cases/acceptance_42.txt,30,10

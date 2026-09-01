@@ -11,8 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # 算子工程实际位于 <worktree>/SquareSumV1/op_project/custom_squaresumv1/
 OP_PROJECT="$SCRIPT_DIR/$OP_NAME/op_project/custom_squaresumv1"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-GIT_COMMIT="$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || printf 'unknown')"
+GIT_CMD=(git -c "safe.directory=$SCRIPT_DIR" -C "$SCRIPT_DIR")
+GIT_COMMIT="${GIT_COMMIT_OVERRIDE:-$("${GIT_CMD[@]}" rev-parse HEAD 2>/dev/null || printf 'unknown')}"
 RELEASE_ID="${RELEASE_ID:-${OP_NAME}-${TIMESTAMP}}"
+RELEASE_ZIP_NAME="${RELEASE_ID}.zip"
 RELEASES_ROOT="$SCRIPT_DIR/releases"
 RELEASE_DIR="$RELEASES_ROOT/$RELEASE_ID"
 RELEASES_INDEX="$RELEASES_ROOT/index.csv"
@@ -71,7 +73,7 @@ echo ""
 
 echo "===== [2/3] Preparing submission directory ====="
 # Keep the score-compatible archive root, but stage it only in a temporary
-# directory. A successful release retains package.zip and manifest.yaml only.
+# directory. A successful release retains <release_id>.zip and manifest.yaml only.
 TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/squaresumv1-package.XXXXXX")"
 STAGING="$TEMP_ROOT/$RELEASE_ID"
 mkdir "$STAGING"
@@ -103,12 +105,12 @@ RUN_FILE="${RUN_FILES[0]}"
 
 mkdir -p "$RELEASES_ROOT"
 RELEASE_TEMP="$(mktemp -d "$RELEASES_ROOT/.${RELEASE_ID}.XXXXXX")"
-ZIP_FILE="$RELEASE_TEMP/package.zip"
+ZIP_FILE="$RELEASE_TEMP/$RELEASE_ZIP_NAME"
 cd "$TEMP_ROOT"
 zip -r "$ZIP_FILE" "$(basename "$STAGING")"
 
 if [ ! -f "$ZIP_FILE" ]; then
-    echo "[ERROR] package creation did not produce package.zip" >&2
+    echo "[ERROR] package creation did not produce $RELEASE_ZIP_NAME" >&2
     exit 1
 fi
 
@@ -119,9 +121,13 @@ SOURCE_SHA256="$({
 } | awk '{print $1}')"
 RUN_SHA256="$(sha256sum "$RUN_FILE" | awk '{print $1}')"
 PACKAGE_SHA256="$(sha256sum "$ZIP_FILE" | awk '{print $1}')"
-WORKTREE_DIRTY=false
-if [ -n "$(git -C "$SCRIPT_DIR" status --porcelain 2>/dev/null)" ]; then
-    WORKTREE_DIRTY=true
+if [ -n "${WORKTREE_DIRTY_OVERRIDE:-}" ]; then
+    WORKTREE_DIRTY="${WORKTREE_DIRTY_OVERRIDE}"
+else
+    WORKTREE_DIRTY=false
+    if [ -n "$("${GIT_CMD[@]}" status --porcelain 2>/dev/null)" ]; then
+        WORKTREE_DIRTY=true
+    fi
 fi
 CREATED_AT="$(date -Iseconds)"
 
@@ -139,7 +145,7 @@ CREATED_AT="$(date -Iseconds)"
     printf '  sha256: "%s"\n' "$SOURCE_SHA256"
     printf 'artifacts:\n'
     printf '  package:\n'
-    printf '    path: "releases/%s/package.zip"\n' "$RELEASE_ID"
+    printf '    path: "releases/%s/%s"\n' "$RELEASE_ID" "$RELEASE_ZIP_NAME"
     printf '    sha256: "%s"\n' "$PACKAGE_SHA256"
     printf '    archive_root: "%s"\n' "$(basename "$STAGING")"
     printf '  run:\n'
@@ -160,7 +166,7 @@ fi
 printf '%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$RELEASE_ID" \
     "$GIT_COMMIT" \
-    "releases/$RELEASE_ID/package.zip" \
+    "releases/$RELEASE_ID/$RELEASE_ZIP_NAME" \
     "$PACKAGE_SHA256" \
     "$RUN_SHA256" \
     "built-unverified" \
@@ -170,4 +176,4 @@ printf '%s,%s,%s,%s,%s,%s,%s,%s\n' \
 echo ""
 echo "===== Done ====="
 echo "Release: $RELEASE_DIR"
-ls -lh "$RELEASE_DIR/package.zip" "$RELEASE_DIR/manifest.yaml"
+ls -lh "$RELEASE_DIR/$RELEASE_ZIP_NAME" "$RELEASE_DIR/manifest.yaml"

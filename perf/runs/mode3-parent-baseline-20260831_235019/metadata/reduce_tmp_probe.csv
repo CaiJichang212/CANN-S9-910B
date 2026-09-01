@@ -1,0 +1,6 @@
+variant,rows,aligned_cols,max_tmp_bytes,min_tmp_bytes
+parent_fp16_hot,278,112,0,0
+candidate_fp16_hot,1961,16,0,0
+parent_fp32_hot,733,64,0,0
+candidate_fp32_hot,4095,8,0,0
+

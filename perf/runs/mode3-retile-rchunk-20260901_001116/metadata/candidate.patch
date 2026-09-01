@@ -1,0 +1,191 @@
+diff --git a/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp b/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
+index d1776d5..4003422 100644
+--- a/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
++++ b/SquareSumV1/op_project/custom_squaresumv1/op_host/square_sum_v1_tiling.cpp
+@@ -889,6 +889,7 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
+     int64_t numA0Tiles = 1;
+     int64_t rChunkSize = 0;
+     int64_t numRChunks = 0;
++    bool araRetiledForCoreParallelism = false;
+     uint32_t reduceTmpBytes = 0;
+     int64_t cooperativeCoreNum = 0;
+     size_t workspaceSize = WS_SYS_SIZE;
+@@ -1155,8 +1156,56 @@ static ge::graphStatus SquareSumV1TilingFunc(gert::TilingContext* context)
+                 tileA0Len = targetLen;
+                 tileA0Align = targetLen;
+                 numA0Tiles = CeilDiv(a0Length, tileA0Len);
++                araRetiledForCoreParallelism = true;
+             }
+         }
++
++        // Row-split initially sizes R against the wider pre-parallelism A0
++        // tile.  If A0 was narrowed to expose independent output owners,
++        // recompute R with the final tile and the exact buffers allocated by
++        // the mode-3 kernel.  Unretiled mode-3 and all other modes retain
++        // their existing tiling.
++        if (tilingMode == 3 && araRetiledForCoreParallelism) {
++            auto computeFinalRowSplitUbNeeded = [&](int64_t rRows, int64_t cols) -> uint64_t {
++                const uint64_t matrixElems = static_cast<uint64_t>(rRows) * cols;
++                const uint64_t inBytes = matrixElems * typeSize;
++                const uint64_t computeBytes = (dataType == ge::DT_FLOAT)
++                    ? 0 : matrixElems * sizeof(float);
++                const uint64_t accBytes = static_cast<uint64_t>(cols) * sizeof(float);
++                const uint64_t reduceBytes = static_cast<uint64_t>(cols) * sizeof(float);
++                const uint64_t outBytes = static_cast<uint64_t>(cols) * typeSize;
++
++                ge::Shape reduceShape({rRows, cols});
++                uint32_t maxTmpBytes = 0;
++                uint32_t minTmpBytes = 0;
++                AscendC::GetReduceSumMaxMinTmpSize(
++                    reduceShape, ge::DT_FLOAT, AscendC::ReducePattern::RA,
++                    true, true, maxTmpBytes, minTmpBytes);
++                const uint64_t tmpBytes = std::max(maxTmpBytes, static_cast<uint32_t>(32));
++                return inBytes + computeBytes + accBytes + reduceBytes + outBytes + tmpBytes;
++            };
++
++            int64_t minRChunk = 1;
++            int64_t maxRChunk = std::min(rLength, MAX_DMA_BLOCK_COUNT);
++            int64_t bestRChunk = 1;
++            while (minRChunk <= maxRChunk) {
++                const int64_t mid = (minRChunk + maxRChunk) / 2;
++                if (computeFinalRowSplitUbNeeded(mid, tileA0Align) <= ubSize) {
++                    bestRChunk = mid;
++                    minRChunk = mid + 1;
++                } else {
++                    maxRChunk = mid - 1;
++                }
++            }
++            rChunkSize = bestRChunk;
++            numRChunks = CeilDiv(rLength, rChunkSize);
++
++            ge::Shape finalReduceShape({rChunkSize, tileA0Align});
++            uint32_t minTmpBytes = 0;
++            AscendC::GetReduceSumMaxMinTmpSize(
++                finalReduceShape, ge::DT_FLOAT, AscendC::ReducePattern::RA,
++                true, true, reduceTmpBytes, minTmpBytes);
++        }
+     }
+ 
+     // A single huge output has no A1/A0 ownership to expose.  Split its R
+diff --git a/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp b/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
+index 6699524..398c236 100644
+--- a/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
++++ b/SquareSumV1/tests/ut/op_host/test_squaresumv1_tiling.cpp
+@@ -1152,9 +1152,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp32)
+     EXPECT_EQ(td->tileA0Align, 16);
+     EXPECT_EQ(td->tileA0Len, 16);
+     EXPECT_EQ(td->numA0Tiles, 4);
+-    EXPECT_GT(td->rChunkSize, 0);
+-    EXPECT_GT(td->numRChunks, 1);
+-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
++    EXPECT_EQ(td->rChunkSize, 2940);
++    EXPECT_EQ(td->numRChunks, 3);
+ }
+ 
+ // =============================================================================
+@@ -1174,9 +1173,38 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
+     EXPECT_EQ(td->rLength, 5000);
+     EXPECT_EQ(td->a0Length, 64);
+     EXPECT_EQ(td->tileA0Align, 16);
+-    EXPECT_GT(td->rChunkSize, 0);
+-    EXPECT_GT(td->numRChunks, 1);
+-    EXPECT_EQ(td->numRChunks, (td->rLength + td->rChunkSize - 1) / td->rChunkSize);
++    EXPECT_EQ(td->rChunkSize, 1960);
++    EXPECT_EQ(td->numRChunks, 3);
++}
++
++TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_bf16_retiles_rchunk)
++{
++    auto r = RunTiling({4, 5000, 64}, ge::DT_BF16, {1});
++    ASSERT_TRUE(r.success);
++
++    auto* td = AsTilingData(r.info);
++    ASSERT_NE(td, nullptr);
++
++    EXPECT_EQ(td->tilingMode, 3u);
++    EXPECT_EQ(td->tileA0Align, 16);
++    EXPECT_EQ(td->rChunkSize, 1960);
++    EXPECT_EQ(td->numRChunks, 3);
++}
++
++TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_without_core_retile_keeps_parent_rchunk)
++{
++    // A1 already fills the 20-core mock platform, so the 64-column mode-3
++    // tile is not narrowed and its parent R chunk remains unchanged.
++    auto r = RunTiling({20, 5000, 64}, ge::DT_FLOAT16, {1});
++    ASSERT_TRUE(r.success);
++
++    auto* td = AsTilingData(r.info);
++    ASSERT_NE(td, nullptr);
++
++    EXPECT_EQ(td->tilingMode, 3u);
++    EXPECT_EQ(td->tileA0Align, 64);
++    EXPECT_EQ(td->rChunkSize, 489);
++    EXPECT_EQ(td->numRChunks, 11);
+ }
+ 
+ // =============================================================================
+@@ -1184,8 +1212,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_mode3_fp16)
+ // =============================================================================
+ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
+ {
+-    // shape=[4, 7000, 64], axis=[1], fp32
+-    // rChunkSize should be the max that fits in UB: 765
++    // shape=[4, 7000, 64], axis=[1], fp32. The final 16-column
++    // tile includes input, acc, reduce destination, output and 32B tmp.
+     auto r = RunTiling({4, 7000, 64}, ge::DT_FLOAT, {1});
+     ASSERT_TRUE(r.success);
+ 
+@@ -1196,10 +1224,14 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_ub_constraint)
+     int64_t rChunk = td->rChunkSize;
+     int64_t tileA0 = td->tileA0Align;
+ 
+-    // Verify rChunkSize * tileA0 fits in UB
++    // Verify the selected chunk fits the 184 KiB safety budget and the next
++    // DMA-legal row would exceed it.
+     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * sizeof(float)
+-                       + tileA0 * sizeof(float) * 2 + std::max(tileA0 * sizeof(float), 32UL);
+-    EXPECT_LE(ubAtChunk, 196608u);
++                       + tileA0 * sizeof(float) * 3 + 32UL;
++    uint64_t ubAtNext = static_cast<uint64_t>(rChunk + 1) * tileA0 * sizeof(float)
++                      + tileA0 * sizeof(float) * 3 + 32UL;
++    EXPECT_LE(ubAtChunk, 184u * 1024u);
++    EXPECT_GT(ubAtNext, 184u * 1024u);
+ 
+     // DMA rows are capped by the documented DataCopyPad blockCount limit.
+     EXPECT_LE(rChunk, 4095);
+@@ -1424,7 +1456,8 @@ TEST_F(SquareSumV1TilingTest, tiling_ar_colsplit_boundary)
+ // =============================================================================
+ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
+ {
+-    // shape=[4, 5000, 64], axis=[1], fp16 → rChunkSize=510
++    // shape=[4, 5000, 64], axis=[1], fp16. The final core-parallel tile
++    // is 16 columns and therefore permits a much larger R chunk.
+     auto r = RunTiling({4, 5000, 64}, ge::DT_FLOAT16, {1});
+     ASSERT_TRUE(r.success);
+ 
+@@ -1436,13 +1469,19 @@ TEST_F(SquareSumV1TilingTest, tiling_ara_rowsplit_rchunk_boundary_fp16)
+     int64_t tileA0 = td->tileA0Align;
+     uint32_t ts = 2;  // fp16 typeSize
+ 
+-    // Verify rChunkSize fits in UB (fp16: input + fp32 compute buffer)
++    // Mirror all mode-3 buffers: input, fp32 compute, acc, reduce
++    // destination, fp16 output and the minimum 32B RA scratch.
+     uint64_t ubAtChunk = static_cast<uint64_t>(rChunk) * tileA0 * ts   // input buffer
+                        + static_cast<uint64_t>(rChunk) * tileA0 * 4UL  // fp32 compute buffer
+-                       + tileA0 * 4UL                                    // acc buffer
+-                       + tileA0 * ts                                     // output buffer
+-                       + std::max(tileA0 * 4UL, 32UL);                   // tmp buffer
+-    EXPECT_LE(ubAtChunk, 196608u);
++                       + tileA0 * 4UL                                  // acc buffer
++                       + tileA0 * 4UL                                  // reduce destination
++                       + tileA0 * ts                                   // output buffer
++                       + 32UL;                                         // tmp buffer
++    uint64_t ubAtNext = static_cast<uint64_t>(rChunk + 1) * tileA0 * ts
++                      + static_cast<uint64_t>(rChunk + 1) * tileA0 * 4UL
++                      + tileA0 * 4UL + tileA0 * 4UL + tileA0 * ts + 32UL;
++    EXPECT_LE(ubAtChunk, 184u * 1024u);
++    EXPECT_GT(ubAtNext, 184u * 1024u);
+ 
+     EXPECT_LE(rChunk, 4095);
+ }

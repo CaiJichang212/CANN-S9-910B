@@ -1,0 +1,12 @@
+mode1_fp16
+mode4_fallback_fp16
+mode5_fp16
+mode7_fp16
+mode1_fp32
+mode4_fallback_fp32
+mode5_fp32
+mode7_fp32
+mode1_bf16
+mode4_fallback_bf16
+mode5_bf16
+mode7_bf16

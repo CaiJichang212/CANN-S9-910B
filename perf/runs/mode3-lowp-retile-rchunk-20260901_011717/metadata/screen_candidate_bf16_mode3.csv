@@ -1,0 +1,2 @@
+case_index,case_name,block_dim,task_count,warmup_count,hot_count,p50_us,p95_us,mean_us,cv,min_us,max_us,input_shapes,input_dtypes,output_shapes,op_name
+0,screen_candidate_bf16_mode3,28,30,10,20,116.6525,123.986,117.16434999999998,0.02970290656097598,110.968,124.409,"""4,10000,100""",DT_BF16,"""4,100""",aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1

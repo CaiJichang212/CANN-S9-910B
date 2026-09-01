@@ -1,4 +1,6 @@
-*zip*
+# 发布包和历史兼容解包目录；避免误伤名称中仅包含 "zip" 的源码。
+*.zip
+*_zip/
 # build artifacts
 **/build_out/
 **/build/
@@ -8,6 +10,7 @@ dist/
 **/__pycache__/
 PROF_*/
 *.pyc
+*.run
 
 # runtime / compile artifacts
 **/kernel_meta/
@@ -64,6 +67,8 @@ todo.md
 # ============================================================
 # 统一性能与发布目录：跟踪 manifest/汇总，忽略可再生成的大文件
 # ============================================================
-/perf/runs/*/raw/
+/perf/runs/**/raw/
+/perf/runs/**/private/
+/perf/runs/**/profile/
 /perf/runs/**/PROF_*/
-/releases/*/package.zip
+/releases/*/*.zip

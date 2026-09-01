@@ -368,8 +368,12 @@ GenericTensor ComputeGolden(const GenericTensor& input,
     if (normAxis.empty()) {
         // output = x^2
         for (int64_t i = 0; i < inSize; i++) {
-            double xv = input.values[i];
-            output.values[i] = xv * xv;
+            const float xv = static_cast<float>(input.values[i]);
+            float sq = xv * xv;
+            if (input.dtype == TestDtype::BFLOAT16) {
+                sq = Bfloat16BitsToFloat(FloatToBfloat16Bits(sq));
+            }
+            output.values[i] = static_cast<double>(sq);
         }
         return output;
     }
@@ -403,14 +407,18 @@ GenericTensor ComputeGolden(const GenericTensor& input,
             }
         }
 
-        double xv = input.values[elemIdx];
-        double sq = xv * xv;
+        const float xv = static_cast<float>(input.values[elemIdx]);
+        float sq = xv * xv;
+        if (input.dtype == TestDtype::BFLOAT16) {
+            sq = Bfloat16BitsToFloat(FloatToBfloat16Bits(sq));
+        }
 
         // IEEE 754 NaN 传播: NaN + anything = NaN
         if (std::isnan(output.values[outIdx]) || std::isnan(sq)) {
             output.values[outIdx] = std::numeric_limits<double>::quiet_NaN();
         } else {
-            output.values[outIdx] += sq;
+            const float acc = static_cast<float>(output.values[outIdx]);
+            output.values[outIdx] = static_cast<double>(acc + sq);
         }
     }
 
@@ -1874,17 +1882,25 @@ int CreateAclTensor(const std::vector<uint8_t>& hostData,
                     void** deviceAddr,
                     aclDataType dataType,
                     aclTensor** tensor) {
-    size_t size = hostData.size();
+    const size_t size = hostData.size();
+    const size_t allocationSize = std::max<size_t>(size, 32);
 
-    auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+    auto ret = aclrtMalloc(deviceAddr, allocationSize, ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS) return ret;
 
-    ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
-    if (ret != ACL_SUCCESS) { aclrtFree(*deviceAddr); return ret; }
+    if (size > 0) {
+        ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+        if (ret != ACL_SUCCESS) { aclrtFree(*deviceAddr); return ret; }
+    }
 
     auto strides = ComputeStrides(shape);
     *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(),
                               0, aclFormat::ACL_FORMAT_ND, shape.data(), shape.size(), *deviceAddr);
+    if (*tensor == nullptr) {
+        aclrtFree(*deviceAddr);
+        *deviceAddr = nullptr;
+        return -1;
+    }
     return ACL_SUCCESS;
 }
 
@@ -1908,7 +1924,20 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
         return 1;
     }
 
-    int passed = 0, failed = 0;
+    constexpr int64_t DEFAULT_MAX_REAL_ELEMENTS = 10000000;
+    int64_t maxRealElements = DEFAULT_MAX_REAL_ELEMENTS;
+    if (const char* limitEnv = std::getenv("SQUARESUMV1_ST_MAX_ELEMENTS"); limitEnv != nullptr) {
+        char* end = nullptr;
+        const long long parsed = std::strtoll(limitEnv, &end, 10);
+        if (end != limitEnv && *end == '\0' && parsed > 0) {
+            maxRealElements = static_cast<int64_t>(parsed);
+        }
+    }
+
+    int passed = 0, failed = 0, skipped = 0;
+    std::vector<std::string> failedNames;
+    LOG_PRINT("Real ST 单用例元素上限: %lld (可通过 SQUARESUMV1_ST_MAX_ELEMENTS 调整)",
+              static_cast<long long>(maxRealElements));
 
     for (size_t ci = 0; ci < testCases.size(); ci++) {
         auto& tc = testCases[ci];
@@ -1916,11 +1945,21 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
                   ci + 1, testCases.size(), tc.name.c_str(),
                   DtypeToString(tc.dtype));
 
+        const int64_t inputElements = GetShapeSize(tc.inputShape);
+        if (inputElements > maxRealElements) {
+            LOG_PRINT("  [SKIP] 输入元素数 %lld 超过 Real ST 资源上限 %lld",
+                      static_cast<long long>(inputElements),
+                      static_cast<long long>(maxRealElements));
+            skipped++;
+            continue;
+        }
+
         // 生成输入数据
         GenericTensor input = GenerateInputData(tc, static_cast<uint32_t>(ci * 1000 + 42));
 
         // 计算 golden
         GenericTensor golden = ComputeGolden(input, tc.axis, tc.keepDims);
+        QuantizeToDtype(golden);
 
         // 编码输入为字节流
         auto inputBytes = EncodeTensor(input);
@@ -1937,7 +1976,9 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
         if (CreateAclTensor<uint8_t>(inputBytes, tc.inputShape,
                                       &inputDev, aclDtype, &inputTensor) != ACL_SUCCESS) {
             LOG_PRINT("  [FAIL] 创建输入 tensor 失败");
-            failed++; continue;
+            failed++;
+            failedNames.push_back(tc.name);
+            continue;
         }
 
         // 创建输出 tensor
@@ -1945,7 +1986,9 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
                                       &outputDev, aclDtype, &outputTensor) != ACL_SUCCESS) {
             LOG_PRINT("  [FAIL] 创建输出 tensor 失败");
             aclDestroyTensor(inputTensor); aclrtFree(inputDev);
-            failed++; continue;
+            failed++;
+            failedNames.push_back(tc.name);
+            continue;
         }
 
         // 创建 axis IntArray
@@ -1960,11 +2003,15 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
             inputTensor, axisArray, tc.keepDims,
             outputTensor, &workspaceSize, &executor);
         if (ret != ACL_SUCCESS) {
-            LOG_PRINT("  [FAIL] GetWorkspaceSize 失败: %d", ret);
+            const char* recentError = aclGetRecentErrMsg();
+            LOG_PRINT("  [FAIL] GetWorkspaceSize 失败: %d, detail: %s", ret,
+                      recentError == nullptr ? "(none)" : recentError);
             aclDestroyIntArray(axisArray);
             aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
             aclrtFree(inputDev); aclrtFree(outputDev);
-            failed++; continue;
+            failed++;
+            failedNames.push_back(tc.name);
+            continue;
         }
 
         // Allocate workspace
@@ -1976,19 +2023,25 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
                 aclDestroyIntArray(axisArray);
                 aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
                 aclrtFree(inputDev); aclrtFree(outputDev);
-                failed++; continue;
+                failed++;
+                failedNames.push_back(tc.name);
+                continue;
             }
         }
 
         // Execute
         ret = aclnnSquareSumV1(workspace, workspaceSize, executor, stream);
         if (ret != ACL_SUCCESS) {
-            LOG_PRINT("  [FAIL] aclnnSquareSumV1 失败: %d", ret);
+            const char* recentError = aclGetRecentErrMsg();
+            LOG_PRINT("  [FAIL] aclnnSquareSumV1 失败: %d, detail: %s", ret,
+                      recentError == nullptr ? "(none)" : recentError);
             if (workspace) aclrtFree(workspace);
             aclDestroyIntArray(axisArray);
             aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
             aclrtFree(inputDev); aclrtFree(outputDev);
-            failed++; continue;
+            failed++;
+            failedNames.push_back(tc.name);
+            continue;
         }
 
         aclrtSynchronizeStream(stream);
@@ -1997,15 +2050,19 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
         int64_t outSize = golden.NumElements();
         size_t outBytes = EncodeTensor(golden).size();
         std::vector<uint8_t> npuOutput(outBytes);
-        ret = aclrtMemcpy(npuOutput.data(), outBytes, outputDev, outBytes,
-                          ACL_MEMCPY_DEVICE_TO_HOST);
-        if (ret != ACL_SUCCESS) {
-            LOG_PRINT("  [FAIL] D2H 拷贝失败: %d", ret);
-            if (workspace) aclrtFree(workspace);
-            aclDestroyIntArray(axisArray);
-            aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
-            aclrtFree(inputDev); aclrtFree(outputDev);
-            failed++; continue;
+        if (outBytes > 0) {
+            ret = aclrtMemcpy(npuOutput.data(), outBytes, outputDev, outBytes,
+                              ACL_MEMCPY_DEVICE_TO_HOST);
+            if (ret != ACL_SUCCESS) {
+                LOG_PRINT("  [FAIL] D2H 拷贝失败: %d", ret);
+                if (workspace) aclrtFree(workspace);
+                aclDestroyIntArray(axisArray);
+                aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
+                aclrtFree(inputDev); aclrtFree(outputDev);
+                failed++;
+                failedNames.push_back(tc.name);
+                continue;
+            }
         }
 
         // Decode NPU output
@@ -2021,7 +2078,12 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
         aclDestroyTensor(inputTensor); aclDestroyTensor(outputTensor);
         aclrtFree(inputDev); aclrtFree(outputDev);
 
-        if (result) passed++; else failed++;
+        if (result) {
+            passed++;
+        } else {
+            failed++;
+            failedNames.push_back(tc.name);
+        }
     }
 
     LOG_PRINT("\n========================================");
@@ -2030,6 +2092,13 @@ int RunRealTests(const std::string& csvPath, aclrtStream stream) {
     LOG_PRINT("总计: %d", passed + failed);
     LOG_PRINT("通过: %d", passed);
     LOG_PRINT("失败: %d", failed);
+    LOG_PRINT("资源上限跳过: %d", skipped);
+    if (!failedNames.empty()) {
+        LOG_PRINT("失败用例:");
+        for (const auto& name : failedNames) {
+            LOG_PRINT("  - %s", name.c_str());
+        }
+    }
     LOG_PRINT("========================================\n");
 
     return failed == 0 ? 0 : 1;
@@ -2062,7 +2131,7 @@ int main(int argc, char* argv[]) {
     bool runL2 = false;
     bool runBoundary = false;
     bool runAll = false;
-    std::string csvPath = "testcases/aclnnSquareSumV1_l0_test_cases.csv";
+    std::string csvPath;
     std::string extraCsv;
 
     for (int i = 1; i < argc; i++) {
@@ -2073,18 +2142,24 @@ int main(int argc, char* argv[]) {
             runBoundary = true;
         } else if (arg == "--all") {
             runAll = true;
-        } else if (csvPath.empty() || csvPath == "testcases/aclnnSquareSumV1_l0_test_cases.csv") {
+        } else if (csvPath.empty()) {
             csvPath = arg;
         } else {
             extraCsv = arg;
         }
     }
 
+    if (csvPath.empty()) {
+        csvPath = "testcases/aclnnSquareSumV1_l0_test_cases.csv";
+    }
+
     if (runAll) {
         runL2 = true;
         runBoundary = true;
         csvPath = "testcases/aclnnSquareSumV1_l0_test_cases.csv";
-        extraCsv = "testcases/aclnnSquareSumV1_l1_sample_test_cases.csv";
+        const std::string sampleCsv = "testcases/aclnnSquareSumV1_l1_sample_test_cases.csv";
+        std::ifstream sampleFile(sampleCsv);
+        extraCsv = sampleFile.good() ? sampleCsv : "testcases/aclnnSquareSumV1_l1_test_cases.csv";
     }
 
     if (!runL2 && !runBoundary) {

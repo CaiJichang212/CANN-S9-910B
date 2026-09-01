@@ -1,0 +1,4 @@
+multi_noncontiguous_fp16
+multi_negative_fp16
+multi_noncontiguous_fp32
+multi_negative_fp32

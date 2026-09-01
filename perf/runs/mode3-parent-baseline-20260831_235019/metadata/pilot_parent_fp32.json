@@ -1,0 +1,29 @@
+{
+  "profile_dir": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode3-parent-baseline-20260831_235019/raw/pilot_parent_fp32",
+  "op_summary": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode3-parent-baseline-20260831_235019/raw/pilot_parent_fp32/PROF_000001_20260831170118678_FARNCONGPJKEFKDC/mindstudio_profiler_output/op_summary_20260831170136.csv",
+  "case_count": 1,
+  "target_task_count": 30,
+  "tasks_per_case": 30,
+  "warmup": 10,
+  "p50_sum_us": 36.7615,
+  "cases": [
+    {
+      "case_index": 0,
+      "case_name": "pilot_parent_fp32",
+      "op_name": "aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1",
+      "block_dim": 13,
+      "task_count": 30,
+      "warmup_count": 10,
+      "hot_count": 20,
+      "p50_us": 36.7615,
+      "p95_us": 38.109,
+      "mean_us": 36.8739,
+      "cv": 0.021343645146131827,
+      "min_us": 35.735,
+      "max_us": 38.693,
+      "input_shapes": "\"1,5000,100\"",
+      "input_dtypes": "FLOAT",
+      "output_shapes": "\"1,100\""
+    }
+  ]
+}

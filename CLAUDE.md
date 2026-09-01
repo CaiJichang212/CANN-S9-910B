@@ -2,7 +2,7 @@
 
 本文件用于后续开发、调试、性能优化和交付。源码是实现真值；历史文档、profile 和提交包只作为证据。使用中文思考、执行和答复。
 
-最后按源码、2026-07-25 实测证据及 2026-08-31 目录/Docker 规范同步。
+最后按源码、2026-09-01 最终 release 实测证据及目录/Docker 规范同步。
 
 ## 1. 范围与当前状态
 
@@ -10,17 +10,18 @@
 - 目标：Ascend 910B（`ascend910b` / `ascend910_93`）、CANN 8.5、aarch64。
 - 唯一发布源码根：`SquareSumV1/op_project/custom_squaresumv1/`；`op_host/`、`op_kernel/`、`op_api/`、`op_graph/` 必须作为整体维护。
 - PyTorch 调用扩展：`SquareSumV1/extension/custom_op.cpp`；对外接口为 `aclnnSquareSumV1*`。
-- 当前发布源码根与 HEAD `b1ab2e04745e` 一致；组织迁移不移动源码。开始工作前仍须检查 `git status --short` 和 `git diff`。
+- 当前工作树基于 HEAD `9ebc145744ad` 且包含未提交优化；最终本地验证包为 `SquareSumV1-20260901_090646`。开始工作前仍须检查 `git status --short` 和 `git diff`。
 
 当前证据边界：
 
 | 项目 | 结论 | 证据 |
 | --- | --- | --- |
-| fp16/fp32 评分路径 | 本地 44/44 PASS | `20260725-3算子性能评测和瓶颈分析报告.md` |
-| BF16 / 非法输入 | 本地 3/3、4/4 PASS | 同上 |
-| 内存安全 | mode 4 三 dtype、mode 5 mssanitizer PASS | 同上 |
-| 42 workload 性能 | P50 合计 762.250 us，仅作回归基线 | 同上 |
-| 主要热点 | mode 3 row-split；mode 4 单核安全回退 | 120.284 us；代表例约 68.8 us |
+| fp16/fp32 评分路径 | 最终 release 44/44 PASS | `perf/runs/mode4-all-layer-dense-singlecore-20260901_075612/manifest.yaml` |
+| BF16 / 非法输入 | 最终 release 4/4、4/4 PASS | 同上 |
+| Real ST | L0 106/106、L1 361/361 PASS | 同上；11/101 条超资源用例显式 skip |
+| 内存安全 | mode 4 三 dtype memcheck、BF16 initcheck、mode 5 synccheck PASS | 同上 |
+| 42 workload 性能 | 六轮 6/6 改善，中位总降幅 134.801 us / 17.4918% | `paired_final/paired_summary.json` |
+| 最终包 | s8 干净构建、反装 CANN 8.5、smoke 635.1235 us | `releases/SquareSumV1-20260901_090646/manifest.yaml` |
 | 外部平台 | 四次历史提交 Case1/2/3/5 Pass，Case4 均 Run failed | `result-20260724.txt` |
 
 本地通过不等于外部 Case4 已通过，也不证明性能提升。最新性能报告测试的是特定隔离 OPP；任何新包都必须重新建立正确性和包身份。
@@ -57,7 +58,7 @@ Tiling 路由：
 | 1 | 尾轴分块 | fp32 跨 chunk 累加 |
 | 2 | 非尾轴 full-load | 2D DataCopyPad + RA Reduce |
 | 3 | 非尾轴 row-split | R 分块；当前首要性能热点 |
-| 4 | 非连续多轴 | 单核、32B-padded fp32 workspace |
+| 4 | 非连续多轴 | 单核、各非末层独立 dense FP32 workspace stage |
 | 5 | 大 all-reduce | 多核 partial + `SyncAll()` |
 | 6 | `axis=[]` | tiled elementwise square |
 | 7 | 空规约 | 显式 zero-fill |
@@ -87,14 +88,14 @@ Tiling 路由：
 └── releases/
     ├── index.csv
     └── SquareSumV1-YYYYmmdd_HHMMSS/
-        ├── package.zip
+        ├── SquareSumV1-YYYYmmdd_HHMMSS.zip
         └── manifest.yaml
 ```
 
 - 不移动或覆盖历史 `SquareSumV1/docs/`、`perf_eval_*`、`probe/`、`PROF_*` 和根目录 `*_zip/`。
 - 新设计、报告、笔记分别进入 `docs/design/`、`docs/reports/`、`docs/notes/`。
 - 新性能 run 进入 `perf/runs/<run_id>/`；`raw/`、`PROF_*` 和完整数据库不进 Git。
-- 新 release ID 严格使用 `SquareSumV1-YYYYmmdd_HHMMSS`。release 目录只留 `package.zip` 与 `manifest.yaml`，不留解压 staging。
+- 新 release ID 严格使用 `SquareSumV1-YYYYmmdd_HHMMSS`。release 目录只留同名 zip 与 `manifest.yaml`，不留解压 staging。
 - 候选、run、release 各自记录 commit、dirty 状态、源码/包哈希和验证状态；旧证据不替代当前包。
 
 ## 4. Docker 开发环境
@@ -155,12 +156,21 @@ ASCEND_RT_VISIBLE_DEVICES=0 python3 npu_acceptance_test.py
 PACK_IMAGE="swr.cn-southwest-2.myhuaweicloud.com/fuyangchenghu/cann8.5:s8"
 PACK_CONTAINER="squaresumv1-pack-$(id -un)"
 PROJECT_DIR="/home/liyc/hw-S9/case_910b_SquareSumV1"
+GIT_COMMIT_OVERRIDE="$(git -C "$PROJECT_DIR" rev-parse HEAD)"
+if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
+  WORKTREE_DIRTY_OVERRIDE=true
+else
+  WORKTREE_DIRTY_OVERRIDE=false
+fi
 
 sudo -n docker create --name "$PACK_CONTAINER" --network none --user 0:0 \
   --mount "type=bind,src=$PROJECT_DIR,dst=$PROJECT_DIR" \
   -w "$PROJECT_DIR" --entrypoint /usr/bin/sleep "$PACK_IMAGE" infinity
 sudo -n docker start "$PACK_CONTAINER"
-sudo -n docker exec "$PACK_CONTAINER" bash -lc '
+sudo -n docker exec \
+  -e GIT_COMMIT_OVERRIDE="$GIT_COMMIT_OVERRIDE" \
+  -e WORKTREE_DIRTY_OVERRIDE="$WORKTREE_DIRTY_OVERRIDE" \
+  "$PACK_CONTAINER" bash -lc '
   set +u
   source /home/ma-user/Ascend/cann-8.5.0/set_env.sh
   set -u
@@ -176,7 +186,9 @@ sudo -n docker exec "$PACK_CONTAINER" bash -lc '
 '
 ```
 
-禁止跳过构建或拼装旧 Kernel。输出为 `releases/SquareSumV1-YYYYmmdd_HHMMSS/{package.zip,manifest.yaml}`。提交前核对 manifest 哈希、zip 唯一根目录、`.run --list` 动态源码、反装后的 `custom_opp_compiler_version=8.5.0`，并确认 OpAPI、Host Tiling、Proto 和 Kernel 来自同一包。
+工作区是 linked worktree，最小挂载不会把上级 `.git/worktrees` 带入容器；上述两个 override 仅用于 release manifest 身份，不改变构建输入。
+
+禁止跳过构建或拼装旧 Kernel。输出为 `releases/SquareSumV1-YYYYmmdd_HHMMSS/{SquareSumV1-YYYYmmdd_HHMMSS.zip,manifest.yaml}`。提交前核对 manifest 哈希、zip 唯一根目录、`.run --list` 动态源码、反装后的 `custom_opp_compiler_version=8.5.0`，并确认 OpAPI、Host Tiling、Proto 和 Kernel 来自同一包。
 
 任务结束后停止容器并复查 NPU：
 
@@ -201,4 +213,4 @@ sudo -n npu-smi info
 - 性能规范与历史索引：`perf/README.md`
 - 候选台账：`perf/candidates.csv`
 - 发布台账：`releases/index.csv`
-- 当前性能报告：`20260725-3算子性能评测和瓶颈分析报告.md`
+- 当前性能报告：`docs/reports/SquareSumV1算子mode4-all-layer-dense-singlecore-20260901_075612最终执行报告.md`

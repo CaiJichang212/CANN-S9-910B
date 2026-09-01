@@ -1,0 +1,23 @@
+schema_version: 1
+release_id: "SquareSumV1-20260901_085829"
+operator: "SquareSumV1"
+created_at: "2026-09-01T08:59:54+08:00"
+status: "rejected-version-identity"
+source:
+  commit: "9ebc145744ad630fe9125f6be4d440046dc7dc48"
+  worktree_dirty: true
+  root: "SquareSumV1/op_project/custom_squaresumv1"
+  scope: "CMakeLists.txt,CMakePresets.json,build.sh,op_api,op_graph,op_host,op_kernel"
+  sha256: "82e87488b08e50b2b222d54a73187f2d16e1bfc601b225d387d2b75552f8f4d5"
+artifacts:
+  package:
+    path: "releases/SquareSumV1-20260901_085829/SquareSumV1-20260901_085829.zip"
+    sha256: "adc1d42a8bf1f36b61ff838758dfc8fc9699fc86ccc94be0a29fd1b593d38732"
+    archive_root: "SquareSumV1-20260901_085829"
+  run:
+    filename: "custom_opp_euleros_aarch64.run"
+    sha256: "0873d2d9048d43ee468a38ca668901ebdd0b868927ecb167b453146ed43b9ee4"
+build:
+  soc: "ascend910b"
+  cann_version: "8.5.0"
+  clean_build: true

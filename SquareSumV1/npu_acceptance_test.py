@@ -142,6 +142,8 @@ def bf16_cases():
          "keep_dims": False, "values": ("uniform", -1.0, 1.0), "seed": 702},
         {"name": "bf16_multi", "shape": (2, 3, 4, 5, 6), "dtype": torch.bfloat16, "axis": [1, 3],
          "keep_dims": False, "values": ("uniform", -1.0, 1.0), "seed": 703},
+        {"name": "bf16_ara_rowsplit", "shape": (4, 10000, 100), "dtype": torch.bfloat16, "axis": 1,
+         "keep_dims": False, "values": ("uniform", -1.0, 1.0), "seed": 704},
     ]
 
 
@@ -217,7 +219,10 @@ def main():
           f"bf16={bf16_pass}/{len(report['bf16_declared_support'])} "
           f"invalid={invalid_pass}/{len(report['invalid_input'])}")
     print("JSON=" + json.dumps(report, ensure_ascii=False))
-    return 0 if score_pass == len(report["score_path"]) else 1
+    all_passed = (score_pass == len(report["score_path"])
+                  and bf16_pass == len(report["bf16_declared_support"])
+                  and invalid_pass == len(report["invalid_input"]))
+    return 0 if all_passed else 1
 
 
 if __name__ == "__main__":

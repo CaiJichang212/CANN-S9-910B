@@ -1,0 +1,29 @@
+{
+  "profile_dir": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode4-two-layer-dense-singlecore-20260901_025513/raw/screen_tiny_control",
+  "op_summary": "/home/liyc/hw-S9/case_910b_SquareSumV1/perf/runs/mode4-two-layer-dense-singlecore-20260901_025513/raw/screen_tiny_control/PROF_000001_20260831192259137_HOQQOGGOGMNDGEEB/mindstudio_profiler_output/op_summary_20260831192316.csv",
+  "case_count": 1,
+  "target_task_count": 30,
+  "tasks_per_case": 30,
+  "warmup": 10,
+  "p50_sum_us": 5.5235,
+  "cases": [
+    {
+      "case_index": 0,
+      "case_name": "screen_tiny_control",
+      "op_name": "aclnnSquareSumV1_SquareSumV1AiCore_SquareSumV1",
+      "block_dim": 1,
+      "task_count": 30,
+      "warmup_count": 10,
+      "hot_count": 20,
+      "p50_us": 5.5235,
+      "p95_us": 5.774,
+      "mean_us": 5.5183,
+      "cv": 0.03380313035819017,
+      "min_us": 5.231,
+      "max_us": 5.936,
+      "input_shapes": "\"4\"",
+      "input_dtypes": "FLOAT16",
+      "output_shapes": "\"\""
+    }
+  ]
+}

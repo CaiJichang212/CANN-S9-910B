@@ -1,0 +1,66 @@
+run_id: mode3-retile-rchunk-20260901_001116
+purpose: screening
+operator: SquareSumV1
+candidate_id: mode3-retile-rchunk-20260901_001116
+parent_id: mode3-parent-baseline-20260831_235019
+status: rejected_screening
+git:
+  branch: dev-square-sum-v1-0710
+  commit: 9ebc145744ad630fe9125f6be4d440046dc7dc48
+  candidate_patch_sha256: b55226fee4feb3c54f5c3a637c0811e0b84f4b1cfb67ae6dbe38a3a6e5d793a6
+sources:
+  host_tiling_sha256: 567ecb7c376566feb9c5b09c7b5bcdb8a3aaca5af4daf291ae5da6838050d495
+  kernel_header_sha256: 5d3593d0173141b21a01c5615946f841c02fe752b40118076c52b96e181dcdcf
+  caller_binary_sha256: 346dcbadaf8c61eb7904b5498163548c6ea6615d2cb91f59312b4e55627edfff
+artifacts:
+  run_path: raw/candidate.run
+  run_sha256: 7d3f3d0f8cafad72d801e7e5e3c3cf34b512c7997c5b0d27293ba74ce9684ffc
+  opapi_sha256: 3fd7622ae270f008215ba8e0f70f335f8351f00e705512a737fc0c84b7881a1e
+  host_tiling_sha256: 0aaaad4c280b357cfc6a9d671d8a250491509ec3d2d7da964069e80e7b6bddb1
+  proto_sha256: c467798960a9ec7481b158c77182acee1b0f95e24674f6dd6522871499c63ff2
+  kernel_config_sha256: cf3516ce4579be123a86d393784920505b9a9014e912a5ce60238efcf481e482
+  kernel_objects_match_parent: true
+  kernel_object_sha256:
+    SquareSumV1_49f03b38bcf38192151ad1af31bcaf03.o: 699242351769c62ee9514a7c8b3a76d4d34da37e0121c30cdf9fafba679b2d9f
+    SquareSumV1_c50bd7ff8065d2a0ad0578537fefa355.o: 7b872c13ed5fa2ccf1a1b2dcfa4168dce32a843f2fd3cdb3932f4eb451db8146
+    SquareSumV1_e21f218258c0e74703e6bfcb30e95f7d.o: 9b39e013460ffdaa9cfe4d84b5d41a9003126abd75d17c92a5f004c6decece6f
+build:
+  image_id: sha256:145c1e7e479c1efa62fa4448ec55ee12e4f66b1abaffb7658fe6953d5052cae0
+  cann: 8.5.0
+  soc: ascend910b
+  source_package: true
+  package_version_marker: empty
+runtime:
+  container: squaresumv1-npu-liyc-20260901
+  physical_device: 7
+  logical_device: 0
+  bus_id: 0000:42:00.0
+  python: 3.9.10
+  torch: 2.5.1
+  torch_npu: 2.5.1.post1
+  python_volume: squaresumv1_py39_20260901
+  provider_root: raw/opp_candidate/vendors/customize
+tests:
+  host_ut: pass_103_of_103
+  npu_correctness: pass_44_plus_3_plus_4
+  correctness_log_sha256: c8bb2d468f1835aedef9ecc4c7542b591891d5b34c43a3fb00e7f90e9ddde651
+performance:
+  statistic: target tasks 11-30 P50 and population CV
+  tasks_per_case: 30
+  parent_fp16: {p50_us: 123.765, cv: 0.0331114, block_dim: 28}
+  candidate_fp16: {p50_us: 108.775, cv: 0.0264536, block_dim: 28}
+  parent_fp32: {p50_us: 36.7615, cv: 0.0213436, block_dim: 13}
+  candidate_fp32: {p50_us: 36.55, cv: 0.0328911, block_dim: 13}
+  parent_tiny: {p50_us: 6.0665, cv: 0.0481521, block_dim: 1}
+  candidate_tiny: {p50_us: 5.443, cv: 0.0513760, block_dim: 1}
+decision:
+  local_status: rejected
+  correctness_gate: pass
+  target_gate: fail
+  global_gate: not_run_after_screening_failure
+  regression_gate: incomplete
+  structure_gate: pass
+  reason: fp32 improved only 0.575 percent and 0.2115 us versus the predeclared 10 percent and 3 us target
+started_at: 2026-09-01T00:11:16+08:00
+finished_at: 2026-09-01T01:10:14+08:00
+
