@@ -1,0 +1,19 @@
+candidate_id: p_all_row_padded_ub_safe
+parent_id: p_flat_large_aiv
+supersedes_failed_candidate: p_all_row_padded
+kind: safety_repair_for_performance_route
+root_cause: >-
+  p_all_row_padded 使合法的f16短行P2进入scalar batch路径；每核约50.5KiB
+  batch叠加149376B固定Buffer后越过DAV_2201的184KiB用户UB边界，实测产生
+  MPU address access is invalid和vector core exception。
+changes:
+  - 删除未使用的scalarCTBuf
+  - P2按dtype和广播方向只初始化实际使用的xComp/yComp buffer
+  - P2不初始化仅generic scalar fallback使用的scalarBuf
+  - bf16/int8 batch上限分别设为48KiB/60KiB，其余dtype为64KiB
+  - 编译期断言P2固定Buffer加batch不超过184KiB
+gates:
+  - 崩溃shape必须稳定完成且精确bool PASS
+  - 5 dtype可达UB边界回归必须通过
+  - 40/40 mixed与85/85 sweep必须通过
+  - 重新执行p_all_row_padded的相邻A/B性能门禁

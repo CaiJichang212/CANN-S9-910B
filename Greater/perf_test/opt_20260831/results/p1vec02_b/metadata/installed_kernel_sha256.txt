@@ -1,0 +1,10 @@
+0c87b8605af6a4f1e2a381ba80b220a263c0b285d7347c5290af6db99bb54a56  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_9b6fcfb380bc69e6c850316161d0d2c9.json
+289a28553ab19280eb1c2b4541c46eacfa47563bc2d0ade72086b8a60163cb04  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_d4f2c055f4a313943ea4a5fd62b6602b.o
+6ddd383c0cc7f5d7af4548a33d5fb9d535829f9ca4b68c42308c9d4fcd992ff7  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_6573fc9bfc9a3b10254bd0bde8875f45.json
+6e6ba547c49b651f661358f26767d27757de7bd09c5903fa1fff981c1d88f991  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_6573fc9bfc9a3b10254bd0bde8875f45.o
+7d45d0d77a40ab3d4e32584d66b7a11c75ed51bcf8866d25481e1b38393085f1  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_d4f2c055f4a313943ea4a5fd62b6602b.json
+922b7fd5eca041a500ce537b45ccc0b7e74afdc0e671ada299789ebab8e0ba8c  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_97fc092809b54e1deab5cf6a2675c58a.json
+aa95f1a8a25f50c6511d86f5865667750cca1bd706b4cb59426454ee28b9caf3  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_bfffa0adcc2f3b5abda1875ed71ce2f5.o
+c7aec4f3e4b191e8419f8e3e2d778b852eab67e35a0f793bfcc7e94f52b19db7  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_97fc092809b54e1deab5cf6a2675c58a.o
+e802378bcf00efa890e4b9e6ee81ef386c5c11dad03404d0482f8452c1e78b14  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_9b6fcfb380bc69e6c850316161d0d2c9.o
+fb66457b3720b4166b86f6212453599eda89901c70f28845f4518656ab078c9e  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_bfffa0adcc2f3b5abda1875ed71ce2f5.json

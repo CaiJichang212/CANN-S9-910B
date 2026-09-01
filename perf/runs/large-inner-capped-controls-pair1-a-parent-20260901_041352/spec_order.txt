@@ -1,0 +1,6 @@
+f32_same_4m
+f32_same_8m
+f16_5d_bcast
+f16_tail_bouter
+f16_tail_bouter_rev
+f16_p1_n10000

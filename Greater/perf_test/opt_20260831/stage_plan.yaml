@@ -1,0 +1,64 @@
+stage_id: p_aiv_host
+operator: Greater
+parent:
+  id: safe_b20
+  official_baseline_us: 990.62
+  source_kernel_sha256: 27b872dedaff98bf3f99d0b25bebd38047b37029cfa95264c973e3364d311d6a
+  run_sha256: e3a6cabb3cb46992b7b280b066d3e4cbd5849df0e1e3cac1c18cf72131f9d5fb
+  status: local_baseline_safe
+hypothesis: >-
+  The fixed 20-core Host cap leaves half of the 40 available AIV cores idle on
+  Ascend910B4-1 for paths with at least 40 useful work units.
+patch_scope:
+  - Greater/op_project/custom_greater/op_host/greater.cpp
+invariants:
+  - public Greater interface and dtype/format registration
+  - TilingData layout and Kernel source/binaries
+  - ceil(totalSize / 256) work-unit formula
+  - output ownership and all broadcast routes
+expected_structure:
+  source_host: changed
+  source_tiling: byte_identical
+  source_kernel: byte_identical
+  kernel_objects: byte_identical
+  large_block_dim: 40
+  tiny_block_dim: unchanged
+target_cohort:
+  - f16_same_med
+  - f16_same_big
+  - f32_same_big
+  - f16_bouter_big
+  - f16_tail_bouter
+  - f16_p1_partial_tail
+  - f32_binner
+  - f16_binner
+control_cohort:
+  - scalar
+  - f16_same_sml
+  - f16_p2_outer19
+  - f16_p2_outer21
+  - f16_p1_n10000
+  - f16_p2_n10000
+correctness_gate:
+  - mixed_broadcast_regression: 40/40
+  - acc_sweep: 85/85
+  - profiled_cases: exact_bool_pass
+performance_design:
+  pilot: safe_b20_pilot_01
+  paired_order: [baseline, candidate, candidate, baseline, baseline, candidate]
+  hot_tasks_per_spec: 900
+  warmup_tasks_per_spec: 150
+acceptance_thresholds:
+  large_case_max_cv: 0.02
+  material_case_relative: 0.05
+  material_case_absolute_us: 0.5
+  target_sum_min_relative_gain: 0.05
+  target_sum_min_absolute_gain_us: 5.0
+  global_sum_max_regression: 0.01
+  correctness_fail: reject
+  kernel_object_change: reject
+rollback:
+  - remove the PlatformAscendC include
+  - restore the safe_b20 core cap expression
+package_checkpoint: true
+requires_official_feedback: true

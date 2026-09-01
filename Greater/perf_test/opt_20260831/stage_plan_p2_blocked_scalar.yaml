@@ -1,0 +1,24 @@
+candidate_id: p_p2_blocked_scalar
+parent_id: p_fp32_p2_row_brcb
+hypothesis: >-
+  当连续scalar的整核batch超过安全UB预算时，按P2 row tile分块加载32个half
+  或16个float scalar，仍可使用Brcb+Copy合并比较，并避免退回逐segment generic。
+scope:
+  source:
+    - Greater/op_project/custom_greater/op_host/greater.cpp
+    - Greater/op_project/custom_greater/op_kernel/greater.cpp
+  route: half/float、rowPadded、rowElems=256、scalarBatchPerCore、整核batch超预算
+ub_change: 0；复用现有scalarBatchBuf并仅按blockRows+256分配
+synchronization: 每个tile完成后V_MTE2同步，再覆盖scalarBatchBuf
+targets:
+  - f32_p2_tiny_inner_big
+controls:
+  - f32_p1_tiny_inner_big
+  - f16_p1_tiny_inner_big
+  - f16_p2_tiny_inner_big
+  - f32_p2_n31
+gates:
+  - 5/5 UB、40/40 mixed、85/85 sweep全部PASS
+  - 目标从generic BlockDim20切换为P2 BlockDim40并显著改善
+  - 控制无material回退
+  - 两组相邻A/B通过

@@ -52,9 +52,44 @@ constexpr uint32_t COMP_ALIGN = 256;   // elems; 256B for every dtype involved
 constexpr uint32_t Z_BLKELEMS = 256;   // bool 256B in elements
 constexpr int32_t BUFFER_NUM = 2;
 
+// DAV_2201 exposes 192KiB physical UB, but the basic APIs reserve the final
+// 8KiB from offset 184KiB as temporary space. P2 allocates one input queue,
+// one output queue, comparison scratch, and a dtype-specific scalar batch.
+constexpr uint32_t USER_UB_LIMIT_BYTES = 184 * 1024;
+constexpr uint32_t P2_BATCH_LIMIT_BYTES = kIsBf16 ? 48 * 1024 :
+                                          (kIsInt8 ? 60 * 1024 : 64 * 1024);
+constexpr uint32_t P2_COMP_BUFFER_COUNT = kIsBf16 ? 2 :
+                                           ((kIsInt8 || kIsInt32) ? 1 : 0);
+constexpr uint32_t P2_DTYPE_EXTRA_BYTES = kIsInt32
+    ? (TILE * sizeof(int32_t) + TILE * sizeof(half) + 2 * (TILE / 8))
+    : (kIsBf16 ? TILE * sizeof(bfloat16_t) : 0);
+constexpr uint32_t P2_BRCB_BYTES = 1024;
+constexpr uint32_t P2_ROW_EXTRA_BYTES = kIsHalf ? P2_BRCB_BYTES :
+    (kIsFloat ? P2_BRCB_BYTES + TILE * sizeof(float) : 0);
+constexpr uint32_t P2_FIXED_UB_BYTES =
+    2 * TILE * sizeof(InputT) +              // one double-buffered input queue
+    2 * TILE * sizeof(uint8_t) +             // double-buffered bool output
+    TILE / 8 * sizeof(uint8_t) +             // Compare mask
+    3 * TILE * sizeof(half) +                // halfOut, zero and one
+    P2_COMP_BUFFER_COUNT * TILE * sizeof(ComputeT) +
+    P2_DTYPE_EXTRA_BYTES + P2_ROW_EXTRA_BYTES;
+static_assert(P2_FIXED_UB_BYTES + P2_BATCH_LIMIT_BYTES <= USER_UB_LIMIT_BYTES,
+              "P2 buffers exceed the DAV_2201 user UB region");
+constexpr uint32_t P1_LARGE_FIXED_UB_BYTES =
+    2 * TILE * sizeof(InputT) +                    // one double-buffered stream queue
+    2 * TILE * sizeof(uint8_t) +                   // double-buffered bool output
+    TILE / 8 * sizeof(uint8_t) +                   // Compare mask
+    3 * TILE * sizeof(half) +                      // halfOut, zero and one
+    2 * TILE * sizeof(ComputeT) +                  // stream and resident compute views
+    P2_DTYPE_EXTRA_BYTES +                         // int32/bf16 dtype-specific buffers
+    (TILE + COMP_ALIGN) * sizeof(InputT);          // one aligned resident slice
+static_assert(P1_LARGE_FIXED_UB_BYTES <= USER_UB_LIMIT_BYTES,
+              "large P1 resident buffers exceed the DAV_2201 user UB region");
+
 __aicore__ inline uint32_t RoundUpTo(uint32_t n, uint32_t a)
 {
-    return (n + a - 1) / a * a;
+    uint64_t rounded = (static_cast<uint64_t>(n) + a - 1) / a * a;
+    return rounded > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rounded);
 }
 
 class KernelGreater {
@@ -79,6 +114,9 @@ public:
             xStride_[d] = xStride[d];
             yStride_[d] = yStride[d];
         }
+        if (totalSize_ == 0) {
+            return;
+        }
 
         // ---- P1: detect outer-broadcast resident operand ----
         // A zero-stride suffix in an outer broadcast operand means that its
@@ -89,15 +127,16 @@ public:
         constexpr uint32_t RES_UB_LIMIT = 96 * 1024;  // bytes; leave room for other bufs
         xResident_ = false;
         yResident_ = false;
+        largeResident_ = false;
         rowElems_ = RoundUpTo(innerSize_, COMP_ALIGN);
         // Vector Compare requires 256-element alignment, whereas DataCopyPad
         // only guarantees a 32-byte row boundary.  For a non-aligned logical
-        // row we therefore stage each row in a 256-element slot.  Keep the
-        // expansion bounded: very short rows are better served by the proven
-        // generic path, and >2x padding would waste UB / MTE bandwidth.
+        // row we therefore stage each row in a 256-element slot. The generic
+        // path already rounds every individual row to the same vector width;
+        // batching short rows removes repeated address and queue overhead
+        // without increasing the total vector work.
         rowPadded_ = (innerSize_ % COMP_ALIGN) != 0 && innerSize_ <= TILE &&
-                     rowElems_ <= TILE &&
-                     static_cast<uint64_t>(rowElems_) <= static_cast<uint64_t>(innerSize_) * 2;
+                     rowElems_ <= TILE;
         if (bcastMode_ == 0 && outerDim_ > 0 &&
             ((innerSize_ % COMP_ALIGN) == 0 || rowPadded_) && innerSize_ <= TILE) {
             uint32_t residentElems = rowPadded_ ? rowElems_ : (innerSize_ + COMP_ALIGN);
@@ -118,6 +157,26 @@ public:
                 }
             }
         }
+        // Full outer broadcast with an inner row larger than TILE. The Host has
+        // selected a product of inner and outer workers; each core only keeps a
+        // TILE-sized resident slice in UB.
+        if (!xResident_ && !yResident_ && bcastMode_ == 0 && outerDim_ > 0 &&
+            outerSize_ > 1 && innerSize_ > TILE) {
+            uint32_t xGroups = GetResidentGroupSegs(true);
+            uint32_t yGroups = GetResidentGroupSegs(false);
+            uint32_t residentElems = TILE + COMP_ALIGN;
+            if (xGroups == outerSize_) {
+                xResident_ = true;
+                largeResident_ = true;
+                residentGroupSegs_ = outerSize_;
+                residentElemsX_ = residentElems;
+            } else if (yGroups == outerSize_) {
+                yResident_ = true;
+                largeResident_ = true;
+                residentGroupSegs_ = outerSize_;
+                residentElemsY_ = residentElems;
+            }
+        }
         // An operand uses its input queue iff it is neither resident nor scalar.
         xQueued_ = !xResident_ && (bcastMode_ != 1);
         yQueued_ = !yResident_ && (bcastMode_ != 2);
@@ -126,10 +185,15 @@ public:
         // Batch-load the scalar operand's complete contiguous storage range once.
         // The scalar used by each output segment is derived from all outer
         // broadcast strides, so this also handles mixed outer broadcasts such as
-        // [B,1,1] and [1,M,1], not only stride[0] == 0/1 layouts.
+        // [B,1,1] and [1,M,1], not only stride[0] == 0/1 layouts.  The streamed
+        // operand must still be dense because the P2 loop addresses it by the
+        // flattened output offset.
         innerBcast_ = false;
+        scalarBatchBlocked_ = false;
+        const uint32_t* streamStrides = (bcastMode_ == 1) ? yStride_ : xStride_;
         if ((bcastMode_ == 1 || bcastMode_ == 2) &&
-            ((innerSize_ % COMP_ALIGN) == 0 || rowPadded_) && innerSize_ <= TILE) {
+            ((innerSize_ % COMP_ALIGN) == 0 || rowPadded_) && innerSize_ <= TILE &&
+            IsStreamIndexContinuous(streamStrides)) {
             uint64_t maxScalarOffset = 0;
             const uint32_t* scalarStrides = (bcastMode_ == 1) ? xStride_ : yStride_;
             for (uint32_t d = 0; d < outerDim_; ++d) {
@@ -145,10 +209,19 @@ public:
                 allocCount = (static_cast<uint64_t>(outerSize_) + blockDim_ - 1) / blockDim_;
             }
             uint64_t batchBytes = (allocCount + COMP_ALIGN) * sizeof(InputT);
-            if (allocCount <= UINT32_MAX && batchBytes <= 64 * 1024) {
+            if (allocCount <= UINT32_MAX && batchBytes <= P2_BATCH_LIMIT_BYTES) {
                 innerBcast_ = true;
                 scalarBatchCount_ = static_cast<uint32_t>(allocCount);
                 scalarBatchElems_ = scalarBatchCount_ + COMP_ALIGN;
+            } else if constexpr (kIsHalf || kIsFloat) {
+                if (scalarBatchPerCore_ && rowPadded_ && rowElems_ == COMP_ALIGN) {
+                    // Stream a small aligned scalar block per padded row tile
+                    // instead of rejecting P2 when the whole core range is large.
+                    innerBcast_ = true;
+                    scalarBatchBlocked_ = true;
+                    scalarBatchCount_ = kIsHalf ? 32 : 16;
+                    scalarBatchElems_ = scalarBatchCount_ + COMP_ALIGN;
+                }
             }
         }
 
@@ -170,8 +243,22 @@ public:
         pipe.InitBuffer(halfOutBuf, TILE * sizeof(half));
         pipe.InitBuffer(halfZeroBuf, TILE * sizeof(half));
         pipe.InitBuffer(halfOneBuf, TILE * sizeof(half));
-        pipe.InitBuffer(xCompBuf, TILE * sizeof(ComputeT));
-        pipe.InitBuffer(yCompBuf, TILE * sizeof(ComputeT));
+        if (!innerBcast_ || kIsBf16) {
+            pipe.InitBuffer(xCompBuf, TILE * sizeof(ComputeT));
+            pipe.InitBuffer(yCompBuf, TILE * sizeof(ComputeT));
+        } else if constexpr (kIsInt8) {
+            if (bcastMode_ == 1) {
+                pipe.InitBuffer(yCompBuf, TILE * sizeof(ComputeT));
+            } else {
+                pipe.InitBuffer(xCompBuf, TILE * sizeof(ComputeT));
+            }
+        } else if constexpr (kIsInt32) {
+            if (bcastMode_ == 1) {
+                pipe.InitBuffer(xCompBuf, TILE * sizeof(ComputeT));
+            } else {
+                pipe.InitBuffer(yCompBuf, TILE * sizeof(ComputeT));
+            }
+        }
         if constexpr (kIsInt32) {
             pipe.InitBuffer(mxBuf, TILE * sizeof(int32_t));
             pipe.InitBuffer(neBuf, TILE * sizeof(half));
@@ -181,8 +268,9 @@ public:
         if constexpr (kIsBf16) {
             pipe.InitBuffer(bf16TileBuf, TILE * sizeof(bfloat16_t));
         }
-        pipe.InitBuffer(scalarBuf, 256);
-        pipe.InitBuffer(scalarCTBuf, 512);
+        if (!innerBcast_ && (bcastMode_ == 1 || bcastMode_ == 2)) {
+            pipe.InitBuffer(scalarBuf, 256);
+        }
         if (xResident_) {
             pipe.InitBuffer(residentXBuf, residentElemsX_ * sizeof(InputT));
         }
@@ -191,6 +279,14 @@ public:
         }
         if (innerBcast_) {
             pipe.InitBuffer(scalarBatchBuf, scalarBatchElems_ * sizeof(InputT));
+            if constexpr (kIsHalf || kIsFloat) {
+                if (rowPadded_ && rowElems_ == COMP_ALIGN && scalarBatchPerCore_) {
+                    pipe.InitBuffer(scalarBrcbBuf, P2_BRCB_BYTES);
+                    if constexpr (kIsFloat) {
+                        pipe.InitBuffer(scalarRowsBuf, TILE * sizeof(float));
+                    }
+                }
+            }
         }
 
         LocalTensor<half> zeroLocal = halfZeroBuf.Get<half>();
@@ -209,6 +305,10 @@ public:
         // reuse the resident operand across innerSize sub-tiles (no per-segment
         // HBM read, no small-tile scalar overhead).
         if (xResident_ || yResident_) {
+            if (largeResident_) {
+                ProcessLargeResident();
+                return;
+            }
             if (rowPadded_) {
                 ProcessResidentPadded();
                 return;
@@ -228,7 +328,7 @@ public:
         }
         uint32_t coreId = GetBlockIdx();
 
-        uint64_t totalBlks = (totalSize_ + Z_BLKELEMS - 1) / Z_BLKELEMS;
+        uint64_t totalBlks = (static_cast<uint64_t>(totalSize_) + Z_BLKELEMS - 1) / Z_BLKELEMS;
         uint64_t blkStart = totalBlks * coreId / blockDim_;
         uint64_t blkEnd = totalBlks * (coreId + 1) / blockDim_;
         uint64_t coreStart = blkStart * Z_BLKELEMS;
@@ -265,6 +365,114 @@ public:
             offInSeg = 0;
             seg++;
         }
+    }
+
+    // Full-outer P1 with innerSize > TILE. A core owns the Cartesian product of
+    // one aligned inner slice and one outer segment range. This keeps output
+    // ownership disjoint while reusing the resident slice across assigned rows.
+    __aicore__ inline void ProcessLargeResident()
+    {
+        uint32_t innerTiles = (innerSize_ - 1) / TILE + 1;
+        uint32_t innerWorkers = innerTiles < blockDim_ ? innerTiles : blockDim_;
+        if (innerWorkers == 0) {
+            return;
+        }
+        uint32_t outerWorkers = blockDim_ / innerWorkers;
+        if (outerWorkers == 0) {
+            return;
+        }
+
+        uint32_t coreId = GetBlockIdx();
+        uint32_t innerWorker = coreId % innerWorkers;
+        uint32_t outerWorker = coreId / innerWorkers;
+        if (outerWorker >= outerWorkers) {
+            return;
+        }
+
+        uint64_t rawStart = static_cast<uint64_t>(innerSize_) * innerWorker / innerWorkers;
+        uint64_t rawEnd = static_cast<uint64_t>(innerSize_) * (innerWorker + 1) / innerWorkers;
+        uint32_t sliceStart = innerWorker == 0
+            ? 0 : RoundUpTo(static_cast<uint32_t>(rawStart), COMP_ALIGN);
+        uint32_t sliceEnd = innerWorker + 1 == innerWorkers
+            ? innerSize_ : RoundUpTo(static_cast<uint32_t>(rawEnd), COMP_ALIGN);
+        if (sliceEnd > innerSize_) {
+            sliceEnd = innerSize_;
+        }
+        if (sliceStart >= sliceEnd) {
+            return;
+        }
+
+        uint64_t segStart = static_cast<uint64_t>(outerSize_) * outerWorker / outerWorkers;
+        uint64_t segEnd = static_cast<uint64_t>(outerSize_) * (outerWorker + 1) / outerWorkers;
+        for (uint32_t off = sliceStart; off < sliceEnd;) {
+            uint32_t n = sliceEnd - off;
+            if (n > TILE) {
+                n = TILE;
+            }
+            LoadResidentSlice(off, n);
+            for (uint64_t seg = segStart; seg < segEnd; ++seg) {
+                uint64_t base = seg * innerSize_ + off;
+                ProcessLargeResidentTile(base, base, n);
+            }
+            SyncVToMte2();
+            off += n;
+        }
+    }
+
+    __aicore__ inline void ProcessLargeResidentTile(uint64_t zBase, uint64_t streamBase,
+                                                    uint32_t n)
+    {
+        uint32_t compCount = RoundUpTo(n, COMP_ALIGN);
+        bool streamX = !xResident_;
+        LocalTensor<InputT> sIn;
+        if (streamX) {
+            LocalTensor<InputT> sLocal = inQueueX.AllocTensor<InputT>();
+            CopyInTensor(sLocal, xGm, streamBase, n);
+            inQueueX.EnQue(sLocal);
+            sIn = inQueueX.DeQue<InputT>();
+        } else {
+            LocalTensor<InputT> sLocal = inQueueY.AllocTensor<InputT>();
+            CopyInTensor(sLocal, yGm, streamBase, n);
+            inQueueY.EnQue(sLocal);
+            sIn = inQueueY.DeQue<InputT>();
+        }
+
+        LocalTensor<uint8_t> zOut = outQueueZ.AllocTensor<uint8_t>();
+        LocalTensor<InputT> resRaw = (xResident_ ? residentXBuf : residentYBuf).Get<InputT>();
+        LocalTensor<ComputeT> sc;
+        LocalTensor<ComputeT> rc;
+        if constexpr (IsSameType<InputT, ComputeT>::value) {
+            sc = sIn.ReinterpretCast<ComputeT>();
+            rc = resRaw.ReinterpretCast<ComputeT>();
+        } else {
+            sc = xCompBuf.Get<ComputeT>();
+            rc = yCompBuf.Get<ComputeT>();
+            Cast(sc, sIn, RoundMode::CAST_NONE, compCount);
+            Cast(rc, resRaw, RoundMode::CAST_NONE, compCount);
+        }
+        LocalTensor<ComputeT> xc = streamX ? sc : rc;
+        LocalTensor<ComputeT> yc = streamX ? rc : sc;
+        ComputeGtT<ComputeT>(zOut, xc, yc, compCount);
+
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) {
+            inQueueX.FreeTensor(sIn);
+        } else {
+            inQueueY.FreeTensor(sIn);
+        }
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        if ((zBase % 256 == 0) && (n % 256 == 0)) {
+            DataCopy(zGm[zBase], zLocal, n);
+        } else {
+            DataCopyExtParams outParams;
+            outParams.blockCount = 1;
+            outParams.blockLen = n;
+            outParams.srcStride = 0;
+            outParams.dstStride = 0;
+            outParams.rsv = 0;
+            DataCopyPad(zGm[zBase], zLocal, outParams);
+        }
+        outQueueZ.FreeTensor(zLocal);
     }
 
     // P1+: resident path. Work is split by zero-stride reuse groups. The
@@ -420,12 +628,32 @@ public:
             rc = yCompBuf.Get<ComputeT>();
             Cast(rc, resRaw, RoundMode::CAST_NONE, rowElems_);
         }
-        for (uint32_t row = 0; row < rows; ++row) {
-            uint32_t off = row * rowElems_;
-            LocalTensor<ComputeT> xRow = streamX ? sc[off] : rc;
-            LocalTensor<ComputeT> yRow = streamX ? rc : sc[off];
-            LocalTensor<uint8_t> zRow = zOut[off];
-            ComputeGtT<ComputeT>(zRow, xRow, yRow, rowElems_);
+        if constexpr (kIsHalf || kIsFloat) {
+            // Repeat the same padded resident row in VEC without re-reading GM,
+            // then compare the whole row batch with one vector call sequence.
+            LocalTensor<ComputeT> residentRows = xCompBuf.Get<ComputeT>();
+            LocalTensor<ComputeT> residentRow = rc.ReinterpretCast<ComputeT>();
+            LocalTensor<ComputeT> streamRows = sc.ReinterpretCast<ComputeT>();
+            SetMaskCount();
+            SetVectorMask<ComputeT, MaskMode::COUNTER>(rowElems_);
+            Copy<ComputeT, false>(residentRows, residentRow, MASK_PLACEHOLDER,
+                                  static_cast<uint8_t>(rows),
+                                  {1, 1,
+                                   static_cast<uint16_t>(rowElems_ * sizeof(ComputeT) / 32), 0});
+            PipeBarrier<PIPE_V>();
+            SetMaskNorm();
+            ResetMask();
+            LocalTensor<ComputeT> xRows = streamX ? streamRows : residentRows;
+            LocalTensor<ComputeT> yRows = streamX ? residentRows : streamRows;
+            ComputeGtT<ComputeT>(zOut, xRows, yRows, paddedN);
+        } else {
+            for (uint32_t row = 0; row < rows; ++row) {
+                uint32_t off = row * rowElems_;
+                LocalTensor<ComputeT> xRow = streamX ? sc[off] : rc;
+                LocalTensor<ComputeT> yRow = streamX ? rc : sc[off];
+                LocalTensor<uint8_t> zRow = zOut[off];
+                ComputeGtT<ComputeT>(zRow, xRow, yRow, rowElems_);
+            }
         }
         outQueueZ.EnQue<uint8_t>(zOut);
         if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
@@ -535,7 +763,9 @@ public:
         if (segStart >= segEnd) {
             return;
         }
-        LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
+        if (!scalarBatchBlocked_) {
+            LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
+        }
         uint64_t pos = segStart * innerSize_;
         uint64_t coreEnd = segEnd * innerSize_;
         if (coreEnd > totalSize_) {
@@ -570,16 +800,32 @@ public:
         if (segStart >= segEnd) {
             return;
         }
-        LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
-        const uint32_t maxRows = TILE / rowElems_;
+        if (!scalarBatchBlocked_) {
+            LoadScalarBatch(segStart, static_cast<uint32_t>(segEnd - segStart));
+        }
+        uint32_t maxRows = TILE / rowElems_;
+        if constexpr (kIsHalf || kIsFloat) {
+            // A fixed 32-row batch keeps every subsequent half scalar source
+            // 32-byte aligned for Brcb; float uses 16 rows for the same reason.
+            // Only the final batch may be shorter.
+            if (scalarBatchPerCore_ && rowElems_ == COMP_ALIGN) {
+                maxRows = kIsHalf ? 32 : 16;
+            }
+        }
         uint64_t seg = segStart;
         while (seg < segEnd) {
             uint32_t rows = static_cast<uint32_t>(segEnd - seg);
             if (rows > maxRows) {
                 rows = maxRows;
             }
+            if (scalarBatchBlocked_) {
+                LoadScalarBatch(seg, rows);
+            }
             ProcessInnerBcastPaddedTile(seg * innerSize_, rows, seg);
             seg += rows;
+            if (scalarBatchBlocked_) {
+                SyncVToMte2();
+            }
         }
     }
 
@@ -614,6 +860,53 @@ public:
             Cast(sc, sIn, RoundMode::CAST_NONE, paddedN);
         }
         LocalTensor<InputT> batch = scalarBatchBuf.Get<InputT>();
+        if constexpr (kIsHalf || kIsFloat) {
+            if (scalarBatchPerCore_ && rowElems_ == COMP_ALIGN) {
+                uint32_t localOffset = static_cast<uint32_t>(firstSeg - scalarBatchBase_);
+                LocalTensor<ComputeT> scalarBlocks = scalarBrcbBuf.Get<ComputeT>();
+                Brcb(scalarBlocks, batch[localOffset].ReinterpretCast<ComputeT>(),
+                     static_cast<uint8_t>((rows + 7) / 8), {1, 8});
+                PipeBarrier<PIPE_V>();
+
+                LocalTensor<ComputeT> scalarRows;
+                if constexpr (kIsHalf) {
+                    scalarRows = halfOutBuf.Get<half>().ReinterpretCast<ComputeT>();
+                } else {
+                    scalarRows = scalarRowsBuf.Get<ComputeT>();
+                }
+                SetMaskCount();
+                SetVectorMask<ComputeT, MaskMode::COUNTER>(rowElems_);
+                Copy<ComputeT, false>(scalarRows, scalarBlocks, MASK_PLACEHOLDER,
+                                      static_cast<uint8_t>(rows),
+                                      {1, 0,
+                                       static_cast<uint16_t>(rowElems_ * sizeof(ComputeT) / 32), 1});
+                PipeBarrier<PIPE_V>();
+                SetMaskNorm();
+                ResetMask();
+
+                LocalTensor<ComputeT> streamRows = sc.ReinterpretCast<ComputeT>();
+                LocalTensor<ComputeT> xRows = streamX ? streamRows : scalarRows;
+                LocalTensor<ComputeT> yRows = streamX ? scalarRows : streamRows;
+                ComputeGtT<ComputeT>(zOut, xRows, yRows, paddedN);
+            } else {
+                ProcessInnerBcastPaddedRows(zOut, sc, batch, streamX, firstSeg, rows);
+            }
+        } else {
+            ProcessInnerBcastPaddedRows(zOut, sc, batch, streamX, firstSeg, rows);
+        }
+        outQueueZ.EnQue<uint8_t>(zOut);
+        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
+        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
+        CopyOutRows(zGm, zLocal, zBase, rows);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+    __aicore__ inline void ProcessInnerBcastPaddedRows(LocalTensor<uint8_t>& zOut,
+                                                       LocalTensor<ComputeT>& sc,
+                                                       LocalTensor<InputT>& batch,
+                                                       bool streamX, uint64_t firstSeg,
+                                                       uint32_t rows)
+    {
         for (uint32_t row = 0; row < rows; ++row) {
             uint32_t off = row * rowElems_;
             uint64_t seg = firstSeg + row;
@@ -633,11 +926,6 @@ public:
                 ComputeGtT<ComputeT>(zRow, xc, yc, rowElems_);
             }
         }
-        outQueueZ.EnQue<uint8_t>(zOut);
-        if (streamX) { inQueueX.FreeTensor(sIn); } else { inQueueY.FreeTensor(sIn); }
-        LocalTensor<uint8_t> zLocal = outQueueZ.DeQue<uint8_t>();
-        CopyOutRows(zGm, zLocal, zBase, rows);
-        outQueueZ.FreeTensor(zLocal);
     }
 
     __aicore__ inline void ProcessInnerBcastTile(uint64_t zBase, uint32_t n)
@@ -727,6 +1015,26 @@ public:
     }
 
 private:
+    // P2 copies the non-scalar operand from gm[seg * innerSize].  This is valid
+    // only when every non-degenerate outer output dimension advances with the
+    // corresponding dense output stride.  Degenerate dimensions never advance,
+    // so their operand stride is irrelevant.
+    __aicore__ inline bool IsStreamIndexContinuous(const uint32_t* streamStrides)
+    {
+        uint64_t expected = innerSize_;
+        for (int d = static_cast<int>(outerDim_) - 1; d >= 0; --d) {
+            uint32_t dim = outerShape_[d];
+            if (dim <= 1) {
+                continue;
+            }
+            if (expected > UINT32_MAX || streamStrides[d] != expected) {
+                return false;
+            }
+            expected *= dim;
+        }
+        return true;
+    }
+
     // True exactly when scalar operand storage advances one element per output
     // segment.  This is the common [outer, 1] form; mixed outer broadcasts
     // deliberately keep the conservative ScalarIndex/whole-range path.
@@ -810,6 +1118,21 @@ private:
         if (yResident_) {
             LocalTensor<InputT> ry = residentYBuf.Get<InputT>();
             DataCopyPad(ry, yGm[base], params, pad);
+        }
+        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
+        SetFlag<HardEvent::MTE2_V>(eid);
+        WaitFlag<HardEvent::MTE2_V>(eid);
+        pipe.ReleaseEventID<HardEvent::MTE2_V>(eid);
+    }
+
+    __aicore__ inline void LoadResidentSlice(uint32_t offset, uint32_t n)
+    {
+        if (xResident_) {
+            LocalTensor<InputT> rx = residentXBuf.Get<InputT>();
+            CopyInTensor(rx, xGm, offset, n);
+        } else {
+            LocalTensor<InputT> ry = residentYBuf.Get<InputT>();
+            CopyInTensor(ry, yGm, offset, n);
         }
         TEventID eid = pipe.AllocEventID<HardEvent::MTE2_V>();
         SetFlag<HardEvent::MTE2_V>(eid);
@@ -1098,6 +1421,10 @@ private:
         pad.paddingValue = (InputT)0;
         LocalTensor<InputT> sc = scalarBuf.Get<InputT>();
         DataCopyPad(sc, gm[base], p, pad);
+        TEventID eid = pipe.AllocEventID<HardEvent::MTE2_S>();
+        SetFlag<HardEvent::MTE2_S>(eid);
+        WaitFlag<HardEvent::MTE2_S>(eid);
+        pipe.ReleaseEventID<HardEvent::MTE2_S>(eid);
     }
 
     // Return a ComputeT view of an operand. Source is one of:
@@ -1173,9 +1500,11 @@ private:
     TBuf<TPosition::VECCALC> xCompBuf, yCompBuf;
     TBuf<TPosition::VECCALC> mxBuf, neBuf, maskMxBuf, maskEqBuf;
     TBuf<TPosition::VECCALC> bf16TileBuf;
-    TBuf<TPosition::VECCALC> scalarBuf, scalarCTBuf;
+    TBuf<TPosition::VECCALC> scalarBuf;
     TBuf<TPosition::VECCALC> residentXBuf, residentYBuf;  // P1 broadcast-resident
     TBuf<TPosition::VECCALC> scalarBatchBuf;             // P2 innermost-bcast scalars
+    TBuf<TPosition::VECCALC> scalarBrcbBuf;              // P2 fp16/fp32 scalar blocks (1KiB)
+    TBuf<TPosition::VECCALC> scalarRowsBuf;              // P2 fp32 expanded scalar rows
 
     uint32_t totalSize_ = 0;
     uint32_t blockDim_ = 1;
@@ -1193,6 +1522,7 @@ private:
     // redundant HBM reads that make broadcast cases ~12x slower than same-shape.
     bool xResident_ = false;          // x loaded once into residentXBuf
     bool yResident_ = false;          // y loaded once into residentYBuf
+    bool largeResident_ = false;      // full-outer P1 sliced across inner workers
     bool xQueued_ = true;            // x uses inQueueX (false if resident or scalar)
     bool yQueued_ = true;            // y uses inQueueY
     uint32_t residentElemsX_ = 0;     // capacity of residentXBuf (elems, 256-aligned)
@@ -1205,6 +1535,7 @@ private:
     uint32_t scalarBatchElems_ = 0;
     uint32_t scalarBatchCount_ = 0;    // P2: contiguous scalar storage range
     bool scalarBatchPerCore_ = false;  // P2: scalarIndex(seg) == seg
+    bool scalarBatchBlocked_ = false;  // P2: load one aligned scalar block per row tile
     uint64_t scalarBatchBase_ = 0;     // GM segment represented by batch[0]
     uint32_t residentGroupSegs_ = 1;   // P1: zero-stride reuse run (segments)
     bool rowPadded_ = false;           // non-aligned broadcast UB staging enabled

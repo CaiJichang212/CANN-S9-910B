@@ -7,7 +7,7 @@
 > - **"优化前"（baseline）**：`dev-greater-0703` 分支 HEAD 提交 `30afc4f`（与 [`Greater算子性能测试与瓶颈分析报告.md`](Greater算子性能测试与瓶颈分析报告.md) 同源，已含 P1 外维驻留 + P2 内维标量批量，但非对齐广播退化 12×、fp32 内维异常）
 > - **"优化后"（optimized）**：工作树 `op_kernel/greater.cpp` 未提交优化（新增 `rowPadded_` 非对齐路径 + `scalarBatchPerCore_` 标量连续切核路径）
 >
-> 配套原始数据：[`Greater/perf_test/opt_compare/`](Greater/perf_test/opt_compare)（`before_full.csv` / `after_full.csv` / `compare.txt` / `run_info.txt`）。
+> 配套原始数据：[`Greater/perf_test/opt_compare/`](../Greater/perf_test/opt_compare)（`before_full.csv` / `after_full.csv` / `compare.txt` / `run_info.txt`）。
 
 ---
 
@@ -29,7 +29,7 @@
 ## 2. 评测方法
 
 ### 2.1 公平性保证：同设备同日 A/B
-本次在**同一设备、同一天**对"优化前"与"优化后"两版 kernel 各跑一遍**完全相同的 35 用例**，确保相对比较不受环境漂移影响（两版同等承受设备争用）。同时以仓库内已提交的 [`summary.csv`](Greater/perf_test/summary.csv)（2026-07-22 采集）交叉核验——本次"优化前"数据与其一致（如 `f16_tail_bouter` 本次 932.5µs vs 报告 908.1µs，±3% 内），证明基线可复现、口径一致。
+本次在**同一设备、同一天**对"优化前"与"优化后"两版 kernel 各跑一遍**完全相同的 35 用例**，确保相对比较不受环境漂移影响（两版同等承受设备争用）。同时以仓库内已提交的 [`summary.csv`](../Greater/perf_test/summary.csv)（2026-07-22 采集）交叉核验——本次"优化前"数据与其一致（如 `f16_tail_bouter` 本次 932.5µs vs 报告 908.1µs，±3% 内），证明基线可复现、口径一致。
 
 ### 2.2 环境
 - **硬件**：Ascend 910B4，容器内可见 **1 卡**（物理 NPU 6 → 逻辑 device 0），采集期 AICore 空闲（0%）。注：优化前报告用 device 4（8 卡可见），本次容器映射不同，故改用逻辑 device 0（已用 `acl.rt.get_device_count()=(1,0)` 核验）。
@@ -41,7 +41,7 @@
 - `msprof --aic-metrics=PipeUtilization` 采集 AICore 时间 + MTE2/VEC/Scalar/MTE3 流水占比。
 - **时间口径**：去前 20% warmup 样本后取**中位数**（稳态）。
 - **bound** = argmax(aiv 流水 ratio)。
-- **sync_gap** = `1 − aiv_time / Task Duration`（同步空等占比，[工程经验 §4.4](../算子性能评测与瓶颈分析工程经验.md)）；本指标为优化前报告未覆盖项，本次新增，用于量化 fp32 内维广播的同步停顿改善。
+- **sync_gap** = `1 − aiv_time / Task Duration`（同步空等占比，[工程经验 §4.4](../../算子性能评测与瓶颈分析工程经验.md)）；本指标为优化前报告未覆盖项，本次新增，用于量化 fp32 内维广播的同步停顿改善。
 - **有效带宽 effBW** = `(x字节 + y字节 + z字节) / 时间`。
 - **精度**：浮点注入 5% inf / 5% -inf / 5% NaN + 每行尾固定特殊值，与 `torch.gt` CPU golden 做 `torch.equal` 精确比对（bool 输出）。
 - **隔离**：每例前**防御性重装** Greater `.run`（防并行算子 job 覆盖共享 `vendors/customize`）；当 device 被并行 `perf_run.py` 占用导致 `op_summary` 为空时，**自动重试至多 5 次**。
@@ -212,7 +212,7 @@
 1. **设备争用**：采集期间有并行算子 job 间歇占用 device 0。中位(840 样本)+重试可消除瞬态干扰，但**绝对值可能比独占设备偏高 ~3%**（见基线交叉核验）；**相对提速比**因前后同等受争用而基本抵消，可信。
 2. **小尺寸 dtype 扫描不显提速**：`[21,1000]` 仅 21 段，不足以触发"每段重读"退化，故 dtype-tail 小用例提速 ~1.0×——这是**用例尺寸**限制而非优化失效；大尺寸跨 dtype（§5.4）已补证提速 dtype 普遍。
 3. **f32_binner_16128 根因为推断**：优化前此处 acc=FAIL 是 5 次一致的确定现象（已证），但越界机制的精确代码定位为据边界算术推断，未做单步仿真逐行确认（不影响"FAIL 事实"结论）。
-4. **未量内置 aclnnGreater 基线**：Greater 在 `libopapi.so` 有内置实现，可作更公平参照（[工程经验 §3.5](../算子性能评测与瓶颈分析工程经验.md)）；本次聚焦前后对比，未单列内置基线，可作后续补充。
+4. **未量内置 aclnnGreater 基线**：Greater 在 `libopapi.so` 有内置实现，可作更公平参照（[工程经验 §3.5](../../算子性能评测与瓶颈分析工程经验.md)）；本次聚焦前后对比，未单列内置基线，可作后续补充。
 
 ---
 

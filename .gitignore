@@ -1,4 +1,6 @@
-*zip*
+# 发布包和历史兼容解包目录；避免误伤名称中仅包含 "zip" 的源码。
+*.zip
+*_zip/
 # ============================================================
 # Python
 # ============================================================
@@ -49,7 +51,6 @@ cmake_install.cmake
 CPackConfig.cmake
 CPackSourceConfig.cmake
 CTestTestfile.cmake
-Makefile
 Makefile2
 install_manifest.txt
 compile_commands.json
@@ -71,6 +72,7 @@ autogen/
 CustomOp.zip
 CustomOp_zip/
 version.info
+releases/*/*.zip
 
 # ============================================================
 # Profiling 输出
@@ -78,6 +80,10 @@ version.info
 PROF_*/
 *.prof
 prof_output/
+perf/runs/**/raw/
+perf/runs/**/private/
+perf/runs/**/profile/
+perf/runs/**/specs/
 
 # ============================================================
 # 日志与临时文件
@@ -115,6 +121,12 @@ core.*
 # ============================================================
 # 构建产物
 
+# Greater 正式打包临时树；正式身份由 releases/ 索引记录
+Greater/submission_*/
+
+# Greater 优化实验只跟踪 run 根 manifest/summary 和必要 metadata
+Greater/perf_test/opt_*/probe_*/
+Greater/perf_test/opt_*/results/*/specs/
+
 # transient task tracker（ascendc-task-focus）；经验已沉淀进 *.md 报告
 todo.md
-

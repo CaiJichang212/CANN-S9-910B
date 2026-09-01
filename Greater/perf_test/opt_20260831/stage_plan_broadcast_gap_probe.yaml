@@ -1,0 +1,18 @@
+probe_id: broadcast_gap_probe
+parent_id: p_flat_large_aiv
+purpose: >-
+  在公开维度范围内定位仍落入 generic 的两类广播缺口，不据官方 Case 编号
+  推断隐藏 shape：innerSize 大于 dtype TILE，以及 innerSize 很小导致 row padding
+  超过当前 2x 门限。
+specs:
+  - f16_p1_large_inner
+  - f16_p2_large_inner
+  - f32_p1_large_inner
+  - f32_p2_large_inner
+  - f16_p1_tiny_inner_big
+  - f16_p2_tiny_inner_big
+evidence_gate:
+  - 每个 spec 必须精确 bool PASS
+  - 记录 BlockDim、P50 和 AIV pipe ratio
+  - 只有出现可复现的显著瓶颈，才单独建立一个实现候选
+non_goal: 不按 Case2 时延或猜测 shape 编写 Tiling 特判

@@ -155,5 +155,5 @@ Kernel 的 `ComputeBases(seg)` 用这些 stride 将一个逻辑 segment 映射�
 - 精度 sweep：[acc_sweep.py](../acc_sweep.py)
 - 制品安装、API/OPP 门禁与可选 profiling：
   [verification/verify_artifact.sh](../verification/verify_artifact.sh)
-- 构建和打包：[build_and_pack.sh](../../build_and_pack.sh)
+- 构建和打包：[build_and_pack.sh](../build_and_pack.sh)
 - 交付验证结果摘要：[verification/README.md](../verification/README.md)

@@ -1,0 +1,10 @@
+17022c13081f5ae4dbfc9098e27eddd099140e79af68fc2433fd19bcc3be43ef  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_bfffa0adcc2f3b5abda1875ed71ce2f5.json
+1b7e820a1e913df8ab7149d9de217030a31fa340f249687c375c7f89c4c2f2d1  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_6573fc9bfc9a3b10254bd0bde8875f45.o
+66a49bf9adabddff90afdbbf32bdd08e8d49992ab0b10266e09a7d16c0f0fcb6  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_9b6fcfb380bc69e6c850316161d0d2c9.json
+6f54a0b32daf37900da028452053a7c5cb6c3f53760699cd173af68b33b6f583  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_d4f2c055f4a313943ea4a5fd62b6602b.json
+9fab48ac727e582cfb77a1611aedb3f7f86fe6b8d53410733bce3017088dd05b  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_97fc092809b54e1deab5cf6a2675c58a.json
+c29d74ad5dd18e877d6ec1582517be7fe0a5f6676e4237a74b11d6c8f78ed46b  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_97fc092809b54e1deab5cf6a2675c58a.o
+d126978600c7b0cf040c75f6b799f09b09ea449bd2745dbe3b6ae37620b35ba4  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_9b6fcfb380bc69e6c850316161d0d2c9.o
+ed5001e4855ee21c544f55a09ca023631e98bc28f4b1eab8040ae5575c2ca5b1  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_d4f2c055f4a313943ea4a5fd62b6602b.o
+f7308d34b00d6d4e57e0019a322209ff5bfe624c10de5462b3365262924408af  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_6573fc9bfc9a3b10254bd0bde8875f45.json
+fcd290124c55af3261fef91a55842f39a3709b6c73915469fb9e791442657f49  /usr/local/Ascend/cann-8.5.0/opp/vendors/customize/op_impl/ai_core/tbe/kernel/ascend910b/greater/Greater_bfffa0adcc2f3b5abda1875ed71ce2f5.o

@@ -1,0 +1,16 @@
+candidate_family: p_fp32_row_vector
+parent_id: p_p2_row_brcb
+sequence:
+  - p_fp32_p1_row_vector_copy
+  - p_fp32_p2_row_brcb
+principle: >-
+  复用已由fp16证明的Copy/Brcb机制，但P1和P2分开构建、精度及A/B，
+  不把两个执行路径合并为一个不可归因候选。
+probe_specs:
+  - f32_p1_tiny_inner_big
+  - f32_p2_tiny_inner_big
+constraints:
+  - P1复用现有xCompBuf，UB不增加
+  - P2每批16行，保证float scalar源32B对齐且paddedN<=TILE
+  - P2新增float scalarRows scratch必须计入184KiB编译期预算
+  - 每阶段5/5 UB、40/40 mixed、85/85 sweep与两组A/B全部通过

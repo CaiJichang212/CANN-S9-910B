@@ -1,0 +1,19 @@
+candidate_id: p_fp32_p1_row_vector_copy
+parent_id: p_p2_row_brcb
+hypothesis: >-
+  fp32 P1 rowPadded与已接受的fp16 P1具有相同resident复用结构；DAV_2201
+  Copy Counter支持float，因此可复用现有xCompBuf展开resident并合并整批比较。
+scope:
+  source: Greater/op_project/custom_greater/op_kernel/greater.cpp
+  change: P1 Vector Copy分支由kIsHalf扩为kIsHalf||kIsFloat
+  ub_change: 0
+targets:
+  - f32_p1_tiny_inner_big
+controls:
+  - f32_p2_tiny_inner_big
+  - f16_p1_tiny_inner_big
+  - f16_p2_tiny_inner_big
+gates:
+  - 5/5 UB、40/40 mixed、85/85 sweep全部PASS
+  - fp32 P1目标改善且fp16/P2控制无material回退
+  - 两组相邻A/B通过

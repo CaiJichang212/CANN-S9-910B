@@ -1,0 +1,54 @@
+stage_id: large-inner-full-resident-capped-20260901_021107
+candidate_id: p_large_inner_full_resident_capped
+candidate_kind: performance
+parent_id: official_20260831_104337
+hypothesis: >-
+  Large-inner complete-outer P1 resident reuse is beneficial, but it may exceed
+  the proven generic core cap only when useful output tiles cover every queried AIV.
+patch_scope:
+  - Greater/op_project/custom_greater/op_host/greater.cpp:TilingFunc
+  - Greater/op_project/custom_greater/op_kernel/greater.cpp:KernelGreater
+target_cohort:
+  - f16_p1_large_inner
+  - f16_p1_large_inner_rev
+  - f32_p1_large_inner
+  - f32_p1_large_inner_rev
+critical_controls:
+  - f16_5d_bcast
+  - f16_tail_bouter
+  - f16_p1_n10000
+  - f16_p1_large_inner_partial
+  - f16_p2_large_inner
+  - f32_p2_large_inner
+expected_structure:
+  main_targets_block_dim: 40
+  f16_5d_bcast_block_dim: 20
+  f16_p1_n10000_block_dim: 20
+  p2_partial_generic_unchanged: true
+correctness_gate:
+  targeted: 14_of_14
+  suites: [host_5, p2_ub_5, mixed_40, sweep_85, full94]
+performance_design:
+  physical_device: 4
+  logical_device: 0
+  tasks_per_spec: 1050
+  warmup_dropped: 150
+  hot_tasks: 900
+  statistic: p50
+  screening_pairs: 2
+  full94_pairs: 1
+acceptance_thresholds:
+  target_each: both(10_percent,5_us)
+  diagnostic_20_spec_total_min_gain: 0.10
+  common79_max_total_regression: 0.005
+  full94_max_total_regression: 0.0
+  control_material_regression: max(5_percent,0.5_us)
+  correctness: exact_all_pass
+  structure: model_match
+rollback: restore official parent source hashes and keep all rejected evidence
+package_checkpoint: true
+requires_official_feedback: true
+evidence:
+  - docs/reports/Greater算子large-inner-full-resident-20260901_020635阶段执行报告.md
+  - perf/runs/large-inner-resident-paired2-analysis-20260901_004605/
+  - perf/runs/large-inner-resident-full94-analysis-20260901_020229/

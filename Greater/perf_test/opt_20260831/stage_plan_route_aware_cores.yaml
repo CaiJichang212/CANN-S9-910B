@@ -1,0 +1,46 @@
+stage_id: p_route_aware_cores
+operator: Greater
+parent:
+  id: safe_b20
+  run_sha256: e3a6cabb3cb46992b7b280b066d3e4cbd5849df0e1e3cac1c18cf72131f9d5fb
+  status: local_baseline_safe
+hypothesis: >-
+  Only Kernel routes that reuse a resident operand or a scalar batch should use
+  AIV/tile-aware core scaling. Generic fallback must retain the safe
+  256-element block policy and platform AIC-count numeric cap.
+patch_scope:
+  - Greater/op_project/custom_greater/op_host/greater.cpp
+core_policy:
+  generic: "min(GetCoreNumAic(), ceil(totalSize / 256))"
+  p1_full: "min(GetCoreNumAiv(), outerSize, ceil(totalSize / TILE))"
+  p1_partial: "min(GetCoreNumAiv(), outerSize / residentGroupSegs, ceil(totalSize / TILE))"
+  p2: "min(GetCoreNumAiv(), outerSize, ceil(totalSize / TILE))"
+route_invariants:
+  - Host P1 eligibility equals Kernel P1 eligibility
+  - Host P2 eligibility equals Kernel P2 eligibility for the selected blockDim
+  - Kernel and TilingData remain byte-identical
+  - fallback BlockDim matches safe_b20 on Ascend910B4-1
+must_fix_controls:
+  - f16_5d_bcast
+  - f16_p1_n31
+  - f16_p2_n31
+  - f16_p1_n33
+  - f16_p2_n33
+must_keep_targets:
+  - f16_bouter_big
+  - f16_tail_bouter
+  - f32_binner
+  - f16_binner
+acceptance_thresholds:
+  material_case_relative: 0.05
+  material_case_absolute_us: 0.5
+  any_pair_material_regression: reject_or_targeted_retest
+  target_sum_min_relative_gain: 0.05
+  target_sum_min_absolute_gain_us: 5.0
+  full79_sum_max_regression: 0.01
+  correctness_fail: reject
+  kernel_object_change: reject
+rollback:
+  - restore safe_b20 Host blockDim expression
+package_checkpoint: true
+requires_official_feedback: true

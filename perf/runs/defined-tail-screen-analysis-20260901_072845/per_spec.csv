@@ -1,0 +1,9 @@
+spec,cohort,median_a_us,median_b_us,median_delta_us,median_relative_delta,candidate_faster_pairs,pair_count,a_block_dim,b_block_dim,target_pass,material_regression,material_pairs
+f16_p1_large_inner,control,234.049,333.793,99.744,0.4261671701224957,0,1,40,40,yes,yes,1
+f32_p1_large_inner,control,203.148,253.811,50.66300000000001,0.24938960757674214,0,1,40,40,yes,yes,1
+f16_p2_large_inner,control,457.618,633.085,175.46700000000004,0.38343552919684115,0,1,20,20,yes,yes,1
+f32_p2_large_inner,control,280.252,361.054,80.80199999999996,0.28831908425274383,0,1,20,20,yes,yes,1
+f16_p2_tiny_inner_big,control,1452.9485,1449.688,-3.2604999999998654,-0.0022440575147707337,1,1,40,40,yes,no,
+f32_p2_tiny_inner_big,control,1994.27,1996.31,2.0399999999999636,0.0010229306964452975,0,1,40,40,yes,no,
+f16_5d_bcast,control,4.72,4.74,0.020000000000000462,0.004237288135593318,0,1,20,20,yes,no,
+scalar,control,2.08,2.2,0.1200000000000001,0.057692307692307744,0,1,1,1,yes,no,

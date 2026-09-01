@@ -1,0 +1,25 @@
+candidate_id: p_fp32_p2_row_brcb
+parent_id: p_fp32_p1_row_vector_copy
+hypothesis: >-
+  对已满足整体scalar batch预算的fp32短行P2，按16行分块可保证float scalar
+  源地址32B对齐，并复用fp16验证过的Brcb+Copy合并比较结构。
+scope:
+  source: Greater/op_project/custom_greater/op_kernel/greater.cpp
+  route: kIsFloat、P2 rowPadded、rowElems=256、scalarBatchPerCore
+ub_change:
+  scalarBrcbBuf: 1024
+  scalarRowsBuf: 20480
+  worst_case_total: 169600
+  user_ub_limit: 188416
+targets:
+  - f32_p2_n7
+  - f32_p2_n31
+  - f32_p2_n255
+controls:
+  - f32_p1_tiny_inner_big
+  - f16_p1_tiny_inner_big
+  - f16_p2_tiny_inner_big
+gates:
+  - 5/5 UB、40/40 mixed、85/85 sweep全部PASS
+  - fp32 P2目标改善且控制无material回退
+  - 两组相邻A/B通过后，才进入超预算scalar分块候选

@@ -1,0 +1,12 @@
+# Generated measurement evidence may contain exporter padding or CRLF endings.
+Greater/perf_test/opt_20260831/results/** text eol=lf -whitespace
+perf/runs/** text eol=lf -whitespace
+
+# Review reports use Markdown hard line breaks intentionally.
+Greater/review_work/20260831/*.md text eol=lf -whitespace
+Greater/review_work/20260901/*.md text eol=lf -whitespace
+docs/design/*.md text eol=lf -whitespace
+docs/reports/*.md text eol=lf -whitespace
+operators/Greater/**/*.md text eol=lf -whitespace
+docs/Greater算子性能优化最终报告-20260831.md text eol=lf -whitespace
+docs/Greater算子性能优化阶段报告-20260831.md text eol=lf -whitespace

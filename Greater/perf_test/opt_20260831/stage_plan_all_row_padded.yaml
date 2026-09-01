@@ -1,0 +1,34 @@
+candidate_id: p_all_row_padded
+parent_id: p_flat_large_aiv
+hypothesis: >-
+  generic 广播对每个非对齐 segment 都会把 Compare count 向上取整到256元素，
+  因此 rowPadded 的“padding <= 2x”门限不会节省 Vector 工作，反而让短行重复
+  执行地址分解、小块搬运和队列操作。移除该门限后，既有多行P1/P2可批量处理
+  所有 innerSize<=dtype TILE 的非对齐行。
+scope:
+  source:
+    - Greater/op_project/custom_greater/op_host/greater.cpp
+    - Greater/op_project/custom_greater/op_kernel/greater.cpp
+  change: 仅移除 Host/Kernel 对 rowElems<=2*innerElems 的镜像条件
+target_specs:
+  - f16_p1_tiny_inner_big
+  - f16_p2_tiny_inner_big
+controls:
+  - f16_p1_n1
+  - f16_p1_n7
+  - f16_p1_n31
+  - f16_p1_n33
+  - f16_p2_n7
+  - f16_p2_n31
+  - f16_p2_n33
+  - f16_p1_n255
+  - f16_p2_n255
+  - f16_tail_bouter
+  - f16_tail_binner
+gates:
+  correctness: 40/40 mixed、85/85 sweep及所有profiling spec精确bool PASS
+  target: 两个大outer短行探针均需显著改善
+  controls: 不得出现同时超过5%和0.5us的material回退
+  structure: Host与Kernel rowPadded predicate必须保持一致
+  acceptance: 至少两组相邻A/B通过后进入固定全矩阵门禁
+official_boundary: 不使用官方Case编号或猜测shape作Tiling特判

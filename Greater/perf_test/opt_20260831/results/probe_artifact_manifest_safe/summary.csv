@@ -1,0 +1,2 @@
+spec,op_name,task_count_total,warmup_dropped,task_count_hot,p50_us,p95_us,mean_us,population_std_us,population_cv,min_us,max_us,block_dim,block_dim_set,aiv_mte2_ratio_median,aiv_vec_ratio_median,aiv_scalar_ratio_median,aiv_mte3_ratio_median,acc,op_summary_csv
+scalar,Greater,1050,150,900,2.213,2.394,2.224216666666667,0.09132068495143914,0.04105745915855281,2.032,2.616,1,[1],0.256,0.112,0.945,0.067,PASS,specs/scalar/profile/PROF_000001_20260830180035027_CFANNNBRNGKJMFEB/mindstudio_profiler_output/op_summary_20260830180049.csv

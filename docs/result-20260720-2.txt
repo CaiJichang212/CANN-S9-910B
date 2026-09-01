@@ -1,4 +1,14 @@
-第4次提交结果：性能数据=990.62us
+提交结果：性能数据=784.33us
+/home/liyc/hw-S9/case_910b_Greater/Greater_20260831_104337.zip
+hw-S9/case_910b_Greater/Greater/submission_20260831_104337/zipfiles/Greater_zip
+Case1: Pass, Result: 2.94
+Case2: Pass, Result: 472.53
+Case3: Pass, Result: 46.24
+Case4: Pass, Result: 71.02
+Case5: Pass, Result: 191.6
+prof_sum: 784.33
+
+提交结果：性能数据=990.62us
 hw-S9/case_910b_Greater/Greater_20260722_185315_zip
 Case1: Pass, Result: 2.86
 Case2: Pass, Result: 657.783

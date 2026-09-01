@@ -1,0 +1,49 @@
+stage_id: p_bcast_aiv_tile
+operator: Greater
+parent:
+  id: safe_b20
+  run_sha256: e3a6cabb3cb46992b7b280b066d3e4cbd5849df0e1e3cac1c18cf72131f9d5fb
+  status: local_baseline_safe
+hypothesis: >-
+  Broadcast reuse and scalar paths benefit from all queried AIV cores, while
+  flattened same-shape paths are bandwidth-bound and should retain an AIC-count
+  numeric cap; every launched core must still receive at least one Kernel tile.
+patch_scope:
+  - Greater/op_project/custom_greater/op_host/greater.cpp
+core_policy:
+  same_shape_limit: "min(GetCoreNumAiv(), GetCoreNumAic())"
+  broadcast_limit: GetCoreNumAiv()
+  work_units: "ceil(totalSize / dtype_specific_kernel_tile)"
+invariants:
+  - Kernel and TilingData byte-identical to safe_b20
+  - all dispatched binaries remain AIV
+  - no Cube task is launched
+  - no shape equality against a published or hidden case
+target_cohort:
+  - f16_bouter_big
+  - f16_tail_bouter
+  - f32_binner
+  - f16_binner
+control_cohort:
+  - scalar
+  - f16_same_sml
+  - f16_same_med
+  - f16_same_big
+  - f32_same_big
+  - f16_p1_partial_tail
+  - f16_p2_outer19
+  - f16_p2_outer21
+  - f16_p1_n10000
+  - f16_p2_n10000
+acceptance_thresholds:
+  material_case_relative: 0.05
+  material_case_absolute_us: 0.5
+  target_sum_min_relative_gain: 0.05
+  target_sum_min_absolute_gain_us: 5.0
+  global_sum_max_regression: 0.01
+  correctness_fail: reject
+  kernel_object_change: reject
+rollback:
+  - restore safe_b20 Host blockDim expression
+package_checkpoint: true
+requires_official_feedback: true

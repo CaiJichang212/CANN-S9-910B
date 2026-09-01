@@ -1,0 +1,8 @@
+f16_same_sml
+f16_same_med
+f16_same_12m
+f16_same_14m
+f16_same_big
+f32_same_4m
+f32_same_8m
+f32_same_big

@@ -1,0 +1,26 @@
+candidate_id: p_p2_row_brcb
+parent_id: p_p1_row_vector_copy
+hypothesis: >-
+  fp16 P2短行的scalar索引连续时，可按32行分块用Brcb把scalar变为32B块，
+  再用Copy扩成256元素行，最终把32次CompareScalar/Select/Cast合并为一次
+  Compare/Select/Cast。
+scope:
+  source: Greater/op_project/custom_greater/op_kernel/greater.cpp
+  route: 仅kIsHalf、P2 rowPadded、rowElems=256、scalarBatchPerCore
+ub_change: 新增1KiB scalarBrcbBuf；编译期计入184KiB断言
+alignment:
+  - 非尾批固定32行，下一批scalar local offset始终32B对齐
+  - 尾批允许不足32行，scalar batch现有+256元素padding覆盖Brcb向上读取
+targets:
+  - f16_p2_tiny_inner_big
+  - f16_p2_n7
+  - f16_p2_n31
+controls:
+  - f16_p1_tiny_inner_big
+  - f16_tail_bouter
+  - f16_tail_binner
+gates:
+  correctness: 5/5 UB、40/40 mixed、85/85 sweep及profiling精度全部PASS
+  target: P2大outer短行必须改善
+  controls: 无material回退
+  acceptance: 两组相邻A/B后进入最终全矩阵

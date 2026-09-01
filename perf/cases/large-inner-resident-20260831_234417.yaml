@@ -1,0 +1,68 @@
+stage_id: large-inner-full-resident-20260831_234417
+candidate_id: p_large_inner_full_resident
+candidate_kind: performance
+parent_id: official_20260831_104337
+hypothesis: >-
+  Complete-outer P1 with innerSize greater than dtype TILE can reuse one UB
+  resident slice across each core's outer segment range and remove repeated
+  broadcast-input GM reads.
+patch_scope:
+  - Greater/op_project/custom_greater/op_host/greater.cpp:TilingFunc
+  - Greater/op_project/custom_greater/op_kernel/greater.cpp:KernelGreater
+target_cohort:
+  - f16_p1_large_inner
+  - f16_p1_large_inner_rev
+  - f32_p1_large_inner
+  - f32_p1_large_inner_rev
+control_cohort:
+  - f16_p2_large_inner
+  - f32_p2_large_inner
+  - f16_p1_n10000
+  - f16_p1_large_inner_partial
+  - f16_p1_tile_minus_1
+  - f16_p1_tile_exact
+  - f16_p1_tile_plus_1
+  - f32_p1_tile_minus_1
+  - f32_p1_tile_exact
+  - f32_p1_tile_plus_1
+  - f16_p1_tiny_inner_big
+  - f16_same_med
+  - scalar
+expected_structure:
+  target_block_dim: 40
+  target_inner_workers: 2
+  target_outer_workers: 20
+  p2_unchanged: true
+  partial_group_unchanged: true
+  tiling_data_unchanged: true
+correctness_gate:
+  targeted_dtypes: [float16, float32, bfloat16, int32, int8]
+  directions: [x_resident, y_resident]
+  boundaries: [tile_minus_1, tile_exact, tile_plus_1, non_aligned_tail, partial_group]
+  suites: [host_5, p2_ub_5, mixed_40, sweep_85, full94]
+performance_design:
+  physical_device: 4
+  logical_device: 0
+  tasks_per_spec: 1050
+  warmup_dropped: 150
+  hot_tasks: 900
+  statistic: p50
+  order: adjacent_alternating_ab_ba
+  minimum_pairs: 2
+acceptance_thresholds:
+  target_each_min_relative_improvement: 0.10
+  target_each_min_absolute_us: 5.0
+  full94_min_relative_improvement: 0.02
+  control_material_regression: max(5_percent,0.5_us)
+  correctness: exact_all_pass
+  structure: model_match
+rollback: >-
+  Revert only the candidate Host branch, Kernel largeResident state/functions,
+  and candidate-only test specs; restore the three parent source hashes and run
+  the official-parent smoke.
+package_checkpoint: true
+requires_official_feedback: true
+evidence:
+  - docs/reports/Greater算子性能评测和瓶颈分析报告-20260831_234415.md
+  - docs/reports/Greater算子性能评测和瓶颈分析报告审核记录-20260831_234416.md
+  - perf/runs/large-inner-resident-parent-20260831_233401/summary.csv

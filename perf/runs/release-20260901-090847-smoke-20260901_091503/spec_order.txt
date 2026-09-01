@@ -1,0 +1,15 @@
+scalar
+f16_p1_large_inner
+f32_p1_large_inner
+f16_p2_large_inner
+f32_p2_large_inner
+f16_p2_tiny_inner_big
+f32_p2_tiny_inner_big
+f16_same_big
+f32_same_big
+f16_tail_bouter
+f16_tail_binner
+f16_5d_bcast
+bf16_binner
+i32_binner
+i8_binner

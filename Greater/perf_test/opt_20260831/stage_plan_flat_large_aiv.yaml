@@ -1,0 +1,31 @@
+candidate_id: p_flat_large_aiv
+parent_id: p_route_aware_cores
+hypothesis: >-
+  对无广播的连续同形输出，只有估算输入输出总 IO 达到 64MiB 时才将
+  generic 路径从 910B 的 20 核数值上限扩展到已查询的 AIV 数；这样可复用
+  40 AIV 对大张量的带宽收益，同时保留中小张量已验证的初始化开销门禁。
+scope:
+  source: Greater/op_project/custom_greater/op_host/greater.cpp
+  test_matrix: Greater/perf_test/prof_matrix.py
+single_variable:
+  - 仅改变无广播、outerDim=0 路径的 blockDim 选择
+  - Kernel、TilingData、广播路由和 dtype 计算路径保持不变
+threshold_model:
+  estimated_io_bytes: totalSize * (2 * inputBytes + 1)
+  aiv_threshold_bytes: 67108864
+screen_specs:
+  - f16_same_sml
+  - f16_same_med
+  - f16_same_12m
+  - f16_same_14m
+  - f16_same_big
+  - f32_same_4m
+  - f32_same_8m
+  - f32_same_big
+gates:
+  correctness: 所有 spec 精确 bool PASS，且 40/40 mixed 与 85/85 sweep 保持通过
+  below_threshold: 不得同时回退超过 5% 和 0.5us，BlockDim 必须保持父版本
+  above_threshold: 聚合 P50 必须改善，BlockDim 必须来自查询到的 AIV 数
+  identity: Kernel 与 TilingData SHA256 必须和父版本一致
+  acceptance: 至少两组相邻 A/B 证据通过，随后进入固定全矩阵门禁
+official_boundary: 本地结果不能替代官方隐藏 5 case 成绩

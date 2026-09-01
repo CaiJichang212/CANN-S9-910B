@@ -1,0 +1,32 @@
+candidate_id: p_p1_row_vector_copy
+parent_id: p_all_row_padded_ub_safe
+hypothesis: >-
+  fp16 P1 rowPadded每批最多36行共享同一个resident row。使用CANN8.5
+  Broadcast内部同款的Vector Copy Counter模式和srcRepeatStride=0，在现有未使用的
+  xCompBuf中展开resident row，可将每批rows次Compare/Select/Cast合并为一次。
+scope:
+  source: Greater/op_project/custom_greater/op_kernel/greater.cpp
+  route: 仅kIsHalf且P1 rowPadded
+  ub_change: 0
+api_contract:
+  - Copy Counter count=rowElems，repeatTime=rows
+  - dstRepeatStride=rowElems*sizeof(half)/32
+  - srcRepeatStride=0
+  - Copy后恢复Normal mask并ResetMask
+targets:
+  - f16_p1_tiny_inner_big
+  - f16_p1_n1
+  - f16_p1_n7
+  - f16_p1_n31
+  - f16_p1_n33
+controls:
+  - f16_p2_tiny_inner_big
+  - f16_p2_n7
+  - f16_p2_n31
+  - f16_p2_n33
+  - f16_tail_binner
+gates:
+  correctness: 5/5 UB、40/40 mixed、85/85 sweep及profiling精度全部PASS
+  target: P1大outer短行必须改善
+  controls: 无material回退
+  acceptance: 两组相邻A/B后进入最终全矩阵

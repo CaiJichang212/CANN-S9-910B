@@ -1,0 +1,2 @@
+spec,op_name,task_count_total,warmup_dropped,task_count_hot,p50_us,p95_us,mean_us,population_std_us,population_cv,min_us,max_us,block_dim,block_dim_set,aiv_mte2_ratio_median,aiv_vec_ratio_median,aiv_scalar_ratio_median,aiv_mte3_ratio_median,acc,op_summary_csv
+f16_p1_tiles21_outer2,Greater,1050,150,900,5.1,5.421,5.105621111111112,0.19042170102429937,0.03729648105103099,4.66,5.72,20,[20],0.465,0.211,0.802,0.115,PASS,specs/f16_p1_tiles21_outer2/profile/PROF_000001_20260831225636255_NHGCCECEQGLMNOKA/mindstudio_profiler_output/op_summary_20260831225651.csv
